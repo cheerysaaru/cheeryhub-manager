@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: productivity_dashboard
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/productivity_dashboard
+      JWT_SECRET: replace-with-a-long-random-secret
+      PORT: 4000
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "4000:4000"
+
+volumes:
+  postgres_data:

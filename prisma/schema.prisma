@@ -1,0 +1,311 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  ARCHIVED
+}
+
+enum FocusStatus {
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+enum ReminderRepeat {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum BrandStatus {
+  IDEA
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum TaskRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  timezone String @default("UTC")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  settings UserSettings?
+  tasks Task[]
+  habits Habit[]
+  habitCompletions HabitCompletion[]
+  goals Goal[]
+  skills Skill[]
+  focusSessions FocusSession[]
+  journalEntries JournalEntry[]
+  reminders Reminder[]
+  xpTransactions XPTransaction[]
+  dailyStats DailyStats[]
+  brandProjects BrandProject[]
+  taskCheckIns TaskCheckIn[]
+}
+
+model UserSettings {
+  id String @id @default(cuid())
+  userId String @unique
+  wakeUpTime String @default("07:00")
+  sleepTime String @default("22:30")
+  breakfastTime String @default("08:00")
+  lunchTime String @default("12:30")
+  dinnerTime String @default("18:30")
+  defaultFocusDuration Int @default(25)
+  defaultBreakDuration Int @default(5)
+  notificationsEnabled Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id String @id @default(cuid())
+  userId String
+  title String
+  description String?
+  category String?
+  priority Priority @default(MEDIUM)
+  status TaskStatus @default(TODO)
+  scheduledDate DateTime?
+  scheduledTime String?
+  deadlineTime String?
+  timerStartedAt DateTime?
+  recurrence TaskRecurrence @default(NONE)
+  isMandatory Boolean @default(false)
+  reminderEnabled Boolean @default(false)
+  estimatedMinutes Int?
+  completedAt DateTime?
+  deletedAt DateTime?
+  goalId String?
+  skillId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal Goal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  skill Skill? @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  focusSessions FocusSession[]
+  xpTransactions XPTransaction[]
+  checkIns TaskCheckIn[]
+  @@index([userId])
+  @@index([userId, scheduledDate])
+  @@index([userId, status])
+}
+
+model Habit {
+  id String @id @default(cuid())
+  userId String
+  name String
+  description String?
+  frequency String
+  active Boolean @default(true)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions HabitCompletion[]
+  xpTransactions XPTransaction[]
+  @@index([userId])
+}
+
+model HabitCompletion {
+  id String @id @default(cuid())
+  habitId String
+  userId String
+  date DateTime
+  completedAt DateTime @default(now())
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([habitId, date])
+  @@index([userId, date])
+}
+
+model Goal {
+  id String @id @default(cuid())
+  userId String
+  title String
+  description String?
+  progress Int @default(0)
+  deadline DateTime?
+  status GoalStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones GoalMilestone[]
+  tasks Task[]
+  @@index([userId])
+}
+
+model GoalMilestone {
+  id String @id @default(cuid())
+  goalId String
+  title String
+  description String?
+  completed Boolean @default(false)
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+}
+
+model Skill {
+  id String @id @default(cuid())
+  userId String
+  name String
+  currentLevel Int @default(1)
+  targetLevel Int @default(5)
+  progress Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+  @@index([userId])
+}
+
+model FocusSession {
+  id String @id @default(cuid())
+  userId String
+  taskId String?
+  durationMinutes Int
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  status FocusStatus @default(RUNNING)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  @@index([userId, startedAt])
+}
+
+model JournalEntry {
+  id String @id @default(cuid())
+  userId String
+  date DateTime
+  accomplishments String?
+  lessons String?
+  procrastination String?
+  improvements String?
+  gratitude String?
+  passionScore Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model Reminder {
+  id String @id @default(cuid())
+  userId String
+  title String
+  description String?
+  reminderDate DateTime
+  reminderTime String?
+  repeatType ReminderRepeat @default(NONE)
+  enabled Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, reminderDate])
+}
+
+model XPTransaction {
+  id String @id @default(cuid())
+  userId String
+  amount Int
+  reason String
+  taskId String?
+  habitId String?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  habit Habit? @relation(fields: [habitId], references: [id], onDelete: SetNull)
+  @@index([userId, createdAt])
+}
+
+model DailyStats {
+  id String @id @default(cuid())
+  userId String
+  date DateTime
+  productivityPercentage Int @default(0)
+  tasksCompleted Int @default(0)
+  tasksTotal Int @default(0)
+  habitsCompleted Int @default(0)
+  habitsTotal Int @default(0)
+  focusMinutes Int @default(0)
+  xpEarned Int @default(0)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model BrandProject {
+  id String @id @default(cuid())
+  userId String
+  title String
+  description String?
+  status BrandStatus @default(IDEA)
+  progress Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones BrandMilestone[]
+  @@index([userId])
+}
+
+model BrandMilestone {
+  id String @id @default(cuid())
+  brandProjectId String
+  title String
+  description String?
+  completed Boolean @default(false)
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  brandProject BrandProject @relation(fields: [brandProjectId], references: [id], onDelete: Cascade)
+}
+
+model TaskCheckIn {
+  id String @id @default(cuid())
+  taskId String
+  userId String
+  date DateTime
+  checked Boolean @default(false)
+  checkedAt DateTime?
+  createdAt DateTime @default(now())
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([taskId, date])
+  @@index([userId, date])
+}

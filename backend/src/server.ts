@@ -1,0 +1,40 @@
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+import { requireAuth } from './utils/auth';
+import { register, login, logout, me } from './controllers/auth';
+import { analytics, exportData } from './controllers/analytics';
+import { list, getOne, create, update, remove, completeTask, completeHabit, clearHabitToday, checkInTask, startTaskTimer, stopTaskTimer } from './controllers/data';
+import { startFocus, completeFocus, focusHistory, journalList, journalByDate, journalSave, xp, importBackup } from './controllers/misc';
+
+const app = express();
+const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173').split(',').map((o) => o.trim());
+app.use(helmet());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: '2mb' }));
+app.use(cookieParser());
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true });
+app.get('/api/health', (_request, response) => response.json({ status: 'ok' }));
+app.post('/api/auth/register', authLimiter, register); app.post('/api/auth/login', authLimiter, login); app.post('/api/auth/logout', logout); app.get('/api/auth/me', requireAuth, me);
+app.use('/api', requireAuth);
+for (const resource of ['tasks', 'habits', 'goals', 'skills', 'reminders', 'brand']) { const router = express.Router(); router.get('/', list); router.get('/:id', getOne); router.post('/', create); router.put('/:id', update); router.delete('/:id', remove); app.use(`/api/${resource}`, router); }
+app.patch('/api/tasks/:id/complete', completeTask); app.post('/api/tasks/:id/checkin', checkInTask); app.post('/api/tasks/:id/timer/start', startTaskTimer); app.post('/api/tasks/:id/timer/stop', stopTaskTimer); app.post('/api/habits/:id/complete', completeHabit); app.delete('/api/habits/:id/today', clearHabitToday); app.get('/api/analytics/:period', analytics); app.get('/api/analytics', analytics); app.get('/api/backup/export', exportData);
+app.post('/api/focus/start', startFocus); app.post('/api/focus/:id/complete', completeFocus); app.get('/api/focus/history', focusHistory);
+app.get('/api/journal', journalList); app.get('/api/journal/:date', journalByDate); app.post('/api/journal', journalSave); app.put('/api/journal/:id', journalSave);
+app.get('/api/xp', xp); app.get('/api/xp/history', xp); app.post('/api/backup/import', importBackup);
+app.use((error: Error, _request: express.Request, response: express.Response, _next: express.NextFunction) => { console.error(error); response.status(500).json({ error: 'Internal server error' }); });
+const port = Number(process.env.PORT ?? 4000); app.listen(port, () => console.log(`API listening on port ${port}`));
