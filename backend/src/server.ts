@@ -9,6 +9,7 @@ import { register, login, logout, me } from './controllers/auth';
 import { analytics, exportData } from './controllers/analytics';
 import { list, getOne, create, update, remove, completeTask, completeHabit, clearHabitToday, checkInTask, startTaskTimer, stopTaskTimer } from './controllers/data';
 import { startFocus, completeFocus, focusHistory, journalList, journalByDate, journalSave, xp, importBackup } from './controllers/misc';
+import { listTransactions, createTransaction, updateTransaction, deleteTransaction, getWeeklyReport, getMonthlyReport } from './controllers/transactions';
 
 const app = express();
 const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173').split(',').map((o) => o.trim());
@@ -36,5 +37,14 @@ app.patch('/api/tasks/:id/complete', completeTask); app.post('/api/tasks/:id/che
 app.post('/api/focus/start', startFocus); app.post('/api/focus/:id/complete', completeFocus); app.get('/api/focus/history', focusHistory);
 app.get('/api/journal', journalList); app.get('/api/journal/:date', journalByDate); app.post('/api/journal', journalSave); app.put('/api/journal/:id', journalSave);
 app.get('/api/xp', xp); app.get('/api/xp/history', xp); app.post('/api/backup/import', importBackup);
+
+const transactionRouter = express.Router();
+transactionRouter.get('/', listTransactions);
+transactionRouter.post('/', createTransaction);
+transactionRouter.put('/:id', updateTransaction);
+transactionRouter.delete('/:id', deleteTransaction);
+transactionRouter.get('/report/weekly', getWeeklyReport);
+transactionRouter.get('/report/monthly', getMonthlyReport);
+app.use('/api/transactions', transactionRouter);
 app.use((error: Error, _request: express.Request, response: express.Response, _next: express.NextFunction) => { console.error(error); response.status(500).json({ error: 'Internal server error' }); });
 const port = Number(process.env.PORT ?? 4000); app.listen(port, () => console.log(`API listening on port ${port}`));

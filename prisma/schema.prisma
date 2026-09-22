@@ -76,6 +76,7 @@ model User {
   dailyStats DailyStats[]
   brandProjects BrandProject[]
   taskCheckIns TaskCheckIn[]
+  transactions Transaction[]
 }
 
 model UserSettings {
@@ -308,4 +309,54 @@ model TaskCheckIn {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([taskId, date])
   @@index([userId, date])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  SALARY
+  FREELANCE
+  INVESTMENTS
+  BUSINESS
+  GIFTS
+  REFUNDS
+  OTHER_INCOME
+  HOUSING
+  FOOD
+  TRANSPORTATION
+  UTILITIES
+  HEALTHCARE
+  ENTERTAINMENT
+  SHOPPING
+  EDUCATION
+  PERSONAL_CARE
+  SUBSCRIPTIONS
+  INSURANCE
+  DEBT_PAYMENTS
+  SAVINGS
+  INVESTMENTS_EXPENSE
+  GIFTS_DONATIONS
+  OTHER_EXPENSE
+}
+
+model Transaction {
+  id String @id @default(cuid())
+  userId String
+  type TransactionType
+  category TransactionCategory
+  amount Decimal @db.Decimal(12, 2)
+  description String?
+  date DateTime @default(now())
+  isRecurring Boolean @default(false)
+  recurrencePattern String?
+  source String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([userId, category])
 }
