@@ -9,28 +9,50 @@ const modelMap = { tasks: 'task', habits: 'habit', goals: 'goal', skills: 'skill
 type Resource = keyof typeof modelMap;
 function getResource(request: AuthRequest): Resource { const segment = request.baseUrl.split('/').filter(Boolean).pop() ?? 'tasks'; return (segment in modelMap ? segment : 'tasks') as Resource; }
 
+function getUserToday(timezone: string): Date {
+  const now = new Date();
+  const tz = timezone || 'UTC';
+  const localDate = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+  localDate.setHours(0, 0, 0, 0);
+  return localDate;
+}
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export async function list(request: AuthRequest, response: Response) {
   const key = getResource(request); const model = prisma[modelMap[key]] as any;
+  const user = await prisma.user.findUnique({ where: { id: request.userId }, select: { timezone: true } });
+  const today = getUserToday(user?.timezone || 'UTC');
   const where = { userId: request.userId, ...(key === 'tasks' || key === 'habits' ? { deletedAt: null } : {}) };
-  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
   const records = await model.findMany({ where, orderBy: { createdAt: 'desc' }, ...(key === 'tasks' ? { include: { checkIns: { where: { userId: request.userId, date: today } } } } : key === 'habits' ? { include: { completions: true } } : {}) });
   if (key === 'tasks') {
-    return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; checkIns: Array<{ checked: boolean }> }) => {
+    return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; checkIns: Array<{ checked: boolean }> }) => {
       let normalized = task;
       if (task.recurrence !== 'NONE' && task.completedAt) {
-        const completed = new Date(task.completedAt); completed.setUTCHours(0, 0, 0, 0);
+        const completed = new Date(task.completedAt); completed.setHours(0, 0, 0, 0);
         const elapsedDays = Math.floor((today.getTime() - completed.getTime()) / 86400000);
         const dueAgain = task.recurrence === 'DAILY' ? elapsedDays >= 1 : task.recurrence === 'WEEKLY' ? elapsedDays >= 7 : elapsedDays >= 28;
         normalized = dueAgain ? { ...task, status: 'TODO', completedAt: null } : task;
       }
+      let overdueStatus = false;
+      if (task.scheduledDate && task.status !== 'COMPLETED' && task.status !== 'ARCHIVED' && task.status !== 'IN_PROGRESS') {
+        const scheduled = new Date(task.scheduledDate);
+        scheduled.setHours(23, 59, 59, 999);
+        if (today > scheduled) overdueStatus = true;
+      }
       const history = await prisma.taskCheckIn.groupBy({ by: ['checked'], where: { taskId: task.id, userId: request.userId }, _count: { _all: true } });
-      return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.find((item) => item.checked)?._count._all ?? 0, missedDays: history.find((item) => !item.checked)?._count._all ?? 0 };
+      return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.find((item) => item.checked)?._count._all ?? 0, missedDays: history.find((item) => !item.checked)?._count._all ?? 0, isOverdue: overdueStatus };
     })));
   }
   if (key === 'habits') {
-    const weekStart = new Date(today); weekStart.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
-    const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
-    return ok(response, records.map((habit: { id: string; completions: Array<{ date: Date }> }) => { const weekCompletions = habit.completions.filter((completion) => { const date = new Date(completion.date); return date >= weekStart && date < weekEnd; }); return { ...habit, completedToday: habit.completions.some((completion) => new Date(completion.date).getTime() === today.getTime()), completedDays: habit.completions.length, weekCompletedDays: weekCompletions.length, weekStart: weekStart.toISOString().slice(0, 10), weekDates: Array.from({ length: 7 }, (_, index) => { const date = new Date(weekStart); date.setUTCDate(weekStart.getUTCDate() + index); return date.toISOString().slice(0, 10); }), completedDates: habit.completions.map((completion) => new Date(completion.date).toISOString().slice(0, 10)) }; }));
+    const weekStart = getWeekStart(today);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
+    return ok(response, records.map((habit: { id: string; completions: Array<{ date: Date }> }) => { const weekCompletions = habit.completions.filter((completion) => { const date = new Date(completion.date); return date >= weekStart && date < weekEnd; }); return { ...habit, completedToday: habit.completions.some((completion) => new Date(completion.date).getTime() === today.getTime()), completedDays: habit.completions.length, weekCompletedDays: weekCompletions.length, weekStart: weekStart.toISOString().slice(0, 10), weekDates: Array.from({ length: 7 }, (_, index) => { const date = new Date(weekStart); date.setDate(weekStart.getDate() + index); return date.toISOString().slice(0, 10); }), completedDates: habit.completions.map((completion) => new Date(completion.date).toISOString().slice(0, 10)) }; }));
   }
   return ok(response, records);
 }

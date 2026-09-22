@@ -95,6 +95,13 @@
   .category-bar{grid-template-columns:minmax(100px,.4fr) minmax(80px,.15fr) minmax(0,1fr) auto}
   .report-summary{grid-template-columns:1fr;gap:8px}
 }
+
+.finance-nav-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid #bfc8b9;border-radius:8px;background:#fffdf8;color:#2e4730;padding:0 14px;font-weight:700}.finance-nav-button:hover{filter:brightness(1.04);background:#eef7ea;border-color:#b7d0b1}.finance-nav-button:focus-visible{outline:3px solid #8eb27f;outline-offset:2px}
+
+.stat-card.overdue{border-color:#d5aaa1;background:#fff5f1}.stat-card.overdue>span{color:#813e35}.stat-card.overdue strong{color:#b25144}.stat-card.overdue .progress-track i{background:#b25144}
+
+.task-row.overdue{border-color:#d5aaa1;background:#fff5f1}.task-row.overdue:hover{border-color:#b25144;background:#ffeae8}.task-row.overdue .task-title{color:#813e35}.task-row.overdue .task-check{color:#b25144}.task-date.overdue{color:#b25144}.overdue-badge{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#fff;background:#b25144;padding:2px 8px;border-radius:999px}.overdue-badge svg{flex-shrink:0}
+
 .timer-overlay-card{cursor:grab;touch-action:none}.timer-overlay-card:active{cursor:grabbing}
 .timer-overlay-card>.eyebrow{display:flex;align-items:center;gap:8px;cursor:grab;user-select:none;touch-action:none}.timer-overlay-card>.eyebrow:before{content:'⠿';font-size:20px;line-height:1;color:#315a36}.timer-overlay-card>.eyebrow:active{cursor:grabbing}
 .timer-overlay-card{cursor:default}.timer-overlay-card>.eyebrow{cursor:grab}.timer-overlay-card>.eyebrow:active{cursor:grabbing}
