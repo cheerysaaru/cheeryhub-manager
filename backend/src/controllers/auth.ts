@@ -11,7 +11,9 @@ export async function register(request: Request, response: Response) {
   const parsed = credentials.safeParse(request.body); if (!parsed.success) return fail(response, 'Name, valid email, and password of at least 10 characters are required');
   const { email, password, name = 'Productive human', timezone = 'UTC' } = parsed.data;
   if (await prisma.user.findUnique({ where: { email } })) return fail(response, 'An account with that email already exists', 409);
-  const user = await prisma.user.create({ data: { email, name, timezone, passwordHash: await bcrypt.hash(password, 12), settings: { create: {} } } });
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user = await prisma.user.create({ data: { email, name, timezone, passwordHash } });
+  await prisma.userSettings.create({ data: { userId: user.id } });
   setAuthCookie(response, user.id); return ok(response, { user: publicUser(user) }, 201);
 }
 export async function login(request: Request, response: Response) {
