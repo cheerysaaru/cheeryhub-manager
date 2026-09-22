@@ -20,17 +20,27 @@ const transactionSchema = z.object({
   source: z.string().max(100).optional(),
 });
 
+function getQueryParam(query: Record<string, unknown>, key: string): string | undefined {
+  const value = query[key];
+  if (Array.isArray(value)) return value[0];
+  return value as string | undefined;
+}
+
 export async function listTransactions(request: AuthRequest, response: Response) {
-  const { startDate, endDate, type, category } = request.query;
+  const startDate = getQueryParam(request.query, 'startDate');
+  const endDate = getQueryParam(request.query, 'endDate');
+  const type = getQueryParam(request.query, 'type');
+  const category = getQueryParam(request.query, 'category');
+
   const where: any = { userId: request.userId };
 
   if (startDate || endDate) {
     where.date = {};
-    if (startDate) where.date.gte = new Date(String(startDate));
-    if (endDate) where.date.lte = new Date(String(endDate));
+    if (startDate) where.date.gte = new Date(startDate);
+    if (endDate) where.date.lte = new Date(endDate);
   }
-  if (type) where.type = String(type);
-  if (category) where.category = String(category);
+  if (type) where.type = type;
+  if (category) where.category = category;
 
   const transactions = await prisma.transaction.findMany({
     where,
@@ -151,9 +161,10 @@ export async function getWeeklyReport(request: AuthRequest, response: Response) 
 }
 
 export async function getMonthlyReport(request: AuthRequest, response: Response) {
-  const { year, month } = request.query;
-  const targetYear = year ? parseInt(String(year)) : new Date().getFullYear();
-  const targetMonth = month ? parseInt(String(month)) - 1 : new Date().getMonth();
+  const year = getQueryParam(request.query, 'year');
+  const month = getQueryParam(request.query, 'month');
+  const targetYear = year ? parseInt(year) : new Date().getFullYear();
+  const targetMonth = month ? parseInt(month) - 1 : new Date().getMonth();
 
   const monthStart = new Date(targetYear, targetMonth, 1);
   const monthEnd = new Date(targetYear, targetMonth + 1, 1);

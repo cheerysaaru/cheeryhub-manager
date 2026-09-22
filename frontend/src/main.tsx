@@ -5,14 +5,64 @@ import { Bell, CalendarClock, CheckCircle2, Circle, LogOut, Plus, Trash2, Wifi, 
 import './styles.css';
 import TaskBoard from './TaskBoard';
 
+const BASE_PATH = '/personal-productivity-manager';
+
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js'); });
+  window.addEventListener('load', () => { void navigator.serviceWorker.register(`${BASE_PATH}/sw.js`); });
 }
 
-type User = { id: string; name: string; email: string; timezone: string };
-type Task = { id: string; title: string; status: string; priority: string; scheduledDate?: string; scheduledTime?: string };
-type Habit = { id: string; name: string; frequency: string };
-type Reminder = { id: string; title: string; description?: string; reminderDate: string; reminderTime?: string; repeatType: string; enabled: boolean };
+type User = { id: string; name: string; email: string; timezone: string; createdAt: string };
+type Task = { 
+  id: string; 
+  title: string; 
+  description?: string;
+  category?: string;
+  priority: string; 
+  status: string; 
+  scheduledDate?: string; 
+  scheduledTime?: string;
+  deadlineTime?: string;
+  timerStartedAt?: string;
+  recurrence: string;
+  isMandatory: boolean;
+  reminderEnabled: boolean;
+  estimatedMinutes?: number;
+  completedAt?: string;
+  deletedAt?: string;
+  goalId?: string;
+  skillId?: string;
+  createdAt: string;
+  updatedAt: string;
+  checkedToday: boolean;
+  checkedDays: number;
+  missedDays: number;
+};
+type Habit = { 
+  id: string; 
+  name: string; 
+  description?: string;
+  frequency: string; 
+  active: boolean;
+  deletedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedToday: boolean;
+  completedDays: number;
+  weekCompletedDays: number;
+  weekDates: string[];
+  completedDates: string[];
+};
+type Reminder = { 
+  id: string; 
+  title: string; 
+  description?: string; 
+  reminderDate: string; 
+  reminderTime?: string; 
+  repeatType: string; 
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
 type PendingWrite = { path: string; init: RequestInit };
 const queueKey = 'productivity-pending-writes';
