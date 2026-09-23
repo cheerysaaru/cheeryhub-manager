@@ -3,6 +3,20 @@ import { api } from '../services/api';
 import type { Task } from '../types';
 import { useSocket } from './useSocket';
 
+function normalizeTask(task: Partial<Task> & { id: string }): Task {
+  return {
+    ...task,
+    checkedToday: task.checkedToday ?? false,
+    checkedDays: task.checkedDays ?? 0,
+    missedDays: task.missedDays ?? 0,
+    isOverdue: task.isOverdue ?? false,
+  } as Task;
+}
+
+function prependUnique(list: Task[], task: Task): Task[] {
+  return list.some((item) => item.id === task.id) ? list : [task, ...list];
+}
+
 export function useTasks(userId: string | null) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +36,7 @@ export function useTasks(userId: string | null) {
   useEffect(() => {
     fetchTasks();
     const cleanup = on<Task>('task:created', (task) => {
-      setTasks((prev) => [task, ...prev]);
+      setTasks((prev) => prependUnique(prev, normalizeTask(task)));
     });
     const cleanup2 = on<Task>('task:updated', (task) => {
       setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
@@ -39,8 +53,9 @@ export function useTasks(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Task>) => {
     const task = await api<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
-    setTasks((prev) => [task, ...prev]);
-    return task;
+    const normalized = normalizeTask(task);
+    setTasks((prev) => prependUnique(prev, normalized));
+    return normalized;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Task>) => {

@@ -3,6 +3,22 @@ import { api } from '../services/api';
 import type { Habit } from '../types';
 import { useSocket } from './useSocket';
 
+function normalizeHabit(habit: Partial<Habit> & { id: string }): Habit {
+  return {
+    ...habit,
+    completedToday: habit.completedToday ?? false,
+    completedDays: habit.completedDays ?? 0,
+    weekCompletedDays: habit.weekCompletedDays ?? 0,
+    weekStart: habit.weekStart ?? new Date().toISOString().slice(0, 10),
+    weekDates: habit.weekDates ?? [],
+    completedDates: habit.completedDates ?? [],
+  } as Habit;
+}
+
+function prependUnique(list: Habit[], habit: Habit): Habit[] {
+  return list.some((item) => item.id === habit.id) ? list : [habit, ...list];
+}
+
 export function useHabits(userId: string | null) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +38,7 @@ export function useHabits(userId: string | null) {
   useEffect(() => {
     fetchHabits();
     const cleanup = on<Habit>('habit:created', (habit) => {
-      setHabits((prev) => [habit, ...prev]);
+      setHabits((prev) => prependUnique(prev, normalizeHabit(habit)));
     });
     const cleanup2 = on<Habit>('habit:updated', (habit) => {
       setHabits((prev) => prev.map((h) => (h.id === habit.id ? habit : h)));
@@ -43,8 +59,9 @@ export function useHabits(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Habit>) => {
     const habit = await api<Habit>('/habits', { method: 'POST', body: JSON.stringify(data) });
-    setHabits((prev) => [habit, ...prev]);
-    return habit;
+    const normalized = normalizeHabit(habit);
+    setHabits((prev) => prependUnique(prev, normalized));
+    return normalized;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Habit>) => {

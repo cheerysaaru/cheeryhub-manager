@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Progress } from '../components/Progress';
 import { Avatar } from '../components/Avatar';
+import { useToast } from '../components/Toast';
 import { formatDate, greeting } from '../utils/date';
 import type { Task, Habit } from '../types';
 
@@ -57,6 +58,7 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { tasks, loading: tasksLoading, create: createTask, checkIn, complete: completeTask } = useTasks(user?.id ?? null);
   const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday } = useHabits(user?.id ?? null);
   const { goals } = useGoals(user?.id ?? null);
@@ -81,16 +83,28 @@ export default function DashboardPage() {
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskForm.title.trim()) return;
-    await createTask({ title: taskForm.title, scheduledDate: taskForm.date || undefined, priority: 'MEDIUM' });
-    setTaskForm({ title: '', date: new Date().toISOString().slice(0, 10) });
+    const title = taskForm.title.trim();
+    if (!title) return;
+    try {
+      await createTask({ title, scheduledDate: taskForm.date || undefined, priority: 'MEDIUM' });
+      setTaskForm({ title: '', date: new Date().toISOString().slice(0, 10) });
+      toast({ type: 'success', title: 'Task added', message: title });
+    } catch (error) {
+      toast({ type: 'error', title: 'Could not add task', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
   };
 
   const handleAddHabit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!habitForm.name.trim()) return;
-    await createHabit({ name: habitForm.name, frequency: 'Daily' });
-    setHabitForm({ name: '' });
+    const name = habitForm.name.trim();
+    if (!name) return;
+    try {
+      await createHabit({ name, frequency: 'Daily' });
+      setHabitForm({ name: '' });
+      toast({ type: 'success', title: 'Commitment added', message: name });
+    } catch (error) {
+      toast({ type: 'error', title: 'Could not add commitment', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
   };
 
   if (tasksLoading || habitsLoading) {
