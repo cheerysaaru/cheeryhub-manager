@@ -6,5 +6,7 @@ coverage/
 dist/
 build/
 *.db
+*.db.backup-*
 test*.json
 test*.ts
+*.log

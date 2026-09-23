@@ -3,11 +3,15 @@ import type { Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
+import { emitToUser } from '../lib/socket';
 
 const bodySchema = z.object({ title: z.string().trim().min(1).max(200).optional(), name: z.string().trim().min(1).max(200).optional(), description: z.string().max(5000).optional(), category: z.string().max(100).optional(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(), status: z.string().max(30).optional(), scheduledDate: z.coerce.date().optional(), scheduledTime: z.string().max(20).optional(), deadlineTime: z.string().max(20).optional(), recurrence: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), isMandatory: z.boolean().optional(), reminderEnabled: z.boolean().optional(), estimatedMinutes: z.number().int().positive().max(1440).optional(), progress: z.number().int().min(0).max(100).optional(), deadline: z.coerce.date().optional(), currentLevel: z.number().int().min(1).max(100).optional(), targetLevel: z.number().int().min(1).max(100).optional(), reminderDate: z.coerce.date().optional(), reminderTime: z.string().max(20).optional(), repeatType: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), enabled: z.boolean().optional() }).passthrough();
 const modelMap = { tasks: 'task', habits: 'habit', goals: 'goal', skills: 'skill', reminders: 'reminder', brand: 'brandProject' } as const;
 type Resource = keyof typeof modelMap;
 function getResource(request: AuthRequest): Resource { const segment = request.baseUrl.split('/').filter(Boolean).pop() ?? 'tasks'; return (segment in modelMap ? segment : 'tasks') as Resource; }
+function emitEvent(userId: string, resource: string, action: 'created' | 'updated' | 'deleted', data: unknown) {
+  emitToUser(userId, `${resource}:${action}`, data);
+}
 
 function getUserToday(timezone: string): Date {
   const now = new Date();
@@ -58,24 +62,36 @@ export async function list(request: AuthRequest, response: Response) {
 }
 export async function create(request: AuthRequest, response: Response) {
   const key = getResource(request); const parsed = bodySchema.safeParse(request.body); if (!parsed.success) return fail(response, 'Invalid request data');
-  const model = prisma[modelMap[key]] as any; return ok(response, await model.create({ data: { ...parsed.data, userId: request.userId } }), 201);
+  const model = prisma[modelMap[key]] as any; const record = await model.create({ data: { ...parsed.data, userId: request.userId } });
+  emitEvent(request.userId!, key, 'created', record);
+  return ok(response, record, 201);
 }
 export async function update(request: AuthRequest, response: Response) {
   const key = getResource(request); const parsed = bodySchema.safeParse(request.body); if (!parsed.success) return fail(response, 'Invalid request data');
   const model = prisma[modelMap[key]] as any; const existing = await model.findFirst({ where: { id: request.params.id, userId: request.userId } });
-  if (!existing) return fail(response, 'Record not found', 404); return ok(response, await model.update({ where: { id: existing.id }, data: parsed.data }));
+  if (!existing) return fail(response, 'Record not found', 404);
+  const record = await model.update({ where: { id: existing.id }, data: parsed.data });
+  emitEvent(request.userId!, key, 'updated', record);
+  return ok(response, record);
 }
 export async function remove(request: AuthRequest, response: Response) {
   const key = getResource(request); const model = prisma[modelMap[key]] as any; const existing = await model.findFirst({ where: { id: request.params.id, userId: request.userId } });
-  if (!existing) return fail(response, 'Record not found', 404); if (key === 'tasks' || key === 'habits') await model.update({ where: { id: existing.id }, data: { deletedAt: new Date() } }); else await model.delete({ where: { id: existing.id } }); return ok(response, { deleted: true });
+  if (!existing) return fail(response, 'Record not found', 404);
+  if (key === 'tasks' || key === 'habits') await model.update({ where: { id: existing.id }, data: { deletedAt: new Date() } }); else await model.delete({ where: { id: existing.id } });
+  emitEvent(request.userId!, key, 'deleted', { id: existing.id });
+  return ok(response, { deleted: true });
 }
 export async function completeTask(request: AuthRequest, response: Response) {
   const taskId = String(request.params.id); const task = await prisma.task.findFirst({ where: { id: taskId, userId: request.userId!, deletedAt: null } }); if (!task) return fail(response, 'Task not found', 404);
-  const updated = await prisma.$transaction(async (tx) => { const result = await tx.task.update({ where: { id: task.id }, data: { status: 'COMPLETED', completedAt: new Date() } }); await tx.xPTransaction.create({ data: { userId: request.userId!, taskId: task.id, amount: 10, reason: 'Task completed' } }); return result; }); return ok(response, updated);
+  const updated = await prisma.$transaction(async (tx) => { const result = await tx.task.update({ where: { id: task.id }, data: { status: 'COMPLETED', completedAt: new Date() } }); await tx.xPTransaction.create({ data: { userId: request.userId!, taskId: task.id, amount: 10, reason: 'Task completed' } }); return result; });
+  emitEvent(request.userId!, 'tasks', 'updated', updated);
+  return ok(response, updated);
 }
 export async function completeHabit(request: AuthRequest, response: Response) {
   const habitId = String(request.params.id); const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: request.userId!, deletedAt: null } }); if (!habit) return fail(response, 'Habit not found', 404);
-  const date = new Date(); date.setUTCHours(0, 0, 0, 0); const existing = await prisma.habitCompletion.findUnique({ where: { habitId_date: { habitId: habit.id, date } } }); const completion = existing ?? await prisma.habitCompletion.create({ data: { habitId: habit.id, userId: request.userId!, date } }); if (!existing) await prisma.xPTransaction.create({ data: { userId: request.userId!, habitId: habit.id, amount: 5, reason: 'Daily commitment completed' } }); const weekStart = new Date(date); weekStart.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7)); const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate() + 7); const weekCompletedDays = await prisma.habitCompletion.count({ where: { habitId: habit.id, userId: request.userId!, date: { gte: weekStart, lt: weekEnd } } }); return ok(response, { ...completion, weekCompletedDays, weekComplete: weekCompletedDays === 7 }, 201);
+  const date = new Date(); date.setUTCHours(0, 0, 0, 0); const existing = await prisma.habitCompletion.findUnique({ where: { habitId_date: { habitId: habit.id, date } } }); const completion = existing ?? await prisma.habitCompletion.create({ data: { habitId: habit.id, userId: request.userId!, date } }); if (!existing) await prisma.xPTransaction.create({ data: { userId: request.userId!, habitId: habit.id, amount: 5, reason: 'Daily commitment completed' } }); const weekStart = new Date(date); weekStart.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7)); const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate() + 7); const weekCompletedDays = await prisma.habitCompletion.count({ where: { habitId: habit.id, userId: request.userId!, date: { gte: weekStart, lt: weekEnd } } });
+  emitEvent(request.userId!, 'habits', 'updated', { ...habit, completedToday: true, weekCompletedDays });
+  return ok(response, { ...completion, weekCompletedDays, weekComplete: weekCompletedDays === 7 }, 201);
 }
 export async function getOne(request: AuthRequest, response: Response) {
   const key = getResource(request); const model = prisma[modelMap[key]] as any; const record = await model.findFirst({ where: { id: request.params.id, userId: request.userId } });

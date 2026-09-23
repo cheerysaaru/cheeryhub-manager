@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
+import { emitToUser } from '../lib/socket';
 
 const transactionSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']),
@@ -57,6 +58,7 @@ export async function createTransaction(request: AuthRequest, response: Response
   const transaction = await prisma.transaction.create({
     data: { ...parsed.data, userId: request.userId! },
   });
+  emitToUser(request.userId!, 'transaction:created', transaction);
 
   return ok(response, transaction, 201);
 }
@@ -75,6 +77,7 @@ export async function updateTransaction(request: AuthRequest, response: Response
     where: { id: existing.id },
     data: parsed.data,
   });
+  emitToUser(request.userId!, 'transaction:updated', updated);
 
   return ok(response, updated);
 }
@@ -87,6 +90,7 @@ export async function deleteTransaction(request: AuthRequest, response: Response
   if (!existing) return fail(response, 'Transaction not found', 404);
 
   await prisma.transaction.delete({ where: { id: existing.id } });
+  emitToUser(request.userId!, 'transaction:deleted', { id: existing.id });
   return ok(response, { deleted: true });
 }
 

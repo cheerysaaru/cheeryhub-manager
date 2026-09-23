@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 async function main() {
   const email = process.env.SEED_EMAIL ?? 'you@example.com';
-  const user = await prisma.user.upsert({ where: { email }, update: {}, create: { name: 'Your name', email, passwordHash: await bcrypt.hash(process.env.SEED_PASSWORD ?? 'change-this-password', 12), timezone: process.env.SEED_TIMEZONE ?? 'UTC', settings: { create: {} } } });
+  const user = await prisma.user.upsert({ where: { email }, update: { emailVerified: true }, create: { name: 'Your name', email, passwordHash: await bcrypt.hash(process.env.SEED_PASSWORD ?? 'change-this-password', 12), timezone: process.env.SEED_TIMEZONE ?? 'UTC', emailVerified: true, settings: { create: {} } } });
   await prisma.task.upsert({ where: { id: 'seed-plan-the-day' }, update: { userId: user.id, scheduledTime: '07:30', recurrence: 'DAILY', isMandatory: true, reminderEnabled: true }, create: { id: 'seed-plan-the-day', userId: user.id, title: 'Plan the day', category: 'Planning', priority: 'HIGH', scheduledTime: '07:30', recurrence: 'DAILY', isMandatory: true, reminderEnabled: true } });
   await prisma.task.upsert({ where: { id: 'seed-deep-work' }, update: { userId: user.id, scheduledTime: '09:00', recurrence: 'DAILY', isMandatory: true, reminderEnabled: true }, create: { id: 'seed-deep-work', userId: user.id, title: 'Deep work session', category: 'Work', priority: 'MEDIUM', scheduledTime: '09:00', recurrence: 'DAILY', isMandatory: true, reminderEnabled: true } });
   await prisma.habit.createMany({ data: [{ userId: user.id, name: 'Morning movement', frequency: 'Daily' }, { userId: user.id, name: 'Read before bed', frequency: 'Daily' }] });

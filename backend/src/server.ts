@@ -1,16 +1,19 @@
 import 'dotenv/config';
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { requireAuth } from './utils/auth';
-import { register, login, logout, me } from './controllers/auth';
+import { register, login, logout, me, verifyEmail, resendVerification } from './controllers/auth';
 import { analytics, exportData } from './controllers/analytics';
 import { list, getOne, create, update, remove, completeTask, completeHabit, clearHabitToday, checkInTask, startTaskTimer, stopTaskTimer } from './controllers/data';
 import { startFocus, completeFocus, focusHistory, journalList, journalByDate, journalSave, xp, importBackup } from './controllers/misc';
 import { listTransactions, createTransaction, updateTransaction, deleteTransaction, getWeeklyReport, getMonthlyReport } from './controllers/transactions';
+import { getSettings, updateSettings, createGoalMilestone, updateGoalMilestone, deleteGoalMilestone, createBrandMilestone, updateBrandMilestone, deleteBrandMilestone } from './controllers/settings';
 import { prisma } from './lib/prisma';
+import { initSocket } from './lib/socket';
 
 const app = express();
 const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173').split(',').map((o) => o.trim());
@@ -34,6 +37,7 @@ app.use(cookieParser());
 
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true });
+const verificationLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 10, standardHeaders: true });
 
 app.get('/api/health', async (_request, response) => {
   try {
@@ -48,6 +52,8 @@ app.post('/api/auth/register', authLimiter, register);
 app.post('/api/auth/login', authLimiter, login);
 app.post('/api/auth/logout', logout);
 app.get('/api/auth/me', requireAuth, me);
+app.get('/api/auth/verify-email', verifyEmail);
+app.post('/api/auth/resend-verification', verificationLimiter, resendVerification);
 
 app.use('/api', apiLimiter, requireAuth);
 
@@ -67,9 +73,22 @@ app.post('/api/tasks/:id/timer/start', startTaskTimer);
 app.post('/api/tasks/:id/timer/stop', stopTaskTimer);
 app.post('/api/habits/:id/complete', completeHabit);
 app.delete('/api/habits/:id/today', clearHabitToday);
+
+app.get('/api/goals/:id/milestones', getOne);
+app.post('/api/goals/:id/milestones', createGoalMilestone);
+app.put('/api/goals/:id/milestones/:milestoneId', updateGoalMilestone);
+app.delete('/api/goals/:id/milestones/:milestoneId', deleteGoalMilestone);
+
+app.post('/api/brand/:id/milestones', createBrandMilestone);
+app.put('/api/brand/:id/milestones/:milestoneId', updateBrandMilestone);
+app.delete('/api/brand/:id/milestones/:milestoneId', deleteBrandMilestone);
+
 app.get('/api/analytics/:period', analytics);
 app.get('/api/analytics', analytics);
 app.get('/api/backup/export', exportData);
+
+app.get('/api/settings', getSettings);
+app.put('/api/settings', updateSettings);
 
 app.post('/api/focus/start', startFocus);
 app.post('/api/focus/:id/complete', completeFocus);
@@ -102,4 +121,6 @@ app.use((error: Error, _request: express.Request, response: express.Response, _n
 });
 
 const port = Number(process.env.PORT ?? 4000);
-app.listen(port, () => console.log(`API listening on port ${port}`));
+const server = http.createServer(app);
+initSocket(server);
+server.listen(port, () => console.log(`API listening on port ${port}`));
