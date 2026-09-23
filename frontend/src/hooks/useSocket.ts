@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { connectSocket, disconnectSocket, getSocket, onSocketEvent, emitSocketEvent } from '../services/socket';
 
 export function useSocket(userId: string | null) {
@@ -19,6 +19,7 @@ export function useSocket(userId: string | null) {
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
+    if (socket.connected) setConnected(true);
 
     return () => {
       socket.off('connect', onConnect);
@@ -28,15 +29,15 @@ export function useSocket(userId: string | null) {
     };
   }, [userId]);
 
-  const on = <T>(event: string, handler: (data: T) => void) => {
+  const on = useCallback(<T,>(event: string, handler: (data: T) => void): (() => void) => {
     const cleanup = onSocketEvent(event, handler);
     handlersRef.current.push(cleanup);
     return cleanup;
-  };
+  }, []);
 
-  const emit = (event: string, data: unknown) => {
+  const emit = useCallback((event: string, data: unknown) => {
     emitSocketEvent(event, data);
-  };
+  }, []);
 
   return { connected, on, emit, socket: getSocket() };
 }

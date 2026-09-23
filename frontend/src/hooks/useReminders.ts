@@ -39,16 +39,19 @@ export function useReminders(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Reminder>) => {
     const reminder = await api<Reminder>('/reminders', { method: 'POST', body: JSON.stringify(data) });
+    setReminders((prev) => [reminder, ...prev]);
     return reminder;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Reminder>) => {
     const reminder = await api<Reminder>(`/reminders/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    setReminders((prev) => prev.map((r) => (r.id === id ? reminder : r)));
     return reminder;
   }, []);
 
   const remove = useCallback(async (id: string) => {
     await api(`/reminders/${id}`, { method: 'DELETE' });
+    setReminders((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
   return { reminders, loading, fetchReminders, create, update, remove };

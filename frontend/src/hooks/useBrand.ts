@@ -39,16 +39,19 @@ export function useBrand(userId: string | null) {
 
   const create = useCallback(async (data: Partial<BrandProject>) => {
     const project = await api<BrandProject>('/brand', { method: 'POST', body: JSON.stringify(data) });
+    setProjects((prev) => [project, ...prev]);
     return project;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<BrandProject>) => {
     const project = await api<BrandProject>(`/brand/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    setProjects((prev) => prev.map((p) => (p.id === id ? project : p)));
     return project;
   }, []);
 
   const remove = useCallback(async (id: string) => {
     await api(`/brand/${id}`, { method: 'DELETE' });
+    setProjects((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   const createMilestone = useCallback(async (projectId: string, data: Partial<BrandMilestone>) => {
@@ -56,6 +59,7 @@ export function useBrand(userId: string | null) {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, milestones: [...p.milestones, milestone] } : p)));
     return milestone;
   }, []);
 
@@ -64,11 +68,13 @@ export function useBrand(userId: string | null) {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, milestones: p.milestones.map((m) => (m.id === milestoneId ? milestone : m)) } : p)));
     return milestone;
   }, []);
 
   const deleteMilestone = useCallback(async (projectId: string, milestoneId: string) => {
     await api(`/brand/${projectId}/milestones/${milestoneId}`, { method: 'DELETE' });
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, milestones: p.milestones.filter((m) => m.id !== milestoneId) } : p)));
   }, []);
 
   return { projects, loading, fetchProjects, create, update, remove, createMilestone, updateMilestone, deleteMilestone };

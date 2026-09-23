@@ -44,7 +44,7 @@ export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`tabs-list flex items-center gap-1 p-1 bg-hover rounded-xl ${className}`}
+      className={`tabs-list ${className}`}
       role="tablist"
       {...props}
     >
@@ -71,7 +71,7 @@ export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(
         tabIndex={isActive ? 0 : -1}
         disabled={disabled}
         onClick={() => !disabled && onChange(value)}
-        className={`tabs-trigger px-4 py-2 text-sm font-medium rounded-lg transition-all ${isActive ? 'bg-card text-text shadow-sm' : 'text-text-muted hover:text-text'} ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}
+        className={`tabs-trigger ${className}`}
         {...props}
       >
         {children}
@@ -96,7 +96,7 @@ export const TabsContent = forwardRef<HTMLDivElement, TabsContentProps>(
         role="tabpanel"
         id={`panel-${value}`}
         aria-labelledby={`tab-${value}`}
-        className={`tabs-content mt-4 ${className}`}
+        className={`tabs-content ${className}`}
         {...props}
       >
         {children}

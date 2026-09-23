@@ -9,11 +9,12 @@ export function useAnalytics(userId: string | null) {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const [statsData, xpData] = await Promise.all([
-        api<DailyStats[]>('/analytics'),
+      const [statsPayload, xpData] = await Promise.all([
+        api<{ stats?: DailyStats[] } | DailyStats[]>('/analytics'),
         api<{ total: number; history: XPTransaction[] }>('/xp'),
       ]);
-      setStats(statsData);
+      const stats = Array.isArray(statsPayload) ? statsPayload : (statsPayload.stats ?? []);
+      setStats(stats);
       setXp(xpData);
     } catch {
       setStats([]);

@@ -17,11 +17,11 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'm
   if (!isOpen) return null;
 
   const sizes = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-    full: 'max-w-[90vw]',
+    sm: 'modal-sm',
+    md: 'modal-md',
+    lg: 'modal-lg',
+    xl: 'modal-xl',
+    full: 'modal-full',
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {

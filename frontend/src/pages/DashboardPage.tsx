@@ -10,6 +10,7 @@ import { useFocus } from '../hooks/useFocus';
 import { useJournal } from '../hooks/useJournal';
 import { useReminders } from '../hooks/useReminders';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useBrand } from '../hooks/useBrand';
 import { Button } from '../components/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -64,6 +65,7 @@ export default function DashboardPage() {
   const { entries: journalEntries } = useJournal(user?.id ?? null);
   const { reminders } = useReminders(user?.id ?? null);
   const { xp } = useAnalytics(user?.id ?? null);
+  const { projects: brandProjects } = useBrand(user?.id ?? null);
 
   const [taskForm, setTaskForm] = useState({ title: '', date: new Date().toISOString().slice(0, 10) });
   const [habitForm, setHabitForm] = useState({ name: '' });
@@ -347,7 +349,7 @@ export default function DashboardPage() {
           <Link to={`${BASE_PATH}/brand`} className="quick-link-card">
             <Briefcase size={24} />
             <strong>Brand</strong>
-            <span>{goals.filter(g => g.status === 'ACTIVE').length} projects</span>
+            <span>{brandProjects.length} projects</span>
             <ArrowRight size={16} />
           </Link>
           <Link to={`${BASE_PATH}/finance`} className="quick-link-card">

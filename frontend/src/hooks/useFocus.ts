@@ -38,11 +38,13 @@ export function useFocus(userId: string | null) {
       method: 'POST',
       body: JSON.stringify({ durationMinutes, taskId }),
     });
+    setSessions((prev) => [session, ...prev]);
     return session;
   }, []);
 
   const complete = useCallback(async (id: string) => {
     const session = await api<FocusSession>(`/focus/${id}/complete`, { method: 'POST' });
+    setSessions((prev) => prev.map((s) => (s.id === id ? session : s)));
     return session;
   }, []);
 

@@ -56,17 +56,23 @@ export function useTransactions(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Transaction>) => {
     const tx = await api<Transaction>('/transactions', { method: 'POST', body: JSON.stringify(data) });
+    setTransactions((prev) => [tx, ...prev]);
+    await fetchReports();
     return tx;
-  }, []);
+  }, [fetchReports]);
 
   const update = useCallback(async (id: string, data: Partial<Transaction>) => {
     const tx = await api<Transaction>(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    setTransactions((prev) => prev.map((t) => (t.id === id ? tx : t)));
+    await fetchReports();
     return tx;
-  }, []);
+  }, [fetchReports]);
 
   const remove = useCallback(async (id: string) => {
     await api(`/transactions/${id}`, { method: 'DELETE' });
-  }, []);
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+    await fetchReports();
+  }, [fetchReports]);
 
   return {
     transactions,

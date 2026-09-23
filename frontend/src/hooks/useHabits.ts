@@ -43,26 +43,31 @@ export function useHabits(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Habit>) => {
     const habit = await api<Habit>('/habits', { method: 'POST', body: JSON.stringify(data) });
+    setHabits((prev) => [habit, ...prev]);
     return habit;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Habit>) => {
     const habit = await api<Habit>(`/habits/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    setHabits((prev) => prev.map((h) => (h.id === id ? habit : h)));
     return habit;
   }, []);
 
   const remove = useCallback(async (id: string) => {
     await api(`/habits/${id}`, { method: 'DELETE' });
+    setHabits((prev) => prev.filter((h) => h.id !== id));
   }, []);
 
   const complete = useCallback(async (id: string) => {
     const result = await api<Habit>(`/habits/${id}/complete`, { method: 'POST' });
+    await fetchHabits();
     return result;
-  }, []);
+  }, [fetchHabits]);
 
   const clearToday = useCallback(async (id: string) => {
     await api(`/habits/${id}/today`, { method: 'DELETE' });
-  }, []);
+    await fetchHabits();
+  }, [fetchHabits]);
 
   return { habits, loading, fetchHabits, create, update, remove, complete, clearToday };
 }

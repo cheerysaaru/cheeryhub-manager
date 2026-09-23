@@ -49,23 +49,23 @@ export function useToast() {
 
 function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
   const icons = {
-    success: <CheckCircle className="text-green-500" size={20} />,
-    error: <AlertCircle className="text-red-500" size={20} />,
-    warning: <AlertTriangle className="text-yellow-500" size={20} />,
-    info: <Info className="text-blue-500" size={20} />,
+    success: <CheckCircle className="toast-icon-success" size={20} />,
+    error: <AlertCircle className="toast-icon-error" size={20} />,
+    warning: <AlertTriangle className="toast-icon-warning" size={20} />,
+    info: <Info className="toast-icon-info" size={20} />,
   };
 
-  const bgColors = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    warning: 'bg-yellow-50 border-yellow-200',
-    info: 'bg-blue-50 border-blue-200',
+  const bgClasses = {
+    success: 'toast-success',
+    error: 'toast-error',
+    warning: 'toast-warning',
+    info: 'toast-info',
   };
 
   return (
     <div className="toast-container" role="region" aria-label="Notifications" aria-live="polite">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`toast ${bgColors[toast.type]}`} role="alert">
+        <div key={toast.id} className={`toast ${bgClasses[toast.type]}`} role="alert">
           <div className="toast-icon">{icons[toast.type]}</div>
           <div className="toast-content">
             <p className="toast-title">{toast.title}</p>
@@ -97,6 +97,14 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
           animation: slideIn 0.3s ease;
         }
+        .toast-success { background: #f0fdf4; border-color: #bbf7d0; }
+        .toast-error { background: #fef2f2; border-color: #fecaca; }
+        .toast-warning { background: #fffbeb; border-color: #fde68a; }
+        .toast-info { background: #eff6ff; border-color: #bfdbfe; }
+        .toast-icon-success { color: #16a34a; }
+        .toast-icon-error { color: #dc2626; }
+        .toast-icon-warning { color: #d97706; }
+        .toast-icon-info { color: #2563eb; }
         @keyframes slideIn {
           from { opacity: 0; transform: translateX(100%); }
           to { opacity: 1; transform: translateX(0); }

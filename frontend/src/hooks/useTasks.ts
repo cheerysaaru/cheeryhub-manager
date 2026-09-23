@@ -39,20 +39,24 @@ export function useTasks(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Task>) => {
     const task = await api<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
+    setTasks((prev) => [task, ...prev]);
     return task;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Task>) => {
     const task = await api<Task>(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
     return task;
   }, []);
 
   const remove = useCallback(async (id: string) => {
     await api(`/tasks/${id}`, { method: 'DELETE' });
+    setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const complete = useCallback(async (id: string) => {
     const task = await api<Task>(`/tasks/${id}/complete`, { method: 'PATCH' });
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...task } : t)));
     return task;
   }, []);
 
@@ -61,16 +65,19 @@ export function useTasks(userId: string | null) {
       method: 'POST',
       body: JSON.stringify({ checked }),
     });
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, checkedToday: checked, checkedDays: result.checkedDays, missedDays: result.missedDays } : t)));
     return result;
   }, []);
 
   const startTimer = useCallback(async (id: string) => {
     const task = await api<Task>(`/tasks/${id}/timer/start`, { method: 'POST' });
+    setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
     return task;
   }, []);
 
   const stopTimer = useCallback(async (id: string) => {
     const task = await api<Task>(`/tasks/${id}/timer/stop`, { method: 'POST' });
+    setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
     return task;
   }, []);
 

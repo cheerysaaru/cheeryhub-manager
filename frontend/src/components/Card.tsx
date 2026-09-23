@@ -8,21 +8,21 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ variant = 'default', padding = 'md', className = '', children, ...props }, ref) => {
     const variants = {
-      default: 'bg-card border border-border',
-      elevated: 'bg-card shadow-lg border-none',
-      outlined: 'bg-transparent border-2 border-border',
+      default: 'card',
+      elevated: 'card card-elevated',
+      outlined: 'card card-outlined',
     };
     const paddings = {
       none: '',
-      sm: 'p-4',
-      md: 'p-6',
-      lg: 'p-8',
+      sm: 'card-sm',
+      md: 'card-md',
+      lg: 'card-lg',
     };
 
     return (
       <div
         ref={ref}
-        className={`${variants[variant]} ${paddings[padding]} rounded-2xl ${className}`}
+        className={`${variants[variant]} ${paddings[padding]} ${className}`}
         {...props}
       >
         {children}
@@ -35,21 +35,21 @@ Card.displayName = 'Card';
 
 export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className = '', children, ...props }, ref) => (
-    <div ref={ref} className={`mb-4 ${className}`} {...props}>{children}</div>
+    <div ref={ref} className={`card-header ${className}`} {...props}>{children}</div>
   )
 );
 CardHeader.displayName = 'CardHeader';
 
 export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
   ({ className = '', children, ...props }, ref) => (
-    <h3 ref={ref} className={`text-xl font-bold text-text ${className}`} {...props}>{children}</h3>
+    <h3 ref={ref} className={`card-title ${className}`} {...props}>{children}</h3>
   )
 );
 CardTitle.displayName = 'CardTitle';
 
 export const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
   ({ className = '', children, ...props }, ref) => (
-    <p ref={ref} className={`text-text-muted text-sm mt-1 ${className}`} {...props}>{children}</p>
+    <p ref={ref} className={`card-description ${className}`} {...props}>{children}</p>
   )
 );
 CardDescription.displayName = 'CardDescription';
@@ -63,7 +63,7 @@ CardContent.displayName = 'CardContent';
 
 export const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className = '', children, ...props }, ref) => (
-    <div ref={ref} className={`mt-4 flex items-center gap-2 ${className}`} {...props}>{children}</div>
+    <div ref={ref} className={`card-footer ${className}`} {...props}>{children}</div>
   )
 );
 CardFooter.displayName = 'CardFooter';

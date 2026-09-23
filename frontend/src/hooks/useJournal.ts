@@ -46,6 +46,11 @@ export function useJournal(userId: string | null) {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    setEntries((prev) => {
+      const exists = prev.some((e) => e.id === entry.id || (entry.date && e.date === entry.date));
+      if (exists) return prev.map((e) => (e.id === entry.id || e.date === entry.date ? entry : e));
+      return [entry, ...prev];
+    });
     return entry;
   }, []);
 
@@ -54,6 +59,7 @@ export function useJournal(userId: string | null) {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    setEntries((prev) => prev.map((e) => (e.id === id ? entry : e)));
     return entry;
   }, []);
 

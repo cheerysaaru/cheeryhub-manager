@@ -10,7 +10,8 @@ const modelMap = { tasks: 'task', habits: 'habit', goals: 'goal', skills: 'skill
 type Resource = keyof typeof modelMap;
 function getResource(request: AuthRequest): Resource { const segment = request.baseUrl.split('/').filter(Boolean).pop() ?? 'tasks'; return (segment in modelMap ? segment : 'tasks') as Resource; }
 function emitEvent(userId: string, resource: string, action: 'created' | 'updated' | 'deleted', data: unknown) {
-  emitToUser(userId, `${resource}:${action}`, data);
+  const singular = resource.endsWith('s') ? resource.slice(0, -1) : resource;
+  emitToUser(userId, `${singular}:${action}`, data);
 }
 
 function getUserToday(timezone: string): Date {
@@ -77,7 +78,12 @@ export async function update(request: AuthRequest, response: Response) {
 export async function remove(request: AuthRequest, response: Response) {
   const key = getResource(request); const model = prisma[modelMap[key]] as any; const existing = await model.findFirst({ where: { id: request.params.id, userId: request.userId } });
   if (!existing) return fail(response, 'Record not found', 404);
-  if (key === 'tasks' || key === 'habits') await model.update({ where: { id: existing.id }, data: { deletedAt: new Date() } }); else await model.delete({ where: { id: existing.id } });
+  try {
+    if (key === 'tasks' || key === 'habits') await model.update({ where: { id: existing.id }, data: { deletedAt: new Date() } }); else await model.delete({ where: { id: existing.id } });
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2025') return fail(response, 'Record not found', 404);
+    throw error;
+  }
   emitEvent(request.userId!, key, 'deleted', { id: existing.id });
   return ok(response, { deleted: true });
 }

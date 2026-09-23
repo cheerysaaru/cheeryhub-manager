@@ -39,16 +39,19 @@ export function useSkills(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Skill>) => {
     const skill = await api<Skill>('/skills', { method: 'POST', body: JSON.stringify(data) });
+    setSkills((prev) => [skill, ...prev]);
     return skill;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Skill>) => {
     const skill = await api<Skill>(`/skills/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    setSkills((prev) => prev.map((s) => (s.id === id ? skill : s)));
     return skill;
   }, []);
 
   const remove = useCallback(async (id: string) => {
     await api(`/skills/${id}`, { method: 'DELETE' });
+    setSkills((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
   return { skills, loading, fetchSkills, create, update, remove };
