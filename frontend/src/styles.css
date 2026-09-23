@@ -322,7 +322,12 @@ button:active { transform: translateY(1px); }
 .stat-card-overdue .stat-value-row strong { color: var(--danger); }
 .text-danger { color: var(--danger) !important; }
 
-/* Context menu (right-click) */
+/* Context menu (right-click / double-tap) */
+[data-context-menu] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .context-menu {
   position: fixed;
   z-index: 2000;

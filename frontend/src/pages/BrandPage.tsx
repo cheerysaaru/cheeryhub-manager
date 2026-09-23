@@ -91,7 +91,7 @@ export default function BrandPage() {
           {projects.map((project) => {
             const isExpanded = expanded.has(project.id);
             return (
-              <Card key={project.id} className="goal-card" padding="md" onContextMenu={(e) => projectMenu.open(e, project.title)}>
+              <Card key={project.id} className="goal-card" padding="md" {...projectMenu.bind(project.title)}>
                 <div className="goal-header" onClick={() => toggleExpand(project.id)}>
                   <button className="expand-toggle" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
                     {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}

@@ -74,7 +74,7 @@ export default function SkillsPage() {
       ) : (
         <div className="skills-grid">
           {skills.map((skill) => (
-            <Card key={skill.id} className="skill-card" padding="md" onContextMenu={(e) => skillMenu.open(e, skill.name)}>
+            <Card key={skill.id} className="skill-card" padding="md" {...skillMenu.bind(skill.name)}>
               <div className="skill-header">
                 <div className="skill-info">
                   <strong>{skill.name}</strong>

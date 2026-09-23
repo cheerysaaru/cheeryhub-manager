@@ -98,7 +98,7 @@ export default function RemindersPage() {
               {upcoming.map((reminder) => {
                 const days = daysUntil(reminder.reminderDate);
                 return (
-                  <Card key={reminder.id} className={`reminder-card ${!reminder.enabled ? 'disabled' : ''}`} padding="md" onContextMenu={(e) => reminderMenu.open(e, reminder.title)}>
+                  <Card key={reminder.id} className={`reminder-card ${!reminder.enabled ? 'disabled' : ''}`} padding="md" {...reminderMenu.bind(reminder.title)}>
                     <div className="reminder-main">
                       <div className="reminder-info">
                         <strong>{reminder.title}</strong>
@@ -131,7 +131,7 @@ export default function RemindersPage() {
               <h2 id="past-heading" className="section-title">Past ({past.length})</h2>
               <div className="reminders-list">
                 {past.map((reminder) => (
-                  <Card key={reminder.id} className="reminder-card past" padding="md" onContextMenu={(e) => reminderMenu.open(e, reminder.title)}>
+                  <Card key={reminder.id} className="reminder-card past" padding="md" {...reminderMenu.bind(reminder.title)}>
                     <div className="reminder-main">
                       <div className="reminder-info">
                         <strong>{reminder.title}</strong>

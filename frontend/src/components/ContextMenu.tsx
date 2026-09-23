@@ -17,18 +17,52 @@ interface ContextMenuProps {
   deleteLabel?: string;
 }
 
+let ignoreCloseUntil = 0;
+
 export function useContextMenu() {
   const [menu, setMenu] = useState<ContextMenuState | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+
+  const openAt = useCallback((x: number, y: number, label: string) => {
+    ignoreCloseUntil = Date.now() + 600;
+    setMenu({ x, y, label });
+    window.getSelection()?.removeAllRanges();
+  }, []);
 
   const open = useCallback((event: React.MouseEvent, label: string) => {
     event.preventDefault();
     event.stopPropagation();
-    setMenu({ x: event.clientX, y: event.clientY, label });
-  }, []);
+    openAt(event.clientX, event.clientY, label);
+  }, [openAt]);
 
   const close = useCallback(() => setMenu(null), []);
 
-  return { menu, open, close };
+  const bind = useCallback((label: string) => ({
+    'data-context-menu': '',
+    onContextMenu: (event: React.MouseEvent) => open(event, label),
+    onTouchEnd: (event: React.TouchEvent) => {
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const now = Date.now();
+      const x = touch.clientX;
+      const y = touch.clientY;
+      const last = lastTapRef.current;
+      const isDoubleTap =
+        last &&
+        now - last.time < 350 &&
+        Math.abs(x - last.x) < 30 &&
+        Math.abs(y - last.y) < 30;
+      if (isDoubleTap) {
+        lastTapRef.current = null;
+        event.preventDefault();
+        openAt(x, y, label);
+        return;
+      }
+      lastTapRef.current = { time: now, x, y };
+    },
+  }), [open, openAt]);
+
+  return { menu, open, close, bind };
 }
 
 export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edit', deleteLabel = 'Delete' }: ContextMenuProps) {
@@ -36,7 +70,8 @@ export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edi
 
   useEffect(() => {
     if (!state) return;
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: Event) => {
+      if (Date.now() < ignoreCloseUntil) return;
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     };
     const onKey = (e: KeyboardEvent) => {
@@ -44,11 +79,13 @@ export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edi
     };
     const onScroll = () => onClose();
     window.addEventListener('mousedown', onDown);
+    window.addEventListener('touchstart', onDown, { passive: true });
     window.addEventListener('keydown', onKey);
     window.addEventListener('resize', onScroll);
     window.addEventListener('scroll', onScroll, true);
     return () => {
       window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('touchstart', onDown);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', onScroll);
       window.removeEventListener('scroll', onScroll, true);

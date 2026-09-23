@@ -228,7 +228,7 @@ export default function DashboardPage() {
                 <li
                   key={task.id}
                   className={`task-row ${task.isOverdue ? 'overdue' : ''} ${task.checkedToday ? 'completed' : ''}`}
-                  onContextMenu={(e) => taskMenu.open(e, task.title)}
+                  {...taskMenu.bind(task.title)}
                 >
                   <button
                     className="task-check"
@@ -307,7 +307,7 @@ export default function DashboardPage() {
                 <article
                   key={habit.id}
                   className="commitment-card"
-                  onContextMenu={(e) => habitMenu.open(e, habit.name)}
+                  {...habitMenu.bind(habit.name)}
                 >
                   <div className="commitment-main">
                     <div className="commitment-info">

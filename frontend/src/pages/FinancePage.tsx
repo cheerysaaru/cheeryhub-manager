@@ -223,7 +223,7 @@ export default function FinancePage() {
               <li
                 key={t.id}
                 className={`transaction-item ${t.type.toLowerCase()}`}
-                onContextMenu={(e) => txMenu.open(e, t.description || getCategoryLabel(t.category))}
+                {...txMenu.bind(t.description || getCategoryLabel(t.category))}
               >
                 <div className="transaction-main">
                   <span className="transaction-category">{getCategoryLabel(t.category)}</span>

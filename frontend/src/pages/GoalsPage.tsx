@@ -123,7 +123,7 @@ export default function GoalsPage() {
                 key={goal.id}
                 className="goal-card"
                 padding="md"
-                onContextMenu={(e) => goalMenu.open(e, goal.title)}
+                {...goalMenu.bind(goal.title)}
               >
                 <div className="goal-header" onClick={() => toggleExpand(goal.id)}>
                   <button className="expand-toggle" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
