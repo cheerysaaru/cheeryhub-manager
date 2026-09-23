@@ -19,11 +19,9 @@ import BrandPage from './pages/BrandPage';
 import FinancePage from './pages/FinancePage';
 import SettingsPage from './pages/SettingsPage';
 
-const BASE_PATH = '/personal-productivity-manager';
-
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register(`${BASE_PATH}/sw.js`);
+    void navigator.serviceWorker.register('/sw.js');
   });
 }
 

@@ -45,7 +45,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       },
     });
   } catch {
-    throw new Error('Cannot reach the server. Make sure the backend is running on port 4000.');
+    throw new Error('Cannot reach the server. Check that the API is available and VITE_API_URL is set.');
   }
   let body: { data?: T; error?: string };
   try {

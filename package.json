@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Personal productivity dashboard",
-  "workspaces": ["frontend", "backend"],
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
     "build": "npm run build --workspace backend && npm run build --workspace frontend",
@@ -13,10 +16,15 @@
     "test": "npm run typecheck --workspace backend && npm run typecheck --workspace frontend"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260923.1",
     "concurrently": "^9.1.2",
-    "prisma": "^6.16.2"
+    "prisma": "^6.16.2",
+    "wrangler": "^4.137.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-d1": "^6.19.3"
   }
 }

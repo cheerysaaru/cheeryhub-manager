@@ -1,5 +1,5 @@
-const BASE_PATH = '/personal-productivity-manager';
-const CACHE_NAME = 'productivity-app-shell-v1';
+const BASE_PATH = '';
+const CACHE_NAME = 'productivity-app-shell-v2';
 const APP_SHELL = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
