@@ -17,13 +17,30 @@ import { initSocket } from './lib/socket';
 
 const app = express();
 const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173').split(',').map((o) => o.trim());
-app.use(helmet());
+const isAllowedOrigin = (origin: string | undefined): boolean => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1')
+    );
+  } catch {
+    return false;
+  }
+};
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  })
+);
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (origin && allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else if (!origin) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

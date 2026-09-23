@@ -5,7 +5,11 @@ let socket: Socket | null = null;
 export function connectSocket(userId: string): Socket {
   if (socket?.connected) return socket;
 
-  const backendUrl = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:4000';
+  const configured = import.meta.env.VITE_API_URL;
+  const backendUrl =
+    configured && configured.startsWith('http')
+      ? configured.replace('/api', '')
+      : window.location.origin;
 
   socket = io(backendUrl, {
     withCredentials: true,

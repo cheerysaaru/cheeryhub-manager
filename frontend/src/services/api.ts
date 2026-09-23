@@ -34,8 +34,9 @@ async function flushQueue(): Promise<void> {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
+    response = await fetch(`${API_BASE}${path}`, {
       ...init,
       credentials: 'include',
       headers: {
@@ -43,18 +44,17 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
         ...init?.headers,
       },
     });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? 'Request failed');
-    return body.data;
-  } catch (error) {
-    if (init?.method && init.method !== 'GET' && !navigator.onLine) {
-      const pending = JSON.parse(localStorage.getItem(queueKey) ?? '[]') as PendingWrite[];
-      pending.push({ path, init });
-      localStorage.setItem(queueKey, JSON.stringify(pending));
-      return undefined as T;
-    }
-    throw error;
+  } catch {
+    throw new Error('Cannot reach the server. Make sure the backend is running on port 4000.');
   }
+  let body: { data?: T; error?: string };
+  try {
+    body = await response.json();
+  } catch {
+    throw new Error(response.ok ? 'Invalid server response' : `Request failed (${response.status})`);
+  }
+  if (!response.ok) throw new Error(body.error ?? 'Request failed');
+  return body.data as T;
 }
 
 export async function syncPendingWrites(): Promise<void> {
