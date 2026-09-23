@@ -3,8 +3,6 @@ import { Link, useLocation, Outlet } from 'react-router-dom';
 import { Layout as LayoutIcon, Home, Target, Trophy, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
-const BASE_PATH = '/personal-productivity-manager';
-
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Home },
   { path: '/goals', label: 'Goals', icon: Target },
@@ -38,7 +36,7 @@ export function Layout() {
           <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}>
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <Link to={`${BASE_PATH}/`} className="logo">
+          <Link to="/" className="logo">
             <LayoutIcon size={28} />
             <span>Productivity</span>
           </Link>
@@ -48,8 +46,8 @@ export function Layout() {
             {navItems.map((item) => (
               <li key={item.path}>
                 <Link
-                  to={`${BASE_PATH}${item.path}`}
-                  className={`nav-link ${location.pathname === `${BASE_PATH}${item.path}` ? 'active' : ''}`}
+                  to={item.path}
+                  className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <item.icon size={20} />

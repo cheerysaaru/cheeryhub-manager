@@ -9,12 +9,11 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Progress } from '../components/Progress';
 import { Modal, ConfirmDialog } from '../components/Modal';
+import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import type { Goal, GoalMilestone } from '../types';
 import { daysUntil } from '../utils/date';
-
-const BASE_PATH = '/personal-productivity-manager';
 
 export default function GoalsPage() {
   const { user } = useAuth();
@@ -26,6 +25,7 @@ export default function GoalsPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [milestoneForm, setMilestoneForm] = useState<{ goalId: string; title: string } | null>(null);
   const [form, setForm] = useState({ title: '', description: '', deadline: '', status: 'ACTIVE' as Goal['status'], progress: 0 });
+  const goalMenu = useContextMenu();
 
   function openForm(goal?: Goal) {
     if (goal) {
@@ -119,7 +119,12 @@ export default function GoalsPage() {
             const deadlineDays = goal.deadline ? daysUntil(goal.deadline) : null;
 
             return (
-              <Card key={goal.id} className="goal-card" padding="md">
+              <Card
+                key={goal.id}
+                className="goal-card"
+                padding="md"
+                onContextMenu={(e) => goalMenu.open(e, goal.title)}
+              >
                 <div className="goal-header" onClick={() => toggleExpand(goal.id)}>
                   <button className="expand-toggle" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
                     {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
@@ -201,7 +206,7 @@ export default function GoalsPage() {
                           </li>
                         ))}
                       </ul>
-                      <Link to={`${BASE_PATH}/`} className="link-button-small">Go to tasks →</Link>
+                      <Link to="/" className="link-button-small">Go to tasks →</Link>
                     </div>
                   </div>
                 )}
@@ -246,6 +251,22 @@ export default function GoalsPage() {
         message={`"${deleteTarget?.title}" and its milestones will be permanently deleted.`}
         confirmText="Delete"
         variant="danger"
+      />
+      <ContextMenu
+        state={goalMenu.menu}
+        onClose={goalMenu.close}
+        onEdit={() => {
+          if (!goalMenu.menu) return;
+          const goal = goals.find((g) => g.title === goalMenu.menu?.label);
+          if (goal) openForm(goal);
+        }}
+        onDelete={() => {
+          if (!goalMenu.menu) return;
+          const goal = goals.find((g) => g.title === goalMenu.menu?.label);
+          if (goal) setDeleteTarget(goal);
+        }}
+        editLabel="Edit goal"
+        deleteLabel="Delete goal"
       />
     </div>
   );

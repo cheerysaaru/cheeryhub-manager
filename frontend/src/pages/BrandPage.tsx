@@ -7,6 +7,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Progress } from '../components/Progress';
 import { Modal, ConfirmDialog } from '../components/Modal';
+import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import type { BrandProject, BrandMilestone } from '../types';
@@ -20,6 +21,7 @@ export default function BrandPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [milestoneForm, setMilestoneForm] = useState<{ projectId: string; title: string } | null>(null);
   const [form, setForm] = useState({ title: '', description: '', status: 'IDEA' as BrandProject['status'], progress: 0 });
+  const projectMenu = useContextMenu();
 
   function openForm(project?: BrandProject) {
     if (project) {
@@ -89,7 +91,7 @@ export default function BrandPage() {
           {projects.map((project) => {
             const isExpanded = expanded.has(project.id);
             return (
-              <Card key={project.id} className="goal-card" padding="md">
+              <Card key={project.id} className="goal-card" padding="md" onContextMenu={(e) => projectMenu.open(e, project.title)}>
                 <div className="goal-header" onClick={() => toggleExpand(project.id)}>
                   <button className="expand-toggle" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
                     {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
@@ -190,6 +192,22 @@ export default function BrandPage() {
         message={`"${deleteTarget?.title}" and its milestones will be permanently deleted.`}
         confirmText="Delete"
         variant="danger"
+      />
+      <ContextMenu
+        state={projectMenu.menu}
+        onClose={projectMenu.close}
+        onEdit={() => {
+          if (!projectMenu.menu) return;
+          const project = projects.find((p) => p.title === projectMenu.menu?.label);
+          if (project) openForm(project);
+        }}
+        onDelete={() => {
+          if (!projectMenu.menu) return;
+          const project = projects.find((p) => p.title === projectMenu.menu?.label);
+          if (project) setDeleteTarget(project);
+        }}
+        editLabel="Edit project"
+        deleteLabel="Delete project"
       />
     </div>
   );

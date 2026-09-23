@@ -7,6 +7,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Progress } from '../components/Progress';
 import { Modal, ConfirmDialog } from '../components/Modal';
+import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import type { Skill } from '../types';
 
@@ -17,6 +18,7 @@ export default function SkillsPage() {
   const [editing, setEditing] = useState<Skill | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Skill | null>(null);
   const [form, setForm] = useState({ name: '', currentLevel: 1, targetLevel: 5, progress: 0 });
+  const skillMenu = useContextMenu();
 
   function openForm(skill?: Skill) {
     if (skill) {
@@ -72,7 +74,7 @@ export default function SkillsPage() {
       ) : (
         <div className="skills-grid">
           {skills.map((skill) => (
-            <Card key={skill.id} className="skill-card" padding="md">
+            <Card key={skill.id} className="skill-card" padding="md" onContextMenu={(e) => skillMenu.open(e, skill.name)}>
               <div className="skill-header">
                 <div className="skill-info">
                   <strong>{skill.name}</strong>
@@ -132,6 +134,22 @@ export default function SkillsPage() {
         message={`"${deleteTarget?.name}" will be permanently deleted.`}
         confirmText="Delete"
         variant="danger"
+      />
+      <ContextMenu
+        state={skillMenu.menu}
+        onClose={skillMenu.close}
+        onEdit={() => {
+          if (!skillMenu.menu) return;
+          const skill = skills.find((s) => s.name === skillMenu.menu?.label);
+          if (skill) openForm(skill);
+        }}
+        onDelete={() => {
+          if (!skillMenu.menu) return;
+          const skill = skills.find((s) => s.name === skillMenu.menu?.label);
+          if (skill) setDeleteTarget(skill);
+        }}
+        editLabel="Edit skill"
+        deleteLabel="Delete skill"
       />
     </div>
   );

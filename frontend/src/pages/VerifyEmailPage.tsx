@@ -3,8 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '../components/Button';
 
-const BASE_PATH = '/personal-productivity-manager';
-
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
   const token = params.get('token');
@@ -49,7 +47,7 @@ export default function VerifyEmailPage() {
             <CheckCircle2 size={48} className="success-icon" />
             <h1>Email verified!</h1>
             <p className="muted">{message}</p>
-            <Link to={`${BASE_PATH}/`}>
+            <Link to="/">
               <Button size="lg">Go to dashboard</Button>
             </Link>
           </>
@@ -59,7 +57,7 @@ export default function VerifyEmailPage() {
             <AlertCircle size={48} className="error-icon" />
             <h1>Verification failed</h1>
             <p className="muted">{message}</p>
-            <Link to={`${BASE_PATH}/`}>
+            <Link to="/">
               <Button variant="secondary" size="lg">Back to login</Button>
             </Link>
           </>

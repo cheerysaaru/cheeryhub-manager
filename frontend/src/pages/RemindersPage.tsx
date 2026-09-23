@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Modal, ConfirmDialog } from '../components/Modal';
+import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import { Switch } from '../components/Switch';
@@ -18,6 +19,7 @@ export default function RemindersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Reminder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Reminder | null>(null);
+  const reminderMenu = useContextMenu();
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -96,7 +98,7 @@ export default function RemindersPage() {
               {upcoming.map((reminder) => {
                 const days = daysUntil(reminder.reminderDate);
                 return (
-                  <Card key={reminder.id} className={`reminder-card ${!reminder.enabled ? 'disabled' : ''}`} padding="md">
+                  <Card key={reminder.id} className={`reminder-card ${!reminder.enabled ? 'disabled' : ''}`} padding="md" onContextMenu={(e) => reminderMenu.open(e, reminder.title)}>
                     <div className="reminder-main">
                       <div className="reminder-info">
                         <strong>{reminder.title}</strong>
@@ -129,7 +131,7 @@ export default function RemindersPage() {
               <h2 id="past-heading" className="section-title">Past ({past.length})</h2>
               <div className="reminders-list">
                 {past.map((reminder) => (
-                  <Card key={reminder.id} className="reminder-card past" padding="md">
+                  <Card key={reminder.id} className="reminder-card past" padding="md" onContextMenu={(e) => reminderMenu.open(e, reminder.title)}>
                     <div className="reminder-main">
                       <div className="reminder-info">
                         <strong>{reminder.title}</strong>
@@ -188,6 +190,22 @@ export default function RemindersPage() {
         message={`"${deleteTarget?.title}" will be permanently deleted.`}
         confirmText="Delete"
         variant="danger"
+      />
+      <ContextMenu
+        state={reminderMenu.menu}
+        onClose={reminderMenu.close}
+        onEdit={() => {
+          if (!reminderMenu.menu) return;
+          const reminder = reminders.find((r) => r.title === reminderMenu.menu?.label);
+          if (reminder) openForm(reminder);
+        }}
+        onDelete={() => {
+          if (!reminderMenu.menu) return;
+          const reminder = reminders.find((r) => r.title === reminderMenu.menu?.label);
+          if (reminder) setDeleteTarget(reminder);
+        }}
+        editLabel="Edit reminder"
+        deleteLabel="Delete reminder"
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Modal, ConfirmDialog } from '../components/Modal';
+import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import type { Transaction, WeeklyReport, MonthlyReport } from '../types';
 import { formatShortDate } from '../utils/date';
@@ -136,6 +137,7 @@ export default function FinancePage() {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const txMenu = useContextMenu();
 
   async function handleSubmit(data: Partial<Transaction>) {
     if (editing) await update(editing.id, data);
@@ -218,7 +220,11 @@ export default function FinancePage() {
         ) : (
           <ul className="transaction-list">
             {filtered.map((t) => (
-              <li key={t.id} className={`transaction-item ${t.type.toLowerCase()}`}>
+              <li
+                key={t.id}
+                className={`transaction-item ${t.type.toLowerCase()}`}
+                onContextMenu={(e) => txMenu.open(e, t.description || getCategoryLabel(t.category))}
+              >
                 <div className="transaction-main">
                   <span className="transaction-category">{getCategoryLabel(t.category)}</span>
                   <span className={`transaction-amount ${t.type === 'INCOME' ? 'positive' : 'negative'}`}>
@@ -252,6 +258,22 @@ export default function FinancePage() {
         message={`${deleteTarget ? formatCurrency(deleteTarget.amount) : ''} entry will be permanently deleted.`}
         confirmText="Delete"
         variant="danger"
+      />
+      <ContextMenu
+        state={txMenu.menu}
+        onClose={txMenu.close}
+        onEdit={() => {
+          if (!txMenu.menu) return;
+          const tx = filtered.find((t) => (t.description || getCategoryLabel(t.category)) === txMenu.menu?.label);
+          if (tx) handleEdit(tx);
+        }}
+        onDelete={() => {
+          if (!txMenu.menu) return;
+          const tx = filtered.find((t) => (t.description || getCategoryLabel(t.category)) === txMenu.menu?.label);
+          if (tx) setDeleteTarget(tx);
+        }}
+        editLabel="Edit transaction"
+        deleteLabel="Delete transaction"
       />
     </div>
   );

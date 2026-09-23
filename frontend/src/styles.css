@@ -319,6 +319,59 @@ button:active { transform: translateY(1px); }
 .stat-card-overdue .stat-value-row strong { color: var(--danger); }
 .text-danger { color: var(--danger) !important; }
 
+/* Context menu (right-click) */
+.context-menu {
+  position: fixed;
+  z-index: 2000;
+  min-width: 180px;
+  padding: 6px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+  display: grid;
+  gap: 2px;
+}
+.context-menu-title {
+  margin: 0;
+  padding: 6px 10px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  margin-bottom: 4px;
+}
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text, #111827);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.context-menu-item:hover,
+.context-menu-item:focus-visible {
+  background: var(--bg-muted, #f3f4f6);
+  outline: none;
+}
+.context-menu-item.danger {
+  color: var(--danger, #dc2626);
+}
+.context-menu-item.danger:hover,
+.context-menu-item.danger:focus-visible {
+  background: #fef2f2;
+}
+
 /* Panels */
 .panel {
   background: var(--bg-card);

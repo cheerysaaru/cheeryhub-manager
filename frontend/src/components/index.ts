@@ -11,3 +11,4 @@ export { Avatar, type AvatarProps } from './Avatar';
 export { Tabs, TabsList, TabsTrigger, TabsContent, type TabsProps, type TabsListProps, type TabsTriggerProps, type TabsContentProps } from './Tabs';
 export { Checkbox, type CheckboxProps } from './Checkbox';
 export { Switch, type SwitchProps } from './Switch';
+export { ContextMenu, useContextMenu, type ContextMenuState } from './ContextMenu';

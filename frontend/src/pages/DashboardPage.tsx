@@ -17,10 +17,10 @@ import { Badge } from '../components/Badge';
 import { Progress } from '../components/Progress';
 import { Avatar } from '../components/Avatar';
 import { useToast } from '../components/Toast';
+import { ContextMenu, useContextMenu } from '../components/ContextMenu';
+import { ConfirmDialog } from '../components/Modal';
 import { formatDate, greeting } from '../utils/date';
 import type { Task, Habit } from '../types';
-
-const BASE_PATH = '/personal-productivity-manager';
 
 function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string) => void }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -59,8 +59,8 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { tasks, loading: tasksLoading, create: createTask, checkIn, complete: completeTask } = useTasks(user?.id ?? null);
-  const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday } = useHabits(user?.id ?? null);
+  const { tasks, loading: tasksLoading, create: createTask, checkIn, complete: completeTask, remove: removeTask } = useTasks(user?.id ?? null);
+  const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday, remove: removeHabit } = useHabits(user?.id ?? null);
   const { goals } = useGoals(user?.id ?? null);
   const { skills } = useSkills(user?.id ?? null);
   const { sessions: focusSessions } = useFocus(user?.id ?? null);
@@ -71,6 +71,9 @@ export default function DashboardPage() {
 
   const [taskForm, setTaskForm] = useState({ title: '', date: new Date().toISOString().slice(0, 10) });
   const [habitForm, setHabitForm] = useState({ name: '' });
+  const taskMenu = useContextMenu();
+  const habitMenu = useContextMenu();
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'task' | 'habit'; id: string; label: string } | null>(null);
 
   const activeTasks = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ARCHIVED' && !t.deletedAt);
   const completedToday = tasks.filter((t) => t.checkedToday).length;
@@ -104,6 +107,19 @@ export default function DashboardPage() {
       toast({ type: 'success', title: 'Commitment added', message: name });
     } catch (error) {
       toast({ type: 'error', title: 'Could not add commitment', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      if (deleteTarget.kind === 'task') await removeTask(deleteTarget.id);
+      else await removeHabit(deleteTarget.id);
+      toast({ type: 'success', title: 'Deleted', message: deleteTarget.label });
+    } catch (error) {
+      toast({ type: 'error', title: 'Could not delete', message: error instanceof Error ? error.message : 'Please try again.' });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -176,7 +192,7 @@ export default function DashboardPage() {
               <h2 id="tasks-heading">Today's Tasks</h2>
               <p className="panel-subtitle">{activeTasks.length} active {activeTasks.length === 1 ? 'task' : 'tasks'}</p>
             </div>
-            <Link to={`${BASE_PATH}/goals`} className="panel-link">
+            <Link to="/goals" className="panel-link">
               <ArrowRight size={16} />
               <span>View Goals</span>
             </Link>
@@ -207,7 +223,11 @@ export default function DashboardPage() {
           ) : (
             <ul className="task-list" role="list">
               {activeTasks.map((task) => (
-                <li key={task.id} className={`task-row ${task.isOverdue ? 'overdue' : ''} ${task.checkedToday ? 'completed' : ''}`}>
+                <li
+                  key={task.id}
+                  className={`task-row ${task.isOverdue ? 'overdue' : ''} ${task.checkedToday ? 'completed' : ''}`}
+                  onContextMenu={(e) => taskMenu.open(e, task.title)}
+                >
                   <button
                     className="task-check"
                     onClick={() => checkIn(task.id, !task.checkedToday)}
@@ -282,7 +302,11 @@ export default function DashboardPage() {
           ) : (
             <div className="commitment-list" role="list">
               {habits.map((habit) => (
-                <article key={habit.id} className="commitment-card">
+                <article
+                  key={habit.id}
+                  className="commitment-card"
+                  onContextMenu={(e) => habitMenu.open(e, habit.name)}
+                >
                   <div className="commitment-main">
                     <div className="commitment-info">
                       <strong>{habit.name}</strong>
@@ -324,49 +348,49 @@ export default function DashboardPage() {
       <section className="quick-links" aria-label="Quick navigation">
         <h2 className="sr-only">Quick Links</h2>
         <div className="quick-link-grid">
-          <Link to={`${BASE_PATH}/goals`} className="quick-link-card">
+          <Link to="/goals" className="quick-link-card">
             <Target size={24} />
             <strong>Goals</strong>
             <span>{goals.filter(g => g.status === 'ACTIVE').length} active</span>
             <ArrowRight size={16} />
           </Link>
-          <Link to={`${BASE_PATH}/skills`} className="quick-link-card">
+          <Link to="/skills" className="quick-link-card">
             <Trophy size={24} />
             <strong>Skills</strong>
             <span>{skills.length} tracking</span>
             <ArrowRight size={16} />
           </Link>
-          <Link to={`${BASE_PATH}/focus`} className="quick-link-card">
+          <Link to="/focus" className="quick-link-card">
             <Brain size={24} />
             <strong>Focus</strong>
             <span>{focusSessions.filter(s => s.status === 'COMPLETED').length} sessions</span>
             <ArrowRight size={16} />
           </Link>
-          <Link to={`${BASE_PATH}/journal`} className="quick-link-card">
+          <Link to="/journal" className="quick-link-card">
             <BookOpen size={24} />
             <strong>Journal</strong>
             <span>{journalEntries.length} entries</span>
             <ArrowRight size={16} />
           </Link>
-          <Link to={`${BASE_PATH}/reminders`} className="quick-link-card">
+          <Link to="/reminders" className="quick-link-card">
             <Bell size={24} />
             <strong>Reminders</strong>
             <span>{reminders.filter(r => r.enabled).length} active</span>
             <ArrowRight size={16} />
           </Link>
-          <Link to={`${BASE_PATH}/analytics`} className="quick-link-card">
+          <Link to="/analytics" className="quick-link-card">
             <BarChart2 size={24} />
             <strong>Analytics</strong>
             <span>View progress</span>
             <ArrowRight size={16} />
           </Link>
-          <Link to={`${BASE_PATH}/brand`} className="quick-link-card">
+          <Link to="/brand" className="quick-link-card">
             <Briefcase size={24} />
             <strong>Brand</strong>
             <span>{brandProjects.length} projects</span>
             <ArrowRight size={16} />
           </Link>
-          <Link to={`${BASE_PATH}/finance`} className="quick-link-card">
+          <Link to="/finance" className="quick-link-card">
             <DollarSign size={24} />
             <strong>Finance</strong>
             <span>Track money</span>
@@ -374,6 +398,36 @@ export default function DashboardPage() {
           </Link>
         </div>
       </section>
+
+      <ContextMenu
+        state={taskMenu.menu}
+        onClose={taskMenu.close}
+        onDelete={() => {
+          if (!taskMenu.menu) return;
+          const task = activeTasks.find((t) => t.title === taskMenu.menu?.label);
+          if (task) setDeleteTarget({ kind: 'task', id: task.id, label: task.title });
+        }}
+        deleteLabel="Delete task"
+      />
+      <ContextMenu
+        state={habitMenu.menu}
+        onClose={habitMenu.close}
+        onDelete={() => {
+          if (!habitMenu.menu) return;
+          const habit = habits.find((h) => h.name === habitMenu.menu?.label);
+          if (habit) setDeleteTarget({ kind: 'habit', id: habit.id, label: habit.name });
+        }}
+        deleteLabel="Delete commitment"
+      />
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Delete ${deleteTarget?.kind === 'habit' ? 'commitment' : 'task'}?`}
+        message={`"${deleteTarget?.label}" will be permanently deleted.`}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }
