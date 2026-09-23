@@ -19,6 +19,20 @@ function prependUnique(list: Habit[], habit: Habit): Habit[] {
   return list.some((item) => item.id === habit.id) ? list : [habit, ...list];
 }
 
+function mergeHabit(current: Habit | undefined, incoming: Partial<Habit> & { id: string }): Habit {
+  const base = current ?? ({} as Habit);
+  return normalizeHabit({
+    ...base,
+    ...incoming,
+    weekDates: incoming.weekDates?.length ? incoming.weekDates : base.weekDates ?? [],
+    completedDates: incoming.completedDates ?? base.completedDates ?? [],
+    completedToday: incoming.completedToday ?? base.completedToday ?? false,
+    completedDays: incoming.completedDays ?? base.completedDays ?? 0,
+    weekCompletedDays: incoming.weekCompletedDays ?? base.weekCompletedDays ?? 0,
+    weekStart: incoming.weekStart ?? base.weekStart,
+  });
+}
+
 export function useHabits(userId: string | null) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,13 +55,13 @@ export function useHabits(userId: string | null) {
       setHabits((prev) => prependUnique(prev, normalizeHabit(habit)));
     });
     const cleanup2 = on<Habit>('habit:updated', (habit) => {
-      setHabits((prev) => prev.map((h) => (h.id === habit.id ? habit : h)));
+      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit) : h)));
     });
     const cleanup3 = on<{ id: string }>('habit:deleted', ({ id }) => {
       setHabits((prev) => prev.filter((h) => h.id !== id));
     });
     const cleanup4 = on<Habit>('habit:completed', (habit) => {
-      setHabits((prev) => prev.map((h) => (h.id === habit.id ? habit : h)));
+      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit) : h)));
     });
     return () => {
       cleanup();
@@ -76,13 +90,37 @@ export function useHabits(userId: string | null) {
   }, []);
 
   const complete = useCallback(async (id: string) => {
-    const result = await api<Habit>(`/habits/${id}/complete`, { method: 'POST' });
+    const result = await api<{ weekCompletedDays?: number; weekComplete?: boolean }>(`/habits/${id}/complete`, { method: 'POST' });
+    const today = new Date().toISOString().slice(0, 10);
+    setHabits((prev) => prev.map((h) => {
+      if (h.id !== id) return h;
+      const already = h.completedDates.includes(today);
+      return {
+        ...h,
+        completedToday: true,
+        completedDates: already ? h.completedDates : [...h.completedDates, today],
+        completedDays: already ? h.completedDays : h.completedDays + 1,
+        weekCompletedDays: result.weekCompletedDays ?? h.weekCompletedDays + (already || h.completedToday ? 0 : 1),
+      };
+    }));
     await fetchHabits();
     return result;
   }, [fetchHabits]);
 
   const clearToday = useCallback(async (id: string) => {
     await api(`/habits/${id}/today`, { method: 'DELETE' });
+    const today = new Date().toISOString().slice(0, 10);
+    setHabits((prev) => prev.map((h) => {
+      if (h.id !== id) return h;
+      const had = h.completedDates.includes(today);
+      return {
+        ...h,
+        completedToday: false,
+        completedDates: h.completedDates.filter((d) => d !== today),
+        completedDays: had ? Math.max(0, h.completedDays - 1) : h.completedDays,
+        weekCompletedDays: Math.max(0, h.weekCompletedDays - (had ? 1 : 0)),
+      };
+    }));
     await fetchHabits();
   }, [fetchHabits]);
 

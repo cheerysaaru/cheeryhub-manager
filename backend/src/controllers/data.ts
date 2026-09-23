@@ -15,18 +15,33 @@ function emitEvent(userId: string, resource: string, action: 'created' | 'update
 }
 
 function getUserToday(timezone: string): Date {
-  const now = new Date();
   const tz = timezone || 'UTC';
-  const localDate = new Date(now.toLocaleString('en-US', { timeZone: tz }));
-  localDate.setHours(0, 0, 0, 0);
-  return localDate;
+  const key = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  return new Date(`${key}T00:00:00.000Z`);
 }
 
 function getWeekStart(date: Date): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  d.setHours(0, 0, 0, 0);
+  const d = new Date(date.getTime());
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  d.setUTCHours(0, 0, 0, 0);
   return d;
+}
+
+function dayKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function weekDateKeys(weekStart: Date): string[] {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(weekStart.getTime());
+    date.setUTCDate(weekStart.getUTCDate() + index);
+    return dayKey(date);
+  });
 }
 
 export async function list(request: AuthRequest, response: Response) {
@@ -39,7 +54,7 @@ export async function list(request: AuthRequest, response: Response) {
     return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; checkIns: Array<{ checked: boolean }> }) => {
       let normalized = task;
       if (task.recurrence !== 'NONE' && task.completedAt) {
-        const completed = new Date(task.completedAt); completed.setHours(0, 0, 0, 0);
+        const completed = new Date(task.completedAt); completed.setUTCHours(0, 0, 0, 0);
         const elapsedDays = Math.floor((today.getTime() - completed.getTime()) / 86400000);
         const dueAgain = task.recurrence === 'DAILY' ? elapsedDays >= 1 : task.recurrence === 'WEEKLY' ? elapsedDays >= 7 : elapsedDays >= 28;
         normalized = dueAgain ? { ...task, status: 'TODO', completedAt: null } : task;
@@ -47,8 +62,8 @@ export async function list(request: AuthRequest, response: Response) {
       let overdueStatus = false;
       if (task.scheduledDate && task.status !== 'COMPLETED' && task.status !== 'ARCHIVED' && task.status !== 'IN_PROGRESS') {
         const scheduled = new Date(task.scheduledDate);
-        scheduled.setHours(23, 59, 59, 999);
-        if (today > scheduled) overdueStatus = true;
+        scheduled.setUTCHours(23, 59, 59, 999);
+        if (today.getTime() > scheduled.getTime()) overdueStatus = true;
       }
       const history = await prisma.taskCheckIn.groupBy({ by: ['checked'], where: { taskId: task.id, userId: request.userId }, _count: { _all: true } });
       return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.find((item) => item.checked)?._count._all ?? 0, missedDays: history.find((item) => !item.checked)?._count._all ?? 0, isOverdue: overdueStatus };
@@ -56,8 +71,22 @@ export async function list(request: AuthRequest, response: Response) {
   }
   if (key === 'habits') {
     const weekStart = getWeekStart(today);
-    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
-    return ok(response, records.map((habit: { id: string; completions: Array<{ date: Date }> }) => { const weekCompletions = habit.completions.filter((completion) => { const date = new Date(completion.date); return date >= weekStart && date < weekEnd; }); return { ...habit, completedToday: habit.completions.some((completion) => new Date(completion.date).getTime() === today.getTime()), completedDays: habit.completions.length, weekCompletedDays: weekCompletions.length, weekStart: weekStart.toISOString().slice(0, 10), weekDates: Array.from({ length: 7 }, (_, index) => { const date = new Date(weekStart); date.setDate(weekStart.getDate() + index); return date.toISOString().slice(0, 10); }), completedDates: habit.completions.map((completion) => new Date(completion.date).toISOString().slice(0, 10)) }; }));
+    const weekEnd = new Date(weekStart.getTime()); weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
+    const todayKey = dayKey(today);
+    const weekKeys = weekDateKeys(weekStart);
+    return ok(response, records.map((habit: { id: string; completions: Array<{ date: Date }> }) => {
+      const completionKeys = habit.completions.map((completion) => dayKey(new Date(completion.date)));
+      const weekCompletions = completionKeys.filter((k) => weekKeys.includes(k));
+      return {
+        ...habit,
+        completedToday: completionKeys.includes(todayKey),
+        completedDays: completionKeys.length,
+        weekCompletedDays: weekCompletions.length,
+        weekStart: dayKey(weekStart),
+        weekDates: weekKeys,
+        completedDates: completionKeys,
+      };
+    }));
   }
   return ok(response, records);
 }
@@ -91,12 +120,35 @@ export async function completeTask(request: AuthRequest, response: Response) {
   const taskId = String(request.params.id); const task = await prisma.task.findFirst({ where: { id: taskId, userId: request.userId!, deletedAt: null } }); if (!task) return fail(response, 'Task not found', 404);
   const updated = await prisma.$transaction(async (tx) => { const result = await tx.task.update({ where: { id: task.id }, data: { status: 'COMPLETED', completedAt: new Date() } }); await tx.xPTransaction.create({ data: { userId: request.userId!, taskId: task.id, amount: 10, reason: 'Task completed' } }); return result; });
   emitEvent(request.userId!, 'tasks', 'updated', updated);
+  emitToUser(request.userId!, 'xp:updated', { reason: 'Task completed', amount: 10 });
   return ok(response, updated);
 }
+async function getUserTodayFor(userId: string): Promise<Date> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  return getUserToday(user?.timezone || 'UTC');
+}
+
 export async function completeHabit(request: AuthRequest, response: Response) {
   const habitId = String(request.params.id); const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: request.userId!, deletedAt: null } }); if (!habit) return fail(response, 'Habit not found', 404);
-  const date = new Date(); date.setUTCHours(0, 0, 0, 0); const existing = await prisma.habitCompletion.findUnique({ where: { habitId_date: { habitId: habit.id, date } } }); const completion = existing ?? await prisma.habitCompletion.create({ data: { habitId: habit.id, userId: request.userId!, date } }); if (!existing) await prisma.xPTransaction.create({ data: { userId: request.userId!, habitId: habit.id, amount: 5, reason: 'Daily commitment completed' } }); const weekStart = new Date(date); weekStart.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7)); const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekStart.getUTCDate() + 7); const weekCompletedDays = await prisma.habitCompletion.count({ where: { habitId: habit.id, userId: request.userId!, date: { gte: weekStart, lt: weekEnd } } });
-  emitEvent(request.userId!, 'habits', 'updated', { ...habit, completedToday: true, weekCompletedDays });
+  const date = await getUserTodayFor(request.userId!);
+  const existing = await prisma.habitCompletion.findUnique({ where: { habitId_date: { habitId: habit.id, date } } });
+  const completion = existing ?? await prisma.habitCompletion.create({ data: { habitId: habit.id, userId: request.userId!, date } });
+  if (!existing) await prisma.xPTransaction.create({ data: { userId: request.userId!, habitId: habit.id, amount: 5, reason: 'Daily commitment completed' } });
+  const weekStart = getWeekStart(date);
+  const allCompletions = await prisma.habitCompletion.findMany({ where: { habitId: habit.id, userId: request.userId! }, select: { date: true } });
+  const completionKeys = allCompletions.map((c) => dayKey(new Date(c.date)));
+  const weekKeys = weekDateKeys(weekStart);
+  const weekCompletedDays = completionKeys.filter((k) => weekKeys.includes(k)).length;
+  emitEvent(request.userId!, 'habits', 'updated', {
+    ...habit,
+    completedToday: completionKeys.includes(dayKey(date)),
+    completedDays: completionKeys.length,
+    weekCompletedDays,
+    weekStart: dayKey(weekStart),
+    weekDates: weekKeys,
+    completedDates: completionKeys,
+  });
+  if (!existing) emitToUser(request.userId!, 'xp:updated', { reason: 'Daily commitment completed', amount: 5 });
   return ok(response, { ...completion, weekCompletedDays, weekComplete: weekCompletedDays === 7 }, 201);
 }
 export async function getOne(request: AuthRequest, response: Response) {
@@ -106,8 +158,11 @@ export async function getOne(request: AuthRequest, response: Response) {
 export async function checkInTask(request: AuthRequest, response: Response) {
   const taskId = String(request.params.id); const task = await prisma.task.findFirst({ where: { id: taskId, userId: request.userId!, deletedAt: null } }); if (!task) return fail(response, 'Task not found', 404);
   const parsed = z.object({ checked: z.boolean() }).safeParse(request.body); if (!parsed.success) return fail(response, 'Check-in state is required');
-  const date = new Date(); date.setUTCHours(0, 0, 0, 0); const checkIn = await prisma.taskCheckIn.upsert({ where: { taskId_date: { taskId, date } }, update: { checked: parsed.data.checked, checkedAt: parsed.data.checked ? new Date() : null }, create: { taskId, userId: request.userId!, date, checked: parsed.data.checked, checkedAt: parsed.data.checked ? new Date() : null } });
-  const [checkedDays, missedDays] = await Promise.all([prisma.taskCheckIn.count({ where: { taskId, userId: request.userId!, checked: true } }), prisma.taskCheckIn.count({ where: { taskId, userId: request.userId!, checked: false } })]); return ok(response, { ...checkIn, checkedDays, missedDays });
+  const date = await getUserTodayFor(request.userId!);
+  const checkIn = await prisma.taskCheckIn.upsert({ where: { taskId_date: { taskId, date } }, update: { checked: parsed.data.checked, checkedAt: parsed.data.checked ? new Date() : null }, create: { taskId, userId: request.userId!, date, checked: parsed.data.checked, checkedAt: parsed.data.checked ? new Date() : null } });
+  const [checkedDays, missedDays] = await Promise.all([prisma.taskCheckIn.count({ where: { taskId, userId: request.userId!, checked: true } }), prisma.taskCheckIn.count({ where: { taskId, userId: request.userId!, checked: false } })]);
+  emitEvent(request.userId!, 'tasks', 'updated', { id: task.id, checkedToday: parsed.data.checked, checkedDays, missedDays });
+  return ok(response, { ...checkIn, checkedDays, missedDays });
 }
 export async function startTaskTimer(request: AuthRequest, response: Response) {
   const task = await prisma.task.findFirst({ where: { id: String(request.params.id), userId: request.userId!, deletedAt: null } }); if (!task) return fail(response, 'Task not found', 404);
@@ -119,5 +174,21 @@ export async function stopTaskTimer(request: AuthRequest, response: Response) {
 }
 export async function clearHabitToday(request: AuthRequest, response: Response) {
   const habitId = String(request.params.id); const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: request.userId!, deletedAt: null } }); if (!habit) return fail(response, 'Habit not found', 404);
-  const date = new Date(); date.setUTCHours(0, 0, 0, 0); await prisma.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date } }); return ok(response, { cleared: true });
+  const date = await getUserTodayFor(request.userId!);
+  await prisma.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date } });
+  const allCompletions = await prisma.habitCompletion.findMany({ where: { habitId, userId: request.userId! }, select: { date: true } });
+  const weekStart = getWeekStart(date);
+  const completionKeys = allCompletions.map((c) => dayKey(new Date(c.date)));
+  const weekKeys = weekDateKeys(weekStart);
+  const weekCompletedDays = completionKeys.filter((k) => weekKeys.includes(k)).length;
+  emitEvent(request.userId!, 'habits', 'updated', {
+    ...habit,
+    completedToday: false,
+    completedDays: completionKeys.length,
+    weekCompletedDays,
+    weekStart: dayKey(weekStart),
+    weekDates: weekKeys,
+    completedDates: completionKeys,
+  });
+  return ok(response, { cleared: true });
 }

@@ -39,7 +39,7 @@ export function useTasks(userId: string | null) {
       setTasks((prev) => prependUnique(prev, normalizeTask(task)));
     });
     const cleanup2 = on<Task>('task:updated', (task) => {
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? normalizeTask({ ...t, ...task }) : t)));
     });
     const cleanup3 = on<{ id: string }>('task:deleted', ({ id }) => {
       setTasks((prev) => prev.filter((t) => t.id !== id));

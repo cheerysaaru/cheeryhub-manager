@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { useSocket } from './useSocket';
 import type { DailyStats, XPTransaction } from '../types';
 
 export function useAnalytics(userId: string | null) {
   const [stats, setStats] = useState<DailyStats[]>([]);
   const [xp, setXp] = useState<{ total: number; history: XPTransaction[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const { on } = useSocket(userId);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -25,8 +27,15 @@ export function useAnalytics(userId: string | null) {
   }, []);
 
   useEffect(() => {
-    fetchAnalytics();
+    void fetchAnalytics();
   }, [fetchAnalytics]);
+
+  useEffect(() => {
+    const cleanup = on<{ total?: number }>('xp:updated', () => {
+      void fetchAnalytics();
+    });
+    return cleanup;
+  }, [fetchAnalytics, on]);
 
   const exportBackup = useCallback(async () => {
     const data = await api<Blob>('/backup/export');
