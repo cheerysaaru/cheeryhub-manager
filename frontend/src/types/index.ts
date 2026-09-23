@@ -45,11 +45,15 @@ export interface Habit {
   createdAt: string;
   updatedAt: string;
   completedToday: boolean;
+  failedToday: boolean;
+  skippedToday: boolean;
   completedDays: number;
   weekCompletedDays: number;
   weekStart: string;
   weekDates: string[];
   completedDates: string[];
+  failedDates: string[];
+  skippedDates: string[];
 }
 
 export interface Goal {

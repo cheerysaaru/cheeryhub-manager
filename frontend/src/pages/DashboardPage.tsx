@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Target, Trophy, Brain, BookOpen, Bell, BarChart2, Briefcase, DollarSign, CheckCircle2, Circle, AlertTriangle, Clock, Flame, ArrowRight } from 'lucide-react';
+import { Plus, Target, Trophy, Brain, BookOpen, Bell, BarChart2, Briefcase, DollarSign, CheckCircle2, Circle, CircleX, Coffee, AlertTriangle, Clock, Flame, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
@@ -33,6 +33,8 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
       <div className="day-buttons">
         {habit.weekDates.map((date) => {
           const checked = habit.completedDates.includes(date);
+          const failed = habit.failedDates.includes(date);
+          const skipped = habit.skippedDates.includes(date);
           const future = date > today;
           const label = new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short' });
           const number = new Date(`${date}T00:00:00Z`).getUTCDate();
@@ -40,12 +42,12 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
             <button
               key={date}
               disabled={future}
-              className={`day-check ${checked ? 'checked' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''}`}
-              onClick={() => !future && !checked && onCheck(habit.id)}
-              aria-label={`${label} ${number}${future ? ', not started' : ''}`}
-              title={future ? 'This day has not started yet' : date}
+              className={`day-check ${checked ? 'checked' : ''} ${failed ? 'failed' : ''} ${skipped ? 'skipped' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''}`}
+              onClick={() => !future && !checked && !failed && !skipped && onCheck(habit.id)}
+              aria-label={`${label} ${number}${future ? ', not started' : failed ? ', failed' : skipped ? ', left' : ''}`}
+              title={future ? 'This day has not started yet' : failed ? 'Failed that day' : skipped ? 'Left today' : date}
             >
-              {checked ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+              {checked ? <CheckCircle2 size={18} /> : failed ? <CircleX size={18} /> : skipped ? <Coffee size={18} /> : <Circle size={18} />}
               <small>{label}</small>
               <b>{number}</b>
             </button>
@@ -60,7 +62,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { tasks, loading: tasksLoading, create: createTask, checkIn, complete: completeTask, remove: removeTask } = useTasks(user?.id ?? null);
-  const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday, remove: removeHabit } = useHabits(user?.id ?? null);
+  const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday, failToday, skipToday, remove: removeHabit } = useHabits(user?.id ?? null);
   const { goals } = useGoals(user?.id ?? null);
   const { skills } = useSkills(user?.id ?? null);
   const { sessions: focusSessions } = useFocus(user?.id ?? null);
@@ -332,9 +334,30 @@ export default function DashboardPage() {
                         </>
                       )}
                     </Button>
-                    {habit.completedToday && (
-                      <Button variant="ghost" size="sm" onClick={() => clearToday(habit.id)}>
-                        Undo Today
+                    <button
+                      type="button"
+                      className={`day-action leave ${habit.skippedToday ? 'active' : ''}`}
+                      onClick={() => !habit.skippedToday && skipToday(habit.id)}
+                      disabled={habit.skippedToday}
+                      aria-label="Leave today"
+                      title="Leave today"
+                    >
+                      <Coffee size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`day-action fail ${habit.failedToday ? 'active' : ''}`}
+                      onClick={() => !habit.failedToday && failToday(habit.id)}
+                      disabled={habit.failedToday}
+                      aria-label="Failed that day"
+                      title="Failed that day"
+                    >
+                      <CircleX size={16} />
+                    </button>
+                    {(habit.completedToday || habit.failedToday || habit.skippedToday) && (
+                      <Button variant="ghost" size="sm" className="undo-day" onClick={() => clearToday(habit.id)}>
+                        <X size={14} />
+                        Undo
                       </Button>
                     )}
                   </div>

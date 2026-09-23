@@ -152,6 +152,7 @@ model HabitCompletion {
   habitId String
   userId String
   date DateTime
+  status String @default("COMPLETED")
   completedAt DateTime @default(now())
   habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

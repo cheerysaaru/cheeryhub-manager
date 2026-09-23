@@ -525,8 +525,32 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 }
 .commitment-info strong { display: block; color: var(--primary); font-size: 1.1rem; overflow-wrap: anywhere; }
 .commitment-info span { display: block; margin-top: 4px; color: var(--text-muted); font-size: 0.9rem; }
-.commitment-actions { display: flex; gap: var(--space-2); align-items: center; }
-.check-in-btn { flex: 1; }
+.commitment-actions { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.check-in-btn { flex: 1; min-width: 160px; }
+.day-action {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.day-action:hover:not(:disabled) { transform: translateY(-1px); }
+.day-action.leave { color: var(--info); border-color: #9db9d4; background: #eef4fa; }
+.day-action.fail { color: var(--danger); border-color: #d4a9a2; background: #faf0ee; }
+.day-action.leave.active,
+.day-action.leave:disabled { background: var(--info); border-color: var(--info); color: #fff; }
+.day-action.fail.active,
+.day-action.fail:disabled { background: var(--danger); border-color: var(--danger); color: #fff; }
+.undo-day { gap: 4px; }
 
 .week-panel { min-width: 0; }
 .week-heading { display: flex; justify-content: space-between; margin-bottom: 8px; }
@@ -548,6 +572,8 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 .day-check b { font-size: 0.95rem; }
 .day-check.today { border: 2px solid #4b7d4a; }
 .day-check.checked { background: #bcd7b8; color: var(--primary); }
+.day-check.failed { background: #f3d9d5; color: var(--danger); border-color: #d4a9a2; }
+.day-check.skipped { background: #e4eef7; color: var(--info); border-color: #9db9d4; }
 .day-check.future, .day-check:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* Empty state */

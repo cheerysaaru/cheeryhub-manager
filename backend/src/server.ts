@@ -8,7 +8,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth } from './utils/auth';
 import { login, logout, me } from './controllers/auth';
 import { analytics, exportData } from './controllers/analytics';
-import { list, getOne, create, update, remove, completeTask, completeHabit, clearHabitToday, checkInTask, startTaskTimer, stopTaskTimer } from './controllers/data';
+import { list, getOne, create, update, remove, completeTask, completeHabit, clearHabitToday, failHabitToday, skipHabitToday, checkInTask, startTaskTimer, stopTaskTimer } from './controllers/data';
 import { startFocus, completeFocus, focusHistory, journalList, journalByDate, journalSave, xp, importBackup } from './controllers/misc';
 import { listTransactions, createTransaction, updateTransaction, deleteTransaction, getWeeklyReport, getMonthlyReport } from './controllers/transactions';
 import { getSettings, updateSettings, createGoalMilestone, updateGoalMilestone, deleteGoalMilestone, createBrandMilestone, updateBrandMilestone, deleteBrandMilestone } from './controllers/settings';
@@ -85,6 +85,8 @@ app.post('/api/tasks/:id/checkin', checkInTask);
 app.post('/api/tasks/:id/timer/start', startTaskTimer);
 app.post('/api/tasks/:id/timer/stop', stopTaskTimer);
 app.post('/api/habits/:id/complete', completeHabit);
+app.post('/api/habits/:id/fail', failHabitToday);
+app.post('/api/habits/:id/skip', skipHabitToday);
 app.delete('/api/habits/:id/today', clearHabitToday);
 
 app.get('/api/goals/:id/milestones', getOne);
