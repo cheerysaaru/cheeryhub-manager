@@ -21,31 +21,6 @@ const publicUser = (user: { id: string; name: string; email: string; timezone: s
   id: user.id, name: user.name, email: user.email, timezone: user.timezone, createdAt: user.createdAt,
 });
 
-export async function register(request: Request, response: Response) {
-  const parsed = credentials.safeParse(request.body);
-  if (!parsed.success) {
-    return fail(response, 'Name, username, and password of at least 5 characters are required');
-  }
-  const { email, password, name = 'User', timezone = 'UTC' } = parsed.data;
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return fail(response, 'An account with that username already exists', 409);
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  const user = await prisma.user.create({
-    data: {
-      email, name, timezone, passwordHash,
-      emailVerified: true,
-      emailVerificationToken: null,
-      emailVerificationExpires: null,
-    },
-  });
-  await prisma.userSettings.create({ data: { userId: user.id } });
-  setAuthCookie(response, user.id);
-
-  return ok(response, { user: publicUser(user) }, 201);
-}
-
 export async function login(request: Request, response: Response) {
   const parsed = credentials.pick({ email: true, password: true }).safeParse(request.body);
   if (!parsed.success) return fail(response, 'Username and password are required');

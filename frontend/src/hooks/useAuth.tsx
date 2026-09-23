@@ -6,7 +6,6 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string, timezone: string) => Promise<{ user: User }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -45,15 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user;
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string, timezone: string) => {
-    const result = await api<{ user: User }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, password, timezone }),
-    });
-    setUser(result.user);
-    return result;
-  }, []);
-
   const logout = useCallback(async () => {
     try {
       await api('/auth/logout', { method: 'POST' });
@@ -64,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, refreshUser: fetchUser }),
-    [user, loading, login, register, logout, fetchUser]
+    () => ({ user, loading, login, logout, refreshUser: fetchUser }),
+    [user, loading, login, logout, fetchUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

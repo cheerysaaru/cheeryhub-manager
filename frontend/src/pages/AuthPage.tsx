@@ -4,9 +4,8 @@ import { Input } from '../components/Input';
 import { useAuth } from '../hooks/useAuth';
 
 export default function AuthPage() {
-  const { login, register } = useAuth();
-  const [registering, setRegistering] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const { login } = useAuth();
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,11 +14,7 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      if (registering) {
-        await register(form.name, form.email, form.password, Intl.DateTimeFormat().resolvedOptions().timeZone);
-      } else {
-        await login(form.email, form.password);
-      }
+      await login(form.email, form.password);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in');
     } finally {
@@ -39,15 +34,6 @@ export default function AuthPage() {
         <p className="muted">Your tasks, rituals, focus, and reflection in one durable home.</p>
 
         <form onSubmit={submit} className="auth-form">
-          {registering && (
-            <Input
-              label="Name"
-              placeholder="Your name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-            />
-          )}
           <Input
             label="Username"
             placeholder="user"
@@ -65,15 +51,11 @@ export default function AuthPage() {
             required
           />
           <Button type="submit" size="lg" loading={loading}>
-            {registering ? 'Create account' : 'Enter dashboard'}
+            Enter dashboard
           </Button>
         </form>
 
         {error && <p className="error-message" role="alert">{error}</p>}
-
-        <button className="link-button" onClick={() => { setRegistering(!registering); setError(''); }}>
-          {registering ? 'I already have an account' : 'Create a new account'}
-        </button>
       </section>
     </main>
   );
