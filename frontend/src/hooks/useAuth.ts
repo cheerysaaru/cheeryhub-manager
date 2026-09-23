@@ -35,10 +35,11 @@ export function useAuth() {
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string, timezone: string) => {
-    const result = await api<{ user: User; verificationSent: boolean; verificationUrl?: string }>('/auth/register', {
+    const result = await api<{ user: User }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, timezone }),
     });
+    setUser(result.user);
     return result;
   }, []);
 

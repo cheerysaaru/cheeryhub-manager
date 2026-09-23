@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { requireAuth } from './utils/auth';
-import { register, login, logout, me, verifyEmail, resendVerification } from './controllers/auth';
+import { register, login, logout, me } from './controllers/auth';
 import { analytics, exportData } from './controllers/analytics';
 import { list, getOne, create, update, remove, completeTask, completeHabit, clearHabitToday, checkInTask, startTaskTimer, stopTaskTimer } from './controllers/data';
 import { startFocus, completeFocus, focusHistory, journalList, journalByDate, journalSave, xp, importBackup } from './controllers/misc';
@@ -37,7 +37,6 @@ app.use(cookieParser());
 
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true });
-const verificationLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 10, standardHeaders: true });
 
 app.get('/api/health', async (_request, response) => {
   try {
@@ -52,8 +51,6 @@ app.post('/api/auth/register', authLimiter, register);
 app.post('/api/auth/login', authLimiter, login);
 app.post('/api/auth/logout', logout);
 app.get('/api/auth/me', requireAuth, me);
-app.get('/api/auth/verify-email', verifyEmail);
-app.post('/api/auth/resend-verification', verificationLimiter, resendVerification);
 
 app.use('/api', apiLimiter, requireAuth);
 

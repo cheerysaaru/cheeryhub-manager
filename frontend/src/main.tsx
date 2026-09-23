@@ -8,7 +8,6 @@ import { syncPendingWrites } from './services/api';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/Toast';
 import AuthPage from './pages/AuthPage';
-import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
 import GoalsPage from './pages/GoalsPage';
 import SkillsPage from './pages/SkillsPage';
@@ -57,7 +56,6 @@ function App() {
     return (
       <Routes>
         <Route path="/" element={<AuthPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -65,7 +63,6 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/goals" element={<GoalsPage />} />
