@@ -12,6 +12,7 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifyInfo, setVerifyInfo] = useState<string | null>(null);
+  const [verifyUrl, setVerifyUrl] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,8 +20,9 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (registering) {
-        await register(form.name, form.email, form.password, Intl.DateTimeFormat().resolvedOptions().timeZone);
+        const result = await register(form.name, form.email, form.password, Intl.DateTimeFormat().resolvedOptions().timeZone);
         setVerifyInfo('Check your email for a verification link.');
+        setVerifyUrl(result?.verificationUrl ?? null);
       } else {
         await login(form.email, form.password);
       }
@@ -28,6 +30,7 @@ export default function AuthPage() {
       const msg = err instanceof Error ? err.message : 'Unable to sign in';
       if (msg.toLowerCase().includes('verified')) {
         setVerifyInfo(msg);
+        setVerifyUrl(null);
       } else {
         setError(msg);
       }
@@ -99,7 +102,12 @@ export default function AuthPage() {
         {verifyInfo && (
           <div className="verify-info">
             <p>{verifyInfo}</p>
-            {registering && form.email && (
+            {verifyUrl && (
+              <a href={verifyUrl} className="verify-link">
+                Open verification link
+              </a>
+            )}
+            {registering && form.email && !verifyUrl && (
               <Button variant="ghost" size="sm" onClick={resendVerification}>
                 Resend verification email
               </Button>

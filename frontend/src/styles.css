@@ -146,6 +146,15 @@ button:active { transform: translateY(1px); }
   border-radius: var(--radius-md);
 }
 .verify-info p { margin: 0 0 8px; color: var(--info); font-weight: 600; }
+.verify-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: underline;
+  min-height: 44px;
+  line-height: 44px;
+}
 .verify-card { text-align: center; display: grid; place-items: center; gap: 16px; }
 .verify-card h1 { font-size: 1.75rem; }
 

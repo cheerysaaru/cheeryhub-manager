@@ -32,7 +32,7 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-async function sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
+async function sendVerificationEmail(email: string, name: string, token: string): Promise<string | null> {
   const frontendUrl = (process.env.FRONTEND_URL ?? 'http://localhost:5173').split(',')[0].trim();
   const basePath = process.env.BASE_PATH ?? '';
   const link = `${frontendUrl}${basePath}/verify-email?token=${token}`;
@@ -41,7 +41,7 @@ async function sendVerificationEmail(email: string, name: string, token: string)
 
   if (!apiKey) {
     console.log(`[DEV] Verification link for ${email}: ${link}`);
-    return;
+    return link;
   }
 
   try {
@@ -64,9 +64,12 @@ async function sendVerificationEmail(email: string, name: string, token: string)
     if (!response.ok) {
       const body = await response.text();
       console.error('[Email] Resend API error:', response.status, body);
+      return null;
     }
+    return null;
   } catch (err) {
     console.error('[Email] Failed to send verification email:', err);
+    return null;
   }
 }
 
@@ -102,9 +105,9 @@ export async function register(request: Request, response: Response) {
     },
   });
   await prisma.userSettings.create({ data: { userId: user.id } });
-  await sendVerificationEmail(email, name, verifyToken);
+  const devLink = await sendVerificationEmail(email, name, verifyToken);
 
-  return ok(response, { user: publicUser(user), verificationSent: true }, 201);
+  return ok(response, { user: publicUser(user), verificationSent: true, ...(devLink ? { verificationUrl: devLink } : {}) }, 201);
 }
 
 export async function login(request: Request, response: Response) {
@@ -167,6 +170,7 @@ export async function resendVerification(request: Request, response: Response) {
   }
 
   const user = await prisma.user.findUnique({ where: { email } });
+  let devLink: string | null = null;
   if (user && !user.emailVerified) {
     const verifyToken = crypto.randomBytes(32).toString('hex');
     await prisma.user.update({
@@ -176,10 +180,10 @@ export async function resendVerification(request: Request, response: Response) {
         emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
-    await sendVerificationEmail(user.email, user.name, verifyToken);
+    devLink = await sendVerificationEmail(user.email, user.name, verifyToken);
   }
 
-  return ok(response, { message: 'If an account exists, a verification email has been sent.' });
+  return ok(response, { message: 'If an account exists, a verification email has been sent.', ...(devLink ? { verificationUrl: devLink } : {}) });
 }
 
 export { emailSchema, passwordSchema, nameSchema };
