@@ -80,8 +80,8 @@ export function Layout() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          padding: 16px 24px;
+          gap: 12px;
+          padding: 6px 16px;
           background: var(--bg-card);
           border-bottom: 1px solid var(--border);
           position: sticky;
@@ -91,7 +91,7 @@ export function Layout() {
         .header-left {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
         .mobile-menu-btn {
           display: none;
@@ -105,11 +105,11 @@ export function Layout() {
         .logo {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           text-decoration: none;
           color: var(--text);
           font-weight: 800;
-          font-size: 1.25rem;
+          font-size: 0.95rem;
         }
         .app-nav ul {
           display: flex;
@@ -122,16 +122,21 @@ export function Layout() {
         .nav-link {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 10px 14px;
+          gap: 6px;
+          padding: 5px 10px;
           border: none;
           background: transparent;
           color: var(--text-muted);
           border-radius: 8px;
           font-weight: 600;
-          font-size: 0.95rem;
+          font-size: 12px;
           text-decoration: none;
           min-height: 44px;
+          height: 44px;
+        }
+        .nav-link svg {
+          width: 16px;
+          height: 16px;
         }
         .nav-link:hover {
           background: var(--bg-hover);
@@ -157,11 +162,12 @@ export function Layout() {
         }
         .user-name {
           font-weight: 600;
+          font-size: 12px;
           color: var(--text);
         }
         .app-main {
           flex: 1;
-          padding: 32px 24px;
+          padding: 16px 20px;
           width: min(1200px, 100%);
           margin: 0 auto;
         }
@@ -194,8 +200,17 @@ export function Layout() {
           }
           .nav-link {
             justify-content: flex-start;
-            padding: 14px 16px;
-            font-size: 1.1rem;
+            padding: 10px 12px;
+            font-size: 14px;
+            height: auto;
+            min-height: 44px;
+          }
+          .nav-link svg {
+            width: 18px;
+            height: 18px;
+          }
+          .app-main {
+            padding: 12px;
           }
         }
       `}</style>
