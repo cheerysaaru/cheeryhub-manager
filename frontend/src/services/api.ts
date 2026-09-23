@@ -1,6 +1,16 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
 
 const queueKey = 'productivity-pending-writes';
+const timerPositionKey = 'deadline-timer-position';
+
+export function clearAppStorage(): void {
+  try {
+    localStorage.removeItem(queueKey);
+    localStorage.removeItem(timerPositionKey);
+  } catch {
+    /* Storage may be unavailable. */
+  }
+}
 
 interface PendingWrite {
   path: string;

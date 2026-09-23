@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, syncPendingWrites } from '../services/api';
+import { api, clearAppStorage, syncPendingWrites } from '../services/api';
 import type { User } from '../types';
 
 export function useAuth() {
@@ -18,6 +18,7 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
+    clearAppStorage();
     fetchUser();
     syncPendingWrites();
     window.addEventListener('online', syncPendingWrites);
@@ -42,8 +43,12 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(async () => {
-    await api('/auth/logout', { method: 'POST' });
-    setUser(null);
+    try {
+      await api('/auth/logout', { method: 'POST' });
+    } finally {
+      clearAppStorage();
+      setUser(null);
+    }
   }, []);
 
   return { user, loading, login, register, logout, refreshUser: fetchUser };
