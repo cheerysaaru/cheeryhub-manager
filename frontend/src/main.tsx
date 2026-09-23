@@ -18,6 +18,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import BrandPage from './pages/BrandPage';
 import FinancePage from './pages/FinancePage';
 import SettingsPage from './pages/SettingsPage';
+import AdminPage from './pages/AdminPage';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -72,6 +73,7 @@ function App() {
         <Route path="/brand" element={<BrandPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

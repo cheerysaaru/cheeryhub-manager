@@ -17,8 +17,22 @@ const credentials = z.object({
   timezone: z.string().max(80).optional(),
 });
 
-const publicUser = (user: { id: string; name: string; email: string; timezone: string; createdAt: Date }) => ({
-  id: user.id, name: user.name, email: user.email, timezone: user.timezone, createdAt: user.createdAt,
+const publicUser = (user: {
+  id: string;
+  name: string;
+  email: string;
+  timezone: string;
+  createdAt: Date;
+  role: 'ADMIN' | 'USER';
+  status: 'ACTIVE' | 'DISABLED';
+}) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  timezone: user.timezone,
+  createdAt: user.createdAt,
+  role: user.role,
+  status: user.status,
 });
 
 export async function login(request: Request, response: Response) {
@@ -27,6 +41,9 @@ export async function login(request: Request, response: Response) {
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     return fail(response, 'Invalid username or password', 401);
+  }
+  if (user.status !== 'ACTIVE') {
+    return fail(response, 'Account disabled', 403);
   }
   setAuthCookie(response, user.id);
   return ok(response, { user: publicUser(user) });

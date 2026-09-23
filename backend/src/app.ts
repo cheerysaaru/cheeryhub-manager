@@ -8,8 +8,17 @@ import rateLimit, { type MemoryStore } from 'express-rate-limit';
 import { getFrontendUrl } from './lib/config';
 import { prisma } from './lib/prisma';
 
-import { requireAuth } from './utils/auth';
+import { requireAuth, requireAdmin } from './utils/auth';
 import { login, logout, me } from './controllers/auth';
+import {
+  listUsers,
+  createUser,
+  updateUser,
+  resetPassword,
+  disableUser,
+  enableUser,
+  deleteUser,
+} from './controllers/admin';
 import { analytics, exportData } from './controllers/analytics';
 import {
   list,
@@ -176,6 +185,14 @@ export function createApp(options?: { rateLimit?: boolean }) {
   app.get('/api/auth/me', requireAuth, me);
 
   app.use('/api', apiLimiter, requireAuth);
+
+  app.get('/api/admin/users', requireAdmin, listUsers);
+  app.post('/api/admin/users', requireAdmin, createUser);
+  app.put('/api/admin/users/:id', requireAdmin, updateUser);
+  app.post('/api/admin/users/:id/reset-password', requireAdmin, resetPassword);
+  app.post('/api/admin/users/:id/disable', requireAdmin, disableUser);
+  app.post('/api/admin/users/:id/enable', requireAdmin, enableUser);
+  app.delete('/api/admin/users/:id', requireAdmin, deleteUser);
 
   for (const resource of [
     'tasks',

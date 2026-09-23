@@ -6,6 +6,7 @@ import {
   getCookieSecure,
   getJwtSecret,
 } from '../lib/config';
+import { prisma } from '../lib/prisma';
 
 export const setAuthCookie = (response: Response, userId: string) =>
   response.cookie(
@@ -20,9 +21,12 @@ export const setAuthCookie = (response: Response, userId: string) =>
     }
   );
 
-export type AuthRequest = Request & { userId?: string };
+export type AuthRequest = Request & {
+  userId?: string;
+  userRole?: 'ADMIN' | 'USER';
+};
 
-export function requireAuth(
+export async function requireAuth(
   request: AuthRequest,
   response: Response,
   next: NextFunction
@@ -33,13 +37,31 @@ export function requireAuth(
   if (!token)
     return response.status(401).json({ error: 'Authentication required' });
   try {
-    request.userId = (
-      jwt.verify(token, getJwtSecret()) as { userId: string }
-    ).userId;
+    const payload = jwt.verify(token, getJwtSecret()) as { userId: string };
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true, status: true },
+    });
+    if (!user)
+      return response.status(401).json({ error: 'Invalid or expired session' });
+    if (user.status !== 'ACTIVE')
+      return response.status(403).json({ error: 'Account disabled' });
+    request.userId = user.id;
+    request.userRole = user.role;
     next();
   } catch {
     return response.status(401).json({ error: 'Invalid or expired session' });
   }
+}
+
+export function requireAdmin(
+  request: AuthRequest,
+  response: Response,
+  next: NextFunction
+) {
+  if (request.userRole !== 'ADMIN')
+    return response.status(403).json({ error: 'Admin access required' });
+  next();
 }
 
 export function verifyToken(token: string): { userId: string } | null {

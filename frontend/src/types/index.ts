@@ -4,6 +4,20 @@ export interface User {
   email: string;
   timezone: string;
   createdAt: string;
+  role: 'ADMIN' | 'USER';
+  status: 'ACTIVE' | 'DISABLED';
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'USER';
+  status: 'ACTIVE' | 'DISABLED';
+  timezone: string;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Task {

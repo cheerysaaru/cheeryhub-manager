@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Layout as LayoutIcon, Home, Target, Trophy, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X } from 'lucide-react';
+import { Layout as LayoutIcon, Home, Target, Trophy, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const navItems = [
@@ -16,10 +16,14 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
+const adminItems = [{ path: '/admin', label: 'Admin', icon: Shield }];
+
 export function Layout() {
   const { user, loading, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const visibleNavItems =
+    user?.role === 'ADMIN' ? [...navItems, ...adminItems] : navItems;
 
   const handleLogout = () => {
     logout();
@@ -43,7 +47,7 @@ export function Layout() {
         </div>
         <nav className={`app-nav ${mobileMenuOpen ? 'open' : ''}`}>
           <ul>
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <li key={item.path}>
                 <Link
                   to={item.path}
