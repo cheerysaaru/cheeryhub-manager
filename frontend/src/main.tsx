@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './styles.css';
-import { useAuth } from './hooks/useAuth';
+import { useAuth, AuthProvider } from './hooks/useAuth';
 import { useSocket } from './hooks/useSocket';
 import { syncPendingWrites } from './services/api';
 import { Layout } from './components/Layout';
@@ -84,7 +84,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ToastProvider>
       <BrowserRouter basename={BASE_PATH}>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </BrowserRouter>
     </ToastProvider>
   </StrictMode>
