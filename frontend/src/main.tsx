@@ -22,7 +22,7 @@ import AdminPage from './pages/AdminPage';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js');
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
   });
 }
 
@@ -83,7 +83,7 @@ function App() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ToastProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <AuthProvider>
           <App />
         </AuthProvider>

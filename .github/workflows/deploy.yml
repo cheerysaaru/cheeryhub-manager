@@ -35,7 +35,7 @@ jobs:
       - name: Build frontend
         run: npm run build --workspace frontend
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_BASE: /personal-productivity-manager/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
