@@ -52,6 +52,8 @@ npm run build
 
 ## Production
 
-- Backend: set `DATABASE_URL` (Postgres), `JWT_SECRET`, `NODE_ENV=production`, `FRONTEND_URL`, `COOKIE_SAME_SITE=none`, `COOKIE_SECURE=true`, optional `COOKIE_DOMAIN`, `EMAIL_API_KEY`, `EMAIL_FROM`, `BASE_PATH`. Run `npx prisma migrate deploy` on deploy. Docker image: `backend/Dockerfile`.
-- Frontend: build with `VITE_API_URL` pointing at the API; deploy `frontend/dist` (Vercel or any static host). Vite `base` and router `basename` are `/personal-productivity-manager/`.
-- Backups (Postgres): `pg_dump --format=custom --file=productivity-$(date +%F).dump "$DATABASE_URL"` on a schedule; test restores regularly.
+- Architecture: **GitHub Pages (frontend) → CyberPanel backend (`https://api.cheeryhub.space`) → SQLite (`prisma/dev.db`)**.
+- Backend on CyberPanel: upload `package.json`, `package-lock.json`, `backend/`, `prisma/` (not `frontend/`, not `node_modules/`). Then run `npm ci`, `npx prisma generate --schema=prisma/schema.prisma`, `npm run build --workspace backend`, `npx prisma migrate deploy --schema=prisma/schema.prisma` (skip if uploading an existing `prisma/dev.db`), and start with `npm start --workspace backend` (listens on `0.0.0.0:4000`).
+- Backend env (server `.env`): `DATABASE_URL="file:./dev.db"`, `JWT_SECRET`, `NODE_ENV=production`, `FRONTEND_URL="https://cheerysaaru.github.io"`, `COOKIE_SAME_SITE=none`, `COOKIE_SECURE=true`, optional `PORT` (default 4000), `COOKIE_DOMAIN`.
+- Frontend: `frontend/.env.production` sets `VITE_API_URL=https://api.cheeryhub.space/api`; GitHub Actions (`.github/workflows/deploy.yml`) builds with `VITE_BASE=/cheeryhub-manager/` and deploys `frontend/dist` to GitHub Pages on push to `main`.
+- Backups (SQLite): copy `prisma/dev.db` on a schedule; test restores regularly.
