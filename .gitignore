@@ -6,6 +6,7 @@ coverage/
 dist/
 build/
 *.db
+!prisma/dev.db
 *.db.backup-*
 test*.json
 test*.ts

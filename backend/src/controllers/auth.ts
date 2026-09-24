@@ -38,7 +38,10 @@ const publicUser = (user: {
 export async function login(request: Request, response: Response) {
   const parsed = credentials.pick({ email: true, password: true }).safeParse(request.body);
   if (!parsed.success) return fail(response, 'Username and password are required');
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const identifier = parsed.data.email;
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ email: identifier }, { name: identifier }] },
+  });
   if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     return fail(response, 'Invalid username or password', 401);
   }
