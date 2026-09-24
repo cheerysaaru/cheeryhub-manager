@@ -16,6 +16,7 @@ export interface AdminUser {
   status: 'ACTIVE' | 'DISABLED';
   timezone: string;
   emailVerified: boolean;
+  lastLoginAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -252,6 +252,7 @@ export default function AdminPage() {
                     <th>Role</th>
                     <th>Status</th>
                     <th>Joined</th>
+                    <th>Last login</th>
                     <th aria-label="Actions" />
                   </tr>
                 </thead>
@@ -285,6 +286,11 @@ export default function AdminPage() {
                       </td>
                       <td className="admin-muted">
                         {new Date(target.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="admin-muted">
+                        {target.lastLoginAt
+                          ? new Date(target.lastLoginAt).toLocaleString()
+                          : 'Never'}
                       </td>
                       <td>
                         <div className="admin-actions">
@@ -337,7 +343,7 @@ export default function AdminPage() {
                   ))}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="admin-muted">
+                      <td colSpan={6} className="admin-muted">
                         No users found.
                       </td>
                     </tr>

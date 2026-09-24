@@ -48,6 +48,10 @@ export async function login(request: Request, response: Response) {
   if (user.status !== 'ACTIVE') {
     return fail(response, 'Account disabled', 403);
   }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
   setAuthCookie(response, user.id);
   return ok(response, { user: publicUser(user) });
 }

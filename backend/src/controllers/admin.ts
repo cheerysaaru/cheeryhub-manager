@@ -13,6 +13,7 @@ const safeUserSelect = {
   status: true,
   timezone: true,
   emailVerified: true,
+  lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
 } as const;
