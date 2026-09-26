@@ -17,6 +17,13 @@ const credentials = z.object({
   timezone: z.string().max(80).optional(),
 });
 
+const registerSchema = z.object({
+  name: nameSchema,
+  email: emailSchema,
+  password: passwordSchema,
+  timezone: z.string().max(80).optional(),
+});
+
 const publicUser = (user: {
   id: string;
   name: string;
@@ -34,6 +41,33 @@ const publicUser = (user: {
   role: user.role,
   status: user.status,
 });
+
+export async function register(request: Request, response: Response) {
+  const parsed = registerSchema.safeParse(request.body);
+  if (!parsed.success) return fail(response, 'Name, email and password are required');
+
+  const existing = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+    select: { id: true },
+  });
+  if (existing) return fail(response, 'Email already in use', 409);
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  const user = await prisma.user.create({
+    data: {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      passwordHash,
+      role: 'USER',
+      status: 'ACTIVE',
+      ...(parsed.data.timezone ? { timezone: parsed.data.timezone } : {}),
+      settings: { create: {} },
+    },
+  });
+
+  setAuthCookie(response, user.id);
+  return ok(response, { user: publicUser(user) }, 201);
+}
 
 export async function login(request: Request, response: Response) {
   const parsed = credentials.pick({ email: true, password: true }).safeParse(request.body);

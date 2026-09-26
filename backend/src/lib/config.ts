@@ -8,7 +8,10 @@ export type RuntimeConfig = {
 let config: RuntimeConfig = {};
 
 export function configureRuntime(next: RuntimeConfig) {
-  config = { ...config, ...next };
+  const defined = Object.fromEntries(
+    Object.entries(next).filter(([, value]) => value !== undefined)
+  ) as RuntimeConfig;
+  config = { ...config, ...defined };
 }
 
 export function getRuntimeConfig(): RuntimeConfig {

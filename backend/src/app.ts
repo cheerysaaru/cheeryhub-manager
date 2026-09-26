@@ -9,7 +9,7 @@ import { getFrontendUrl } from './lib/config';
 import { prisma } from './lib/prisma';
 
 import { requireAuth, requireAdmin } from './utils/auth';
-import { login, logout, me } from './controllers/auth';
+import { login, logout, me, register } from './controllers/auth';
 import {
   listUsers,
   createUser,
@@ -180,6 +180,7 @@ export function createApp(options?: { rateLimit?: boolean }) {
     }
   });
 
+  app.post('/api/auth/register', authLimiter, register);
   app.post('/api/auth/login', authLimiter, login);
   app.post('/api/auth/logout', logout);
   app.get('/api/auth/me', requireAuth, me);
