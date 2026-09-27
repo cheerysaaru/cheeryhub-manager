@@ -24,6 +24,9 @@ jobs:
         run: npm install
         working-directory: backend
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy
         working-directory: backend
