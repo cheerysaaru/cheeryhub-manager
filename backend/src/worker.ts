@@ -6,8 +6,8 @@ import { configurePrisma } from './lib/prisma';
 import { configureRuntime } from './lib/config';
 
 configureRuntime({
-  jwtSecret: env.JWT_SECRET,
-  frontendUrl: env.FRONTEND_URL,
+  jwtSecret: env.JWT_SECRET ?? process.env.JWT_SECRET,
+  frontendUrl: env.FRONTEND_URL ?? process.env.FRONTEND_URL,
   cookieSecure: true,
   cookieSameSite: 'none',
 });
