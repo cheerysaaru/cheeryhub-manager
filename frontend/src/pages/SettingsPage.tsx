@@ -7,6 +7,7 @@ import { Input } from '../components/Input';
 import { Switch } from '../components/Switch';
 import { api } from '../services/api';
 import { downloadJson } from '../utils/misc';
+import { todayISO } from '../utils/date';
 import type { UserSettings } from '../types';
 
 export default function SettingsPage() {
@@ -47,7 +48,7 @@ export default function SettingsPage() {
   async function handleExport() {
     try {
       const data = await api('/backup/export');
-      downloadJson(`productivity-backup-${new Date().toISOString().slice(0, 10)}.json`, data);
+      downloadJson(`productivity-backup-${todayISO()}.json`, data);
     } catch {
       alert('Export failed. Please try again.');
     }

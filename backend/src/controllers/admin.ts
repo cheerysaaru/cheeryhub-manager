@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
+import { passwordError, strongPasswordSchema } from '../utils/validation';
 
 const safeUserSelect = {
   id: true,
@@ -20,7 +21,7 @@ const safeUserSelect = {
 
 const nameSchema = z.string().trim().min(1).max(100);
 const emailSchema = z.string().trim().min(1).max(254);
-const passwordSchema = z.string().min(5).max(200);
+const passwordSchema = strongPasswordSchema;
 const roleSchema = z.enum(['ADMIN', 'USER']);
 const statusSchema = z.enum(['ACTIVE', 'DISABLED']);
 
@@ -47,16 +48,35 @@ const updateSchema = z
 const passwordSchemaBody = z.object({ password: passwordSchema });
 
 export async function listUsers(_request: AuthRequest, response: Response) {
-  const users = await prisma.user.findMany({
-    select: safeUserSelect,
-    orderBy: { createdAt: 'desc' },
-  });
-  return ok(response, { users });
+  try {
+    const users = await prisma.user.findMany({
+      select: safeUserSelect,
+      orderBy: { createdAt: 'desc' },
+    });
+    return ok(response, { users });
+  } catch (error) {
+    console.error('[admin:listUsers] failed:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    return fail(
+      response,
+      process.env.NODE_ENV === 'production'
+        ? 'Failed to load users'
+        : `Failed to load users: ${message}`,
+      500
+    );
+  }
 }
 
 export async function createUser(request: AuthRequest, response: Response) {
   const parsed = createSchema.safeParse(request.body);
-  if (!parsed.success) return fail(response, 'Invalid user data');
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    if (issue?.path[0] === 'password') {
+      const message = passwordError(String(request.body?.password ?? ''));
+      return fail(response, message || 'Invalid password');
+    }
+    return fail(response, issue?.message ?? 'Invalid user data');
+  }
 
   const existing = await prisma.user.findUnique({
     where: { email: parsed.data.email },
@@ -64,20 +84,31 @@ export async function createUser(request: AuthRequest, response: Response) {
   });
   if (existing) return fail(response, 'Email already in use', 409);
 
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const user = await prisma.user.create({
-    data: {
-      name: parsed.data.name,
-      email: parsed.data.email,
-      passwordHash,
-      role: parsed.data.role ?? 'USER',
-      status: 'ACTIVE',
-      ...(parsed.data.timezone ? { timezone: parsed.data.timezone } : {}),
-      settings: { create: {} },
-    },
-    select: safeUserSelect,
+  const existingName = await prisma.user.findFirst({
+    where: { name: parsed.data.name },
+    select: { id: true },
   });
-  return ok(response, { user }, 201);
+  if (existingName) return fail(response, 'Username already taken', 409);
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  try {
+    const user = await prisma.user.create({
+      data: {
+        name: parsed.data.name,
+        email: parsed.data.email,
+        passwordHash,
+        role: parsed.data.role ?? 'USER',
+        status: 'ACTIVE',
+        ...(parsed.data.timezone ? { timezone: parsed.data.timezone } : {}),
+        settings: { create: {} },
+      },
+      select: safeUserSelect,
+    });
+    return ok(response, { user }, 201);
+  } catch (error) {
+    console.error('[admin:createUser] failed:', error);
+    return fail(response, 'Failed to create user', 500);
+  }
 }
 
 export async function updateUser(request: AuthRequest, response: Response) {
@@ -127,9 +158,10 @@ export async function updateUser(request: AuthRequest, response: Response) {
 export async function resetPassword(request: AuthRequest, response: Response) {
   const id = String(request.params.id);
   const parsed = passwordSchemaBody.safeParse(request.body);
-  if (!parsed.success)
-    return fail(response, 'Password must be at least 5 characters');
-
+  if (!parsed.success) {
+    const message = passwordError(String(request.body?.password ?? ''));
+    return fail(response, message || 'Invalid password');
+  }
   const target = await prisma.user.findUnique({
     where: { id },
     select: { id: true },

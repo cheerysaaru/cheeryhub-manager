@@ -9,7 +9,13 @@ import { getFrontendUrl } from './lib/config';
 import { prisma } from './lib/prisma';
 
 import { requireAuth, requireAdmin } from './utils/auth';
-import { login, logout, me, register } from './controllers/auth';
+import {
+  login,
+  logout,
+  me,
+  register,
+  resetPassword as resetOwnPassword,
+} from './controllers/auth';
 import {
   listUsers,
   createUser,
@@ -102,12 +108,17 @@ class TimerFreeStore {
   }
 }
 
-function createLimit(windowMs: number, limit: number) {
+function createLimit(
+  windowMs: number,
+  limit: number,
+  options?: { skipSuccessfulRequests?: boolean }
+) {
   return rateLimit({
     windowMs,
     limit,
     standardHeaders: true,
     store: new TimerFreeStore(windowMs) as unknown as MemoryStore,
+    ...options,
   });
 }
 
@@ -171,6 +182,21 @@ export function createApp(options?: { rateLimit?: boolean }) {
     ? createLimit(15 * 60 * 1000, 30)
     : ((_request: Request, _response: Response, next: NextFunction) => next());
 
+  // Max 5 login attempts per IP per 15 minutes (only failed attempts count).
+  const loginLimiter = enableRateLimit
+    ? createLimit(15 * 60 * 1000, 5, { skipSuccessfulRequests: true })
+    : ((_request: Request, _response: Response, next: NextFunction) => next());
+
+  // Max 3 register attempts per IP per hour.
+  const registerLimiter = enableRateLimit
+    ? createLimit(60 * 60 * 1000, 3)
+    : ((_request: Request, _response: Response, next: NextFunction) => next());
+
+  // Forgot-password resets: max 3 attempts per IP per hour.
+  const resetPasswordLimiter = enableRateLimit
+    ? createLimit(60 * 60 * 1000, 3)
+    : ((_request: Request, _response: Response, next: NextFunction) => next());
+
   app.get('/api/health', async (_request, response) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
@@ -180,9 +206,10 @@ export function createApp(options?: { rateLimit?: boolean }) {
     }
   });
 
-  app.post('/api/auth/register', authLimiter, register);
-  app.post('/api/auth/login', authLimiter, login);
-  app.post('/api/auth/logout', logout);
+  app.post('/api/auth/register', registerLimiter, register);
+  app.post('/api/auth/login', loginLimiter, login);
+  app.post('/api/auth/reset-password', resetPasswordLimiter, resetOwnPassword);
+  app.post('/api/auth/logout', authLimiter, logout);
   app.get('/api/auth/me', requireAuth, me);
 
   app.use('/api', apiLimiter, requireAuth);
@@ -289,6 +316,12 @@ export function createApp(options?: { rateLimit?: boolean }) {
         return response
           .status(403)
           .json({ error: 'CORS: Origin not allowed' });
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        return response
+          .status(500)
+          .json({ error: error.message || 'Internal server error' });
       }
 
       response.status(500).json({ error: 'Internal server error' });

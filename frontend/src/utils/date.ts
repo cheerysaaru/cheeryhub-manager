@@ -1,3 +1,17 @@
+export function getLocalDateString(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function parseLocalDate(dateStr: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr.trim());
+  if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 0, 0, 0, 0);
+  const fallback = new Date(dateStr);
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate(), 0, 0, 0, 0);
+}
+
 export function formatDate(date = new Date()): string {
   return new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(date);
 }
@@ -8,11 +22,28 @@ export function greeting(name: string): string {
 }
 
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateString();
+}
+
+export function shiftDate(dateStr: string, days: number): string {
+  const date = parseLocalDate(dateStr);
+  date.setDate(date.getDate() + days);
+  return getLocalDateString(date);
+}
+
+export function startOfWeek(dateStr: string): string {
+  const date = parseLocalDate(dateStr);
+  const day = date.getDay();
+  date.setDate(date.getDate() - day);
+  return getLocalDateString(date);
 }
 
 export function formatShortDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return parseLocalDate(dateStr).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 export function formatTime(timeStr?: string): string {
@@ -24,7 +55,7 @@ export function formatTime(timeStr?: string): string {
 }
 
 export function daysUntil(dateStr: string): number {
-  const target = new Date(dateStr);
+  const target = parseLocalDate(dateStr);
   const now = new Date();
   target.setHours(0, 0, 0, 0);
   now.setHours(0, 0, 0, 0);

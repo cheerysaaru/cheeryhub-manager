@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { todayISO } from '../utils/date';
 import type { Habit } from '../types';
 import { useSocket } from './useSocket';
 
@@ -11,7 +12,7 @@ function normalizeHabit(habit: Partial<Habit> & { id: string }): Habit {
     skippedToday: habit.skippedToday ?? false,
     completedDays: habit.completedDays ?? 0,
     weekCompletedDays: habit.weekCompletedDays ?? 0,
-    weekStart: habit.weekStart ?? new Date().toISOString().slice(0, 10),
+    weekStart: habit.weekStart ?? todayISO(),
     weekDates: habit.weekDates ?? [],
     completedDates: habit.completedDates ?? [],
     failedDates: habit.failedDates ?? [],
@@ -42,7 +43,7 @@ function mergeHabit(current: Habit | undefined, incoming: Partial<Habit> & { id:
 }
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayISO();
 }
 
 export function useHabits(userId: string | null) {

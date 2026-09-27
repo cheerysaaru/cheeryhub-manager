@@ -9,7 +9,7 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import type { Transaction, WeeklyReport, MonthlyReport } from '../types';
-import { formatShortDate } from '../utils/date';
+import { formatShortDate, todayISO } from '../utils/date';
 import { downloadJson } from '../utils/misc';
 
 const INCOME_CATEGORIES = ['SALARY', 'FREELANCE', 'INVESTMENTS', 'BUSINESS', 'GIFTS', 'REFUNDS', 'OTHER_INCOME'];
@@ -35,7 +35,7 @@ function TransactionForm({ onSubmit, onCancel, initial }: {
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>(initial?.type ?? 'EXPENSE');
   const [category, setCategory] = useState(initial?.category ?? 'FOOD');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
-  const [date, setDate] = useState(initial?.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(initial?.date?.slice(0, 10) ?? todayISO());
   const [description, setDescription] = useState(initial?.description ?? '');
 
   const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -160,7 +160,7 @@ export default function FinancePage() {
   }
 
   function handleExport() {
-    downloadJson(`finance-${new Date().toISOString().slice(0, 10)}.json`, transactions);
+    downloadJson(`finance-${todayISO()}.json`, transactions);
   }
 
   const filtered = filterType === 'ALL' ? transactions : transactions.filter((t) => t.type === filterType);

@@ -22,15 +22,24 @@ const settingsSchema = z.object({
   defaultFocusDuration: z.number().int().min(5).max(180).optional(),
   defaultBreakDuration: z.number().int().min(1).max(60).optional(),
   notificationsEnabled: z.boolean().optional(),
+  timezone: z.string().max(80).optional(),
 });
 
 export async function updateSettings(request: AuthRequest, response: Response) {
   const parsed = settingsSchema.safeParse(request.body);
   if (!parsed.success) return fail(response, 'Invalid settings data');
+  const { timezone, ...settingsData } = parsed.data;
+  if (timezone) {
+    await prisma.user.update({
+      where: { id: request.userId! },
+      data: { timezone },
+      select: { id: true },
+    });
+  }
   const settings = await prisma.userSettings.upsert({
     where: { userId: request.userId! },
-    update: parsed.data,
-    create: { userId: request.userId!, ...parsed.data },
+    update: settingsData,
+    create: { userId: request.userId!, ...settingsData },
   });
   return ok(response, settings);
 }

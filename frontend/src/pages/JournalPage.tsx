@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Textarea } from '../components/Textarea';
 import { Badge } from '../components/Badge';
-import { todayISO } from '../utils/date';
+import { parseLocalDate, shiftDate as shiftLocalDate, todayISO } from '../utils/date';
 
 const fields = [
   { key: 'accomplishments', label: 'What did you accomplish today?' },
@@ -75,9 +75,7 @@ export default function JournalPage() {
   }
 
   function shiftDate(delta: number) {
-    const d = new Date(`${selectedDate}T00:00:00`);
-    d.setDate(d.getDate() + delta);
-    const next = d.toISOString().slice(0, 10);
+    const next = shiftLocalDate(selectedDate, delta);
     if (next <= todayISO()) setSelectedDate(next);
   }
 
@@ -171,7 +169,7 @@ export default function JournalPage() {
             {entries.map((entry) => (
               <li key={entry.id}>
                 <button className="journal-history-item" onClick={() => setSelectedDate(entry.date.slice(0, 10))}>
-                  <strong>{new Date(entry.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</strong>
+                  <strong>{parseLocalDate(entry.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</strong>
                   <span className="journal-preview">{entry.accomplishments?.slice(0, 80) || entry.gratitude?.slice(0, 80) || 'No content'}</span>
                   {entry.passionScore && <Badge variant="info">{entry.passionScore}/10</Badge>}
                 </button>

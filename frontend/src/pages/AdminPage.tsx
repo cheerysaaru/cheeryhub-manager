@@ -7,6 +7,7 @@ import { Input } from '../components/Input';
 import { Badge } from '../components/Badge';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { api } from '../services/api';
+import { PASSWORD_RULES, passwordProblem } from '../utils/validation';
 import type { AdminUser } from '../types';
 
 type Mode = 'create' | 'edit' | 'password' | null;
@@ -90,9 +91,12 @@ export default function AdminPage() {
 
   async function submitForm(e: React.FormEvent) {
     e.preventDefault();
-    if (mode === 'password' && form.password.length < 5) {
-      setError('Password must be at least 5 characters');
-      return;
+    if (mode === 'create' || mode === 'password') {
+      const problem = passwordProblem(form.password);
+      if (problem) {
+        setError(problem);
+        return;
+      }
     }
     setSaving(true);
     setError('');
@@ -397,8 +401,9 @@ export default function AdminPage() {
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
-              minLength={5}
+              minLength={8}
               autoComplete="new-password"
+              helperText={PASSWORD_RULES}
             />
           )}
           {mode === 'password' && (
@@ -412,8 +417,9 @@ export default function AdminPage() {
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required
-                minLength={5}
+                minLength={8}
                 autoComplete="new-password"
+                helperText={PASSWORD_RULES}
               />
             </>
           )}

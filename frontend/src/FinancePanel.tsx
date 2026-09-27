@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, DollarSign, ArrowUpRight, ArrowDownRight, Calendar, ChevronLeft, ChevronRight, Download, BarChart2, PieChart } from 'lucide-react';
+import { parseLocalDate, todayISO } from './utils/date';
 
 type Api = <T>(path: string, init?: RequestInit) => Promise<T>;
 
@@ -44,7 +45,7 @@ function formatCurrency(amount: number) {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return parseLocalDate(dateStr).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function getCategoryLabel(category: string) {
@@ -74,7 +75,7 @@ function TransactionForm({ onSubmit, onCancel, initialType, initialCategory, ini
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>(initialType || 'EXPENSE');
   const [category, setCategory] = useState(initialCategory || (type === 'INCOME' ? 'SALARY' : 'FOOD'));
   const [amount, setAmount] = useState<string>(initialAmount ? String(initialAmount) : '');
-  const [date, setDate] = useState(initialDate || new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(initialDate || todayISO());
   const [description, setDescription] = useState(initialDescription || '');
 
   useEffect(() => {

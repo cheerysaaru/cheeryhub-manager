@@ -11,7 +11,7 @@ import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import { Switch } from '../components/Switch';
 import type { Reminder } from '../types';
-import { todayISO, daysUntil } from '../utils/date';
+import { todayISO, daysUntil, parseLocalDate } from '../utils/date';
 
 export default function RemindersPage() {
   const { user } = useAuth();
@@ -108,7 +108,7 @@ export default function RemindersPage() {
                             {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`}
                           </Badge>
                           <span className="reminder-when">
-                            {new Date(reminder.reminderDate).toLocaleDateString()} {reminder.reminderTime && `at ${reminder.reminderTime}`}
+                            {parseLocalDate(reminder.reminderDate).toLocaleDateString()} {reminder.reminderTime && `at ${reminder.reminderTime}`}
                           </span>
                           {reminder.repeatType !== 'NONE' && <Badge variant="info">{reminder.repeatType.toLowerCase()}</Badge>}
                         </div>
@@ -137,7 +137,7 @@ export default function RemindersPage() {
                         <strong>{reminder.title}</strong>
                         <div className="reminder-badges">
                           <Badge variant="outline">past</Badge>
-                          <span className="reminder-when">{new Date(reminder.reminderDate).toLocaleDateString()}</span>
+                          <span className="reminder-when">{parseLocalDate(reminder.reminderDate).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <div className="reminder-actions">

@@ -19,11 +19,11 @@ import { Avatar } from '../components/Avatar';
 import { useToast } from '../components/Toast';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { ConfirmDialog } from '../components/Modal';
-import { formatDate, greeting } from '../utils/date';
+import { formatDate, greeting, parseLocalDate, todayISO } from '../utils/date';
 import type { Task, Habit } from '../types';
 
 function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string) => void }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   return (
     <div className="week-panel">
       <div className="week-heading">
@@ -36,8 +36,8 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
           const failed = habit.failedDates.includes(date);
           const skipped = habit.skippedDates.includes(date);
           const future = date > today;
-          const label = new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short' });
-          const number = new Date(`${date}T00:00:00Z`).getUTCDate();
+          const label = parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short' });
+          const number = parseLocalDate(date).getDate();
           return (
             <button
               key={date}
@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const { xp } = useAnalytics(user?.id ?? null);
   const { projects: brandProjects } = useBrand(user?.id ?? null);
 
-  const [taskForm, setTaskForm] = useState({ title: '', date: new Date().toISOString().slice(0, 10) });
+  const [taskForm, setTaskForm] = useState({ title: '', date: todayISO() });
   const [habitForm, setHabitForm] = useState({ name: '' });
   const taskMenu = useContextMenu();
   const habitMenu = useContextMenu();
@@ -92,7 +92,7 @@ export default function DashboardPage() {
     if (!title) return;
     try {
       await createTask({ title, scheduledDate: taskForm.date || undefined, priority: 'MEDIUM' });
-      setTaskForm({ title: '', date: new Date().toISOString().slice(0, 10) });
+      setTaskForm({ title: '', date: todayISO() });
       toast({ type: 'success', title: 'Task added', message: title });
     } catch (error) {
       toast({ type: 'error', title: 'Could not add task', message: error instanceof Error ? error.message : 'Please try again.' });

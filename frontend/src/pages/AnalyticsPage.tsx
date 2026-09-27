@@ -10,6 +10,7 @@ import { Card, CardTitle, CardDescription } from '../components/Card';
 import { Progress } from '../components/Progress';
 import { Badge } from '../components/Badge';
 import { downloadJson } from '../utils/misc';
+import { parseLocalDate, todayISO } from '../utils/date';
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
@@ -32,7 +33,7 @@ export default function AnalyticsPage() {
   async function handleExport() {
     try {
       const data = await exportBackup();
-      downloadJson(`productivity-backup-${new Date().toISOString().slice(0, 10)}.json`, data);
+      downloadJson(`productivity-backup-${todayISO()}.json`, data);
     } catch {
       alert('Export failed. Please try again.');
     }
@@ -128,11 +129,11 @@ export default function AnalyticsPage() {
         ) : (
           <div className="bar-chart" role="img" aria-label="Productivity over the last days">
             {last14.map((day) => (
-              <div key={day.id} className="bar-col" title={`${new Date(day.date).toLocaleDateString()}: ${day.productivityPercentage}%`}>
+              <div key={day.id} className="bar-col" title={`${parseLocalDate(day.date).toLocaleDateString()}: ${day.productivityPercentage}%`}>
                 <div className="bar-track">
                   <div className="bar-fill" style={{ height: `${day.productivityPercentage}%` }} />
                 </div>
-                <span className="bar-label">{new Date(day.date).getDate()}</span>
+                <span className="bar-label">{parseLocalDate(day.date).getDate()}</span>
               </div>
             ))}
           </div>
