@@ -11,6 +11,8 @@ build/
 test*.json
 test*.ts
 *.log
+*.err
+*.tsbuildinfo
 .dev.vars
 .wrangler/
 
