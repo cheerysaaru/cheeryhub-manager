@@ -4,16 +4,15 @@
   "private": true,
   "description": "Personal productivity dashboard",
   "workspaces": [
-    "frontend",
     "backend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
-    "build": "npm run build --workspace backend && npm run build --workspace frontend",
+    "dev": "npm run dev --workspace backend",
+    "build": "npm run build --workspace backend",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "test": "npm run typecheck --workspace backend && npm run typecheck --workspace frontend"
+    "test": "npm run typecheck --workspace backend"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260923.1",
