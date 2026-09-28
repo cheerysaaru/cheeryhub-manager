@@ -19,7 +19,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Noto+Sans+Tamil:wght@400;500&family=Leckerli+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Leckerli+One&display=swap" rel="stylesheet">
 
 <style>
 /* ============================================================
@@ -75,7 +75,7 @@ body{
   font-size:15px;line-height:1.6;color:var(--text);background:var(--bg);
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
-h1,h2,h3,h4{margin:0 0 .5rem;line-height:1.25;font-weight:500;letter-spacing:-.01em}
+h1,h2,h3,h4{margin:0 0 .5rem;line-height:1.25;font-weight:700;letter-spacing:-.01em}
 h1{font-size:1.7rem}h2{font-size:1.35rem}h3{font-size:1.05rem}
 p{margin:0 0 .75rem}
 a{color:var(--primary-light)}
@@ -109,10 +109,10 @@ html{scrollbar-width:thin}
   display:grid;place-items:center;font-family:'Leckerli One',cursive;font-size:17px;
   box-shadow:0 4px 12px rgba(0,0,0,.3);flex:none;
 }
-.brand-name{font-weight:500;font-size:.98rem;letter-spacing:-.02em;line-height:1.2}
+.brand-name{font-weight:700;font-size:.98rem;letter-spacing:-.02em;line-height:1.2}
 .brand-name span{display:block;font-size:.68rem;font-weight:500;color:rgba(238,243,234,.55);letter-spacing:.06em;text-transform:uppercase}
 .nav{flex:1;overflow-y:auto;padding:6px 12px 20px;scroll-behavior:smooth}
-.nav-label{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(238,243,234,.4);padding:14px 8px 6px;font-weight:500}
+.nav-label{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(238,243,234,.4);padding:14px 8px 6px;font-weight:700}
 .nav-item{
   display:flex;align-items:center;gap:11px;width:100%;text-align:left;
   padding:9px 11px;margin-bottom:2px;border:0;border-radius:8px;cursor:pointer;
@@ -120,10 +120,9 @@ html{scrollbar-width:thin}
   transition:background .16s ease,color .16s ease,transform .16s ease;position:relative;
 }
 .nav-item:hover{background:rgba(255,255,255,.08);color:#fff;transform:translateX(2px)}
-.nav-item.active{background:rgba(106,171,58,.22);color:#fff;font-weight:500}
+.nav-item.active{background:rgba(106,171,58,.22);color:#fff;font-weight:600}
 .nav-item.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
-.nav-item .ico{width:19px;height:19px;flex:none;display:grid;place-items:center;line-height:1}
-.nav-item .ico svg{width:17px;height:17px;display:block}
+.nav-item .ico{width:19px;height:19px;flex:none;display:grid;place-items:center;font-size:1rem;line-height:1}
 .sidebar-foot{padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:.72rem;color:rgba(238,243,234,.5)}
 .drawer-close{display:none}
 
@@ -136,7 +135,7 @@ html{scrollbar-width:thin}
 }
 @supports not (background:color-mix(in srgb,red 50%,blue)){.topbar{background:var(--card)}}
 .topbar h2{font-size:1.02rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topbar .crumb{font-size:.78rem;color:var(--text-muted);letter-spacing:.05em;font-weight:500}
+.topbar .crumb{font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
 .topbar-spacer{flex:1}
 .hamburger{
   display:none;width:40px;height:40px;border-radius:8px;border:1px solid var(--border);
@@ -153,7 +152,7 @@ html{scrollbar-width:thin}
 .avatar-wrap{position:relative}
 .avatar{
   width:40px;height:40px;border-radius:50%;border:2px solid var(--accent);background:var(--primary-dark);
-  color:#fff;display:grid;place-items:center;font-weight:500;font-size:.9rem;cursor:pointer;
+  color:#fff;display:grid;place-items:center;font-weight:700;font-size:.9rem;cursor:pointer;
   overflow:hidden;padding:0;transition:box-shadow .16s;letter-spacing:.02em;
 }
 .avatar:hover{box-shadow:0 0 0 4px rgba(106,171,58,.2)}
@@ -202,14 +201,14 @@ html{scrollbar-width:thin}
 .stat-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:18px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:18px 20px;position:relative;overflow:hidden}
 .stat-card::after{content:"";position:absolute;right:-24px;top:-24px;width:82px;height:82px;border-radius:50%;background:rgba(106,171,58,.1)}
-.stat-card .label{font-size:.76rem;text-transform:uppercase;letter-spacing:.09em;color:var(--text-muted);font-weight:500}
-.stat-card .value{font-size:1.85rem;font-weight:500;letter-spacing:-.03em;margin-top:4px;line-height:1.15}
+.stat-card .label{font-size:.76rem;text-transform:uppercase;letter-spacing:.09em;color:var(--text-muted);font-weight:600}
+.stat-card .value{font-size:1.85rem;font-weight:800;letter-spacing:-.03em;margin-top:4px;line-height:1.15}
 .stat-card .sub{font-size:.79rem;color:var(--text-muted)}
 .stat-card .ico{position:absolute;right:16px;top:16px;font-size:1.15rem;opacity:.75;z-index:1}
 
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  border-radius:var(--radius-btn);padding:10px 17px;font-size:.9rem;font-weight:500;
+  border-radius:var(--radius-btn);padding:10px 17px;font-size:.9rem;font-weight:600;
   border:1.5px solid transparent;cursor:pointer;transition:background .16s,color .16s,border-color .16s,transform .1s,box-shadow .16s;
   background:var(--bg);color:var(--text);line-height:1.3;white-space:nowrap;
 }
@@ -236,7 +235,7 @@ html[data-accent="plum"] .btn-primary:hover{background:#8f4e84;color:#fff}
 .btn .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-label{display:block;font-size:.85rem;font-weight:500;margin-bottom:6px}
+label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px}
 .field{margin-bottom:14px}
 input[type=text],input[type=email],input[type=password],input[type=date],input[type=time],
 input[type=number],input[type=search],select,textarea{
@@ -255,7 +254,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3
 .check input:focus-visible{outline:var(--focus);outline-offset:2px}
 .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 
-.badge{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:20px;background:rgba(106,171,58,.14);color:var(--primary);border:1px solid rgba(106,171,58,.3)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:20px;background:rgba(106,171,58,.14);color:var(--primary);border:1px solid rgba(106,171,58,.3)}
 .badge.gold{background:rgba(201,168,76,.16);color:#8a6d1c;border-color:rgba(201,168,76,.45)}
 html[data-theme="dark"] .badge.gold{color:#e0c473}
 .badge.warn{background:rgba(230,126,34,.14);color:#a3520c;border-color:rgba(230,126,34,.35)}
@@ -279,14 +278,13 @@ html[data-theme="dark"] .progress{background:rgba(255,255,255,.1)}
 }
 .item:hover{border-color:rgba(106,171,58,.5);transform:translateY(-1px);box-shadow:var(--shadow-card)}
 .item .grow{flex:1;min-width:0}
-.item .t{font-weight:500;font-size:.93rem;word-break:break-word}
+.item .t{font-weight:600;font-size:.93rem;word-break:break-word}
 .item .d{font-size:.79rem;color:var(--text-muted);margin-top:2px}
 .item-actions{display:flex;gap:6px;align-items:center;flex:none}
-.chip-btn{border:1px solid var(--border);background:var(--bg);border-radius:20px;padding:5px 11px;font-size:.76rem;font-weight:500;cursor:pointer;transition:.16s}
+.chip-btn{border:1px solid var(--border);background:var(--bg);border-radius:20px;padding:5px 11px;font-size:.76rem;font-weight:600;cursor:pointer;transition:.16s}
 .chip-btn:hover{border-color:var(--accent);color:var(--primary)}
 .chip-btn.on{background:rgba(106,171,58,.16);border-color:var(--accent);color:var(--primary)}
-.item .t{transition:opacity .25s ease,transform .25s ease}
-.item.done .t{text-decoration:line-through;opacity:.5;transform:translateX(6px)}
+.item.done .t{text-decoration:line-through;opacity:.55}
 .item.overdue{border-left:3px solid var(--warning)}
 .tick{
   width:24px;height:24px;border-radius:50%;border:2px solid var(--input-border);background:transparent;
@@ -335,7 +333,7 @@ html[data-theme="dark"] .progress{background:rgba(255,255,255,.1)}
 }
 .toast.leaving{animation:toastOut .25s ease forwards}
 .toast .toast-actions{display:flex;gap:8px;margin-top:9px}
-.toast .toast-actions button{border:0;border-radius:7px;padding:6px 12px;font-size:.78rem;font-weight:500;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.toast .toast-actions button{border:0;border-radius:7px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
 .toast .toast-actions button.ghost{background:rgba(255,255,255,.14);color:#fff}
 .toast .x{background:transparent;border:0;color:rgba(255,255,255,.7);cursor:pointer;font-size:1rem;padding:0 2px;line-height:1;margin-left:auto}
 @keyframes toastIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
@@ -347,6 +345,7 @@ html[data-theme="dark"] .progress{background:rgba(255,255,255,.1)}
   border:1.5px solid rgba(106,171,58,.4);border-radius:var(--radius-card);padding:20px 22px;margin-bottom:20px;
   position:relative;overflow:hidden;animation:fadeUp .35s ease both;
 }
+.intro-card .intro-ico{width:52px;height:52px;border-radius:14px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:1.6rem;flex:none;box-shadow:0 6px 16px rgba(45,90,27,.3)}
 .intro-card h2{margin:0 0 6px;font-size:1.2rem}
 .intro-card p{margin:0 0 10px;font-size:.9rem;max-width:80ch}
 .intro-card ul{margin:0 0 14px;font-size:.87rem;color:var(--text-muted)}
@@ -364,26 +363,25 @@ html[data-theme="dark"] .howto-head h3{color:#e0c473}
 .howto.collapsed .chev{transform:rotate(-90deg)}
 .howto.collapsed .howto-body{display:none}
 /* ============================================================
-   DASHBOARD — greeting, kural
+   DASHBOARD — greeting, clock, kural
    ============================================================ */
-.dash-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:14px}
-.dash-greet-line{font-size:.95rem;font-weight:400;color:var(--text);margin:0 0 3px;line-height:1.5}
-.dash-greet p{color:var(--text-muted);font-size:.86rem;margin:0}
-.remind-toggle-wrap{margin-bottom:16px}
-.link-toggle{background:none;border:0;padding:0;color:var(--primary);font-size:.86rem;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-.link-toggle:hover{color:var(--accent)}
-.link-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#taskRemindFields{margin-top:10px;padding:11px 12px;background:var(--bg);border:1px dashed var(--border);border-radius:10px}
-#taskRemindFields .check{margin-bottom:8px}
+.dash-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:16px}
+.dash-greet h1{font-size:1.85rem;margin-bottom:4px;letter-spacing:-.03em}
+.dash-greet p{color:var(--text-muted);font-size:.9rem;margin:0}
+.clock-box{text-align:right;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-card);padding:12px 18px;box-shadow:var(--shadow-card);min-width:230px}
+.clock-time{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1.75rem;font-weight:600;letter-spacing:.02em;color:var(--text);line-height:1.2;font-variant-numeric:tabular-nums}
+.clock-time .ampm{font-size:.85rem;color:var(--text-muted);margin-left:5px;font-weight:700;letter-spacing:.08em}
+.clock-date{font-size:.8rem;color:var(--text-muted);margin-top:3px}
 .kural-card{
   background:linear-gradient(135deg,#fffaf0,#fff8e6);border:1px solid #efe2c0;
   border-left:5px solid var(--gold);border-radius:var(--radius-card);padding:20px 22px;margin-bottom:18px;
   box-shadow:var(--shadow-card);position:relative;overflow:hidden;
 }
 html[data-theme="dark"] .kural-card{background:linear-gradient(135deg,#1d1a10,#221e12);border-color:#3b341f;border-left-color:var(--gold)}
-.kural-label{font-size:.72rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:#96791f;margin-bottom:8px}
+.kural-card::after{content:"📖";position:absolute;right:16px;top:10px;font-size:2.6rem;opacity:.12}
+.kural-label{font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#96791f;margin-bottom:8px}
 html[data-theme="dark"] .kural-label{color:var(--gold)}
-.kural-no{font-size:.78rem;font-weight:500;color:var(--text-muted);margin-bottom:8px}
+.kural-no{font-size:.78rem;font-weight:700;color:var(--text-muted);margin-bottom:8px}
 .kural-ta{font-size:1.22rem;line-height:1.85;color:#2a2416;font-weight:500;margin-bottom:8px;max-width:70ch}
 html[data-theme="dark"] .kural-ta{color:#f1e9d4}
 .kural-tr{font-size:.87rem;color:var(--text-muted);font-style:italic;margin-bottom:7px;max-width:80ch}
@@ -411,7 +409,7 @@ html[data-theme="dark"] .arch-card::before{background:linear-gradient(115deg,tra
 .arch-card h4{margin:0 0 5px;font-size:1.02rem;position:relative;z-index:1}
 .arch-card p{font-size:.85rem;color:var(--text-muted);margin:0 0 12px;position:relative;z-index:1}
 .arch-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
-.arch-meta .date{font-size:.76rem;color:var(--text-muted);font-weight:500}
+.arch-meta .date{font-size:.76rem;color:var(--text-muted);font-weight:600}
 .arch-card .del{position:absolute;top:10px;right:10px;z-index:2;opacity:0;transition:.16s}
 .arch-card:hover .del,.arch-card:focus-within .del{opacity:1}
 
@@ -425,8 +423,8 @@ html[data-theme="dark"] .arch-card::before{background:linear-gradient(115deg,tra
 html[data-theme="dark"] .timer-ring .track{stroke:rgba(255,255,255,.1)}
 .timer-ring .bar{fill:none;stroke:var(--accent);stroke-width:11;stroke-linecap:round;transition:stroke-dashoffset .3s linear}
 .timer-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-.timer-time{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:3.1rem;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.timer-mode{font-size:.72rem;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)}
+.timer-time{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:3.1rem;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.timer-mode{font-size:.72rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)}
 .timer-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .mode-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 
@@ -443,12 +441,12 @@ canvas.chart{width:100%;height:220px;display:block}
 .tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--card)}
 table{width:100%;border-collapse:collapse;font-size:.87rem;min-width:520px}
 th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--border)}
-th{background:var(--bg);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:500;position:sticky;top:0}
+th{background:var(--bg);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:700;position:sticky;top:0}
 tbody tr:last-child td{border-bottom:0}
 tbody tr:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-.pos{color:var(--primary);font-weight:500}
-.neg{color:var(--danger);font-weight:500}
+.pos{color:var(--primary);font-weight:700}
+.neg{color:var(--danger);font-weight:700}
 
 /* ============================================================
    SETTINGS
@@ -466,9 +464,9 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .swatch:hover{transform:scale(1.12)}
 .swatch.on{border-color:var(--text);transform:scale(1.12)}
 .seg{display:inline-flex;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;gap:3px}
-.seg button{border:0;background:transparent;padding:7px 15px;border-radius:7px;font-size:.83rem;font-weight:500;cursor:pointer;transition:.16s;color:var(--text-muted)}
+.seg button{border:0;background:transparent;padding:7px 15px;border-radius:7px;font-size:.83rem;font-weight:600;cursor:pointer;transition:.16s;color:var(--text-muted)}
 .seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
-.profile-pic-lg{width:78px;height:78px;border-radius:50%;background:var(--primary-dark);color:#fff;display:grid;place-items:center;font-size:1.6rem;font-weight:500;overflow:hidden;border:3px solid var(--accent);flex:none}
+.profile-pic-lg{width:78px;height:78px;border-radius:50%;background:var(--primary-dark);color:#fff;display:grid;place-items:center;font-size:1.6rem;font-weight:700;overflow:hidden;border:3px solid var(--accent);flex:none}
 .profile-pic-lg img{width:100%;height:100%;object-fit:cover}
 .danger-zone{border:1.5px solid rgba(192,57,43,.45);border-radius:var(--radius-card);padding:18px;background:rgba(192,57,43,.05)}
 .danger-zone h3{color:var(--danger);margin-bottom:6px}
@@ -486,7 +484,7 @@ html[data-theme="dark"] .storage-bar{background:rgba(255,255,255,.1)}
 .tc-\boxed{display:flex;gap:11px;align-items:flex-start;text-align:left;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:14px 15px;margin-bottom:20px;font-size:.88rem;cursor:pointer;transition:border-color .16s}
 .tc-box:hover{border-color:var(--accent)}
 .tc-box input{width:19px;height:19px;margin-top:2px;accent-color:var(--accent);flex:none;cursor:pointer}
-.tc-box a{font-weight:500}
+.tc-box a{font-weight:700}
 .trust-list{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:22px;font-size:.78rem;color:var(--text-muted)}
 .trust-list span{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 12px}
 .logout-gate{position:fixed;inset:0;z-index:150;display:none;align-items:center;justify-content:center;background:var(--bg);padding:20px}
@@ -536,7 +534,9 @@ html[data-theme="dark"] .storage-bar{background:rgba(255,255,255,.1)}
   .stat-grid{grid-template-columns:1fr;gap:16px}
   .grid,.grid-2,.grid-3,.arch-grid{gap:16px}
   .arch-grid{grid-template-columns:1fr}
-  .dash-top{flex-direction:column;gap:10px}
+  .dash-top{flex-direction:column;gap:14px}
+  .clock-box{text-align:left;width:100%}
+  .dash-greet h1{font-size:1.5rem}
   .kural-ta{font-size:1.1rem}
   .modal{padding:20px 18px;max-height:92vh;border-radius:14px}
   .modal-root{padding:12px}
@@ -564,86 +564,6 @@ html[data-theme="dark"] .storage-bar{background:rgba(255,255,255,.1)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
 }
-
-/* ============================================================
-   PART B - simplicity & daily UX overrides
-   ============================================================ */
-h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.kural-no{font-weight:500}
-.stat-card .value{font-size:1.4rem;font-weight:500}
-.card{padding:24px}
-.page{animation:none}
-.item .t{transition:opacity .3s ease,transform .3s ease}
-.item.done .t{text-decoration:line-through;opacity:.45;transform:none}
-.item-date{margin-left:auto;color:var(--text-muted);font-size:.8rem;white-space:nowrap;flex:none;align-self:center;padding-left:8px}
-.item-bell{color:var(--text-muted);margin-left:6px}
-.item-actions{opacity:0;transition:opacity .15s ease}
-.item:hover .item-actions,.item:focus-within .item-actions{opacity:1}
-@keyframes fadeRowIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.item.fresh{animation:fadeRowIn .3s ease}
-.compl-head{background:none;border:0;padding:6px 2px;margin-top:12px;font-size:.8rem;color:var(--text-muted);cursor:pointer;text-align:left;min-height:32px}
-.compl-head:hover{color:var(--primary)}
-.task-row{display:flex;gap:10px;align-items:center}
-.task-row input{flex:1;min-width:0}
-.task-sub{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:10px}
-.task-date{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:var(--text-muted);cursor:pointer}
-.task-date input{border:0;background:transparent;color:inherit;font-size:.82rem;padding:2px;cursor:pointer;min-height:26px;font-family:inherit}
-#taskRemindFields{margin-top:12px}
-.kural-body.collapsed{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-#kuralMore{margin-top:6px}
-.habit-week{margin-top:8px}
-.habit-dots,.habit-dows{display:flex;gap:6px}
-.habit-dot{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--input-border);display:grid;place-items:center;font-size:.6rem;color:transparent;transition:background .3s ease,border-color .3s ease}
-.habit-dot.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.habit-dows span{width:15px;text-align:center;font-size:.6rem;color:var(--text-muted)}
-.habit-checkin{margin-left:auto;min-width:86px}
-.habit-checkin.on{opacity:.65}
-.arch-flip{position:relative;perspective:900px;min-height:132px}
-.arch-face{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:12px;box-shadow:var(--shadow-card);padding:20px 22px;backface-visibility:hidden;transition:transform .3s ease}
-.arch-front{display:flex;flex-direction:column;gap:6px;min-height:132px}
-.arch-back{position:absolute;inset:0;transform:rotateY(180deg);display:flex;flex-direction:column;justify-content:center;gap:8px}
-.arch-flip.flip .arch-front{transform:rotateY(180deg)}
-.arch-flip.flip .arch-back{transform:rotateY(360deg)}
-.arch-front .a-emoji{font-size:1.7rem;line-height:1}
-.arch-front .a-title{font-size:1rem;font-weight:500;margin:0}
-.arch-front .a-date{font-size:.78rem;color:var(--text-muted)}
-.arch-back p{margin:0;font-size:.88rem;color:var(--text-muted);white-space:pre-wrap}
-.arch-flip .del{position:absolute;top:8px;right:8px;z-index:2;opacity:0;transition:opacity .15s ease}
-.arch-flip:hover .del,.arch-flip:focus-within .del{opacity:1}
-#journalBody{width:100%;min-height:220px;padding:14px;border:1.5px solid var(--input-border);border-radius:8px;font:inherit;background:var(--card);color:var(--text);resize:vertical}
-#journalSaved.on{color:var(--primary);border-color:var(--accent)}
-.settings-sec{border:0;box-shadow:none;background:transparent;padding:0}
-.settings-sec>h3{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);font-weight:500;margin:18px 0 6px}
-.set-row{border-top:1px solid var(--border);padding:14px 0}
-.set-row:first-of-type{border-top:0}
-.danger-zone{margin-top:10px}
-.danger-zone h3{color:var(--danger)}
-.daily-root{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:16px}
-.daily-root[hidden]{display:none}
-.daily-card{background:#fff;color:#1a1a1a;border-radius:16px;padding:40px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:dwPop .3s ease-out both;text-align:left}
-@keyframes dwPop{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
-.daily-root.closing{animation:dwOut .2s ease-in both}
-@keyframes dwOut{to{opacity:0}}
-.dw-greet{font-size:22px;font-weight:500;color:#1a1a1a}
-.dw-date{font-size:13px;color:#888;margin-top:4px}
-.daily-card hr{border:0;border-top:1px solid #e8e8e4;margin:18px 0}
-.dw-label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#4a7c2f;margin-bottom:12px}
-.dw-ta{font-family:'Noto Sans Tamil',sans-serif;font-size:17px;line-height:1.8;color:#1a1a1a;margin-bottom:10px}
-.dw-tr{font-size:13px;font-style:italic;color:#666;margin-bottom:10px}
-.dw-en{font-size:14px;color:#444;line-height:1.6;margin-bottom:22px;max-width:65ch}
-.daily-card .btn{width:100%;padding:12px;font-size:15px;border-radius:8px}
-@media (max-width:768px){
-  .stat-grid{grid-template-columns:repeat(2,1fr)}
-  input,select,textarea{font-size:16px}
-  .btn{min-height:44px}
-  .tick{width:28px;height:28px}
-  .habit-checkin{width:100%;min-height:44px}
-  .card,.stat-card{margin-bottom:16px;padding:16px}
-  .daily-card{padding:28px;width:90vw}
-  .dw-ta{font-size:15px}
-  .item{margin-bottom:8px}
-  .task-row{flex-wrap:wrap}
-  .task-row .btn{width:100%}
-}
 </style>
 </head>
 <body>
@@ -660,21 +580,21 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
     </div>
     <nav class="nav" id="mainNav">
       <div class="nav-label">Overview</div>
-      <button class="nav-item active" data-nav="dashboard"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M10 21v-5h4v5"/></svg></span>Dashboard</button>
+      <button class="nav-item active" data-nav="dashboard"><span class="ico" aria-hidden="true">🏠</span>Dashboard</button>
       <div class="nav-label">Plan &amp; Grow</div>
-      <button class="nav-item" data-nav="goals"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.1"/></svg></span>Goals</button>
-      <button class="nav-item" data-nav="skills"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-7.2"/><path d="M12 13.8c0-4.5 3.4-8.3 8-8.6.3 4.7-3 8.6-8 8.6z"/><path d="M12 16.6c0-3.4-2.6-6.3-6.4-6.6C5.3 13.6 7.8 16.6 12 16.6z"/></svg></span>Skills</button>
-      <button class="nav-item" data-nav="archivedments"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9.2" r="4.8"/><path d="M8.6 13.2 7 21l5-2.4L17 21l-1.6-7.8"/></svg></span>Archivedments</button>
-      <button class="nav-item" data-nav="focus"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.4" r="7.6"/><path d="M12 9.6v4l2.6 1.8"/><path d="M9.4 2.6h5.2"/></svg></span>Focus</button>
-      <button class="nav-item" data-nav="journal"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.6A2.6 2.6 0 0 1 6.6 3H12v16.4H6.6A2.6 2.6 0 0 0 4 22z"/><path d="M20 5.6A2.6 2.6 0 0 0 17.4 3H12v16.4h5.4A2.6 2.6 0 0 1 20 22z"/></svg></span>Journal</button>
+      <button class="nav-item" data-nav="goals"><span class="ico" aria-hidden="true">🎯</span>Goals</button>
+      <button class="nav-item" data-nav="archivedments"><span class="ico" aria-hidden="true">🏆</span>Archivedments</button>
+      <button class="nav-item" data-nav="skills"><span class="ico" aria-hidden="true">🌱</span>Skills</button>
+      <button class="nav-item" data-nav="focus"><span class="ico" aria-hidden="true">⏱️</span>Focus</button>
+      <button class="nav-item" data-nav="journal"><span class="ico" aria-hidden="true">📔</span>Journal</button>
       <div class="nav-label">Track</div>
-      <button class="nav-item" data-nav="reminders"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 15.6V10a6.4 6.4 0 1 0-12.8 0v5.6L4 18.6h16z"/><path d="M10 21.2h4"/></svg></span>Reminders</button>
-      <button class="nav-item" data-nav="analytics"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.4V11"/><path d="M10 20.4V4.4"/><path d="M16 20.4v-6.2"/><path d="M21.4 20.4H3"/></svg></span>Analytics</button>
-      <button class="nav-item" data-nav="brand"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 12.6V5.2a1.2 1.2 0 0 1 1.2-1.2h7.4l7 7-8.6 8.6z"/><circle cx="8.6" cy="8.6" r="1.3"/></svg></span>Brand</button>
-      <button class="nav-item" data-nav="finance"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="6.2" width="17.6" height="12.6" rx="2.4"/><path d="M3.2 10.4h17.6"/><circle cx="16.6" cy="14.6" r="1.2"/></svg></span>Finance</button>
+      <button class="nav-item" data-nav="reminders"><span class="ico" aria-hidden="true">⏰</span>Reminders</button>
+      <button class="nav-item" data-nav="analytics"><span class="ico" aria-hidden="true">📊</span>Analytics</button>
+      <button class="nav-item" data-nav="brand"><span class="ico" aria-hidden="true">🎨</span>Brand</button>
+      <button class="nav-item" data-nav="finance"><span class="ico" aria-hidden="true">💰</span>Finance</button>
       <div class="nav-label">System</div>
-      <button class="nav-item" data-nav="settings"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v2.4M12 18.4v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M3.2 12h2.4M18.4 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg></span>Settings</button>
-      <button class="nav-item" data-nav="admin"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.2 3v5.6c0 4.5-3 7.8-7.2 9.4-4.2-1.6-7.2-4.9-7.2-9.4V6z"/><path d="M9.2 12.2l2 2 3.6-3.8"/></svg></span>Admin</button>
+      <button class="nav-item" data-nav="settings"><span class="ico" aria-hidden="true">⚙️</span>Settings</button>
+      <button class="nav-item" data-nav="admin"><span class="ico" aria-hidden="true">🛡️</span>Admin</button>
     </nav>
     <div class="sidebar-foot">v2.0 &middot; 100% local &amp; offline</div>
   </aside>
@@ -684,9 +604,11 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
     <header class="topbar">
       <button class="hamburger" id="hamburger" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
       <div>
-        <div class="crumb" id="crumb">OVERVIEW / Dashboard</div>
+        <div class="crumb" id="crumb">Overview</div>
+        <h2 id="pageTitle">Dashboard</h2>
       </div>
       <div class="topbar-spacer"></div>
+      <button class="icon-btn" id="btnExportTop" title="Export data" aria-label="Export data">&#128229;</button>
       <div class="avatar-wrap">
         <button class="avatar" id="avatarBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">U</button>
         <div class="dropdown" id="avatarMenu" role="menu">
@@ -694,9 +616,9 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
             <strong id="ddName">User</strong>
             <span class="tiny muted" id="ddEmail">user@example.com</span>
           </div>
-          <button role="menuitem" id="ddChangePhoto">Change Photo</button>
-          <button role="menuitem" id="ddViewProfile">View Profile</button>
-          <button role="menuitem" class="danger" id="ddLogout">Log Out</button>
+          <button role="menuitem" id="ddChangePhoto"><span aria-hidden="true">📷</span> Change Photo</button>
+          <button role="menuitem" id="ddViewProfile"><span aria-hidden="true">👤</span> View Profile</button>
+          <button role="menuitem" class="danger" id="ddLogout"><span aria-hidden="true">🚪</span> Log Out</button>
         </div>
       </div>
     </header>
@@ -709,71 +631,88 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
 
         <div class="dash-top">
           <div class="dash-greet">
-            <div class="dash-greet-line" id="dashGreet">Good morning, User.</div>
+            <h1 id="dashGreet">Good Morning! 👋</h1>
             <p id="dashGreetSub">Here is what your day looks like.</p>
+          </div>
+          <div class="clock-box" aria-live="off">
+            <div class="clock-time"><span id="clockTime">--:--:--</span><span class="ampm" id="clockAmPm"></span></div>
+            <div class="clock-date" id="clockDate">&nbsp;</div>
           </div>
         </div>
 
         <div class="kural-card" id="kuralCard">
           <div class="kural-label">📖 Thirukkural of the Day</div>
           <div class="kural-no" id="kuralNo">Kural #1</div>
-          <div class="kural-body collapsed" id="kuralBody">
-            <div class="kural-ta" id="kuralTa"></div>
-            <div class="kural-tr" id="kuralTr"></div>
-            <p class="kural-en" id="kuralEn"></p>
-          </div>
-          <button type="button" class="link-toggle" id="kuralMore" aria-expanded="false">Read more</button>
+          <div class="kural-ta" id="kuralTa"></div>
+          <div class="kural-tr" id="kuralTr"></div>
+          <p class="kural-en" id="kuralEn"></p>
           <div class="kural-src">Thiruvalluvar &middot; changes every day</div>
         </div>
 
         <div class="stat-grid">
-          <div class="stat-card"><div class="label">Tasks Today</div><div class="value" id="statTasks">0/0</div><div class="sub" id="statTasksSub">0 open today</div></div>
-          <div class="stat-card"><div class="label">Commitments</div><div class="value" id="statCommit">0</div><div class="sub" id="statCommitSub">0 kept today</div></div>
-          <div class="stat-card"><div class="label">Overdue</div><div class="value" id="statOverdue">0</div><div class="sub" id="statOverdueSub">nothing overdue</div></div>
-          <div class="stat-card"><div class="label">Active Goals</div><div class="value" id="statGoals">0</div><div class="sub" id="statGoalsSub">0% average progress</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">✅</span><div class="label">Tasks Today</div><div class="value" id="statTasks">0</div><div class="sub" id="statTasksSub">0 open</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">🎯</span><div class="label">Active Goals</div><div class="value" id="statGoals">0</div><div class="sub" id="statGoalsSub">0% average progress</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">⏱️</span><div class="label">Focus Today</div><div class="value" id="statFocus">0m</div><div class="sub" id="statFocusSub">0 sessions</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">🔥</span><div class="label">Commitment Streak</div><div class="value" id="statStreak">0</div><div class="sub" id="statStreakSub">days in a row</div></div>
         </div>
 
-        <div class="grid grid-3">
+        <div class="grid grid-2">
           <section class="card" aria-labelledby="addTaskH">
-            <div class="card-head"><h3 id="addTaskH">Add Task</h3><span class="muted">Quick capture</span></div>
+            <div class="card-head"><h3 id="addTaskH">➕ Add Task</h3><span class="muted">Quick capture</span></div>
             <form id="taskForm" novalidate>
-              <div class="task-row">
-                <input type="text" id="taskTitle" placeholder="What needs your attention?" maxlength="140" autocomplete="off" required aria-label="Task name">
-                <button class="btn btn-primary" type="submit">Add Task</button>
+              <div class="field">
+                <label for="taskTitle">Task name</label>
+                <input type="text" id="taskTitle" placeholder="e.g. Finish quarterly report" maxlength="140" autocomplete="off" required>
               </div>
-              <div class="task-sub">
-                <span class="task-date"><span id="taskDateLabel">Today</span><input type="date" id="taskDate" aria-label="Due date"></span>
-                <button type="button" class="link-toggle" id="taskRemindToggle" aria-expanded="false" aria-controls="taskRemindFields">+ Set Reminder</button>
-              </div>
-              <div id="taskRemindFields" hidden>
-                <label class="check"><input type="checkbox" id="taskRemindChk" checked> Add reminder for this task</label>
-                <div id="taskRemindWrap">
-                  <label for="taskRemindTime">Remind me at</label>
-                  <input type="time" id="taskRemindTime">
-                  <div class="tiny muted">Notify me via: Browser Notification</div>
+              <div class="row">
+                <div class="field">
+                  <label for="taskDate">Due date</label>
+                  <input type="date" id="taskDate">
+                </div>
+                <div class="field">
+                  <label for="taskCat">Category</label>
+                  <select id="taskCat">
+                    <option>Work</option><option>Personal</option><option>Health</option><option>Learning</option><option>Home</option><option>Other</option>
+                  </select>
                 </div>
               </div>
+              <div class="field" style="background:var(--bg);border:1.5px dashed var(--border);border-radius:10px;padding:12px 13px;margin-bottom:14px">
+                <label for="taskRemindChk" style="margin-bottom:8px;font-size:.9rem">⏰ Set a Reminder? (optional)</label>
+                <label class="check" style="margin-bottom:0"><input type="checkbox" id="taskRemindChk"> Add reminder for this task</label>
+                <div id="taskRemindFields" hidden style="margin-top:11px">
+                  <label for="taskRemindTime">Remind me at</label>
+                  <input type="time" id="taskRemindTime">
+                  <div class="tiny muted" style="margin-top:7px">Notify me via: Browser Notification</div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block" type="submit">Add Task</button>
             </form>
           </section>
 
           <section class="card" aria-labelledby="todayTasksH">
-            <div class="card-head"><h3 id="todayTasksH">Tasks</h3></div>
-            <div class="row" style="gap:8px;margin-bottom:12px">
-              <input type="search" id="taskSearch" placeholder="Search tasks…" aria-label="Search tasks" style="flex:1;min-width:0;margin-bottom:0">
-              <select id="taskFilter" aria-label="Filter tasks" style="padding:7px 30px 7px 10px;font-size:.82rem;width:auto;flex:none">
-                <option value="all">All</option><option value="open">Open</option><option value="done">Done</option>
-              </select>
+            <div class="card-head">
+              <h3 id="todayTasksH">📋 Tasks</h3>
+              <div class="row" style="gap:8px;flex:none">
+                <select id="taskFilter" aria-label="Filter tasks" style="padding:7px 30px 7px 10px;font-size:.82rem;width:auto">
+                  <option value="all">All</option><option value="open">Open</option><option value="done">Done</option>
+                </select>
+              </div>
             </div>
+            <input type="search" id="taskSearch" placeholder="Search tasks…" aria-label="Search tasks" style="margin-bottom:12px">
             <div class="list" id="taskList"></div>
             <button class="btn btn-ghost btn-sm load-more hidden" id="taskMore">Load more</button>
             <div class="pager-note hidden" id="taskPager"></div>
           </section>
 
           <section class="card" aria-labelledby="habitsH">
-            <div class="card-head"><h3 id="habitsH">Daily Commitments</h3><button class="btn btn-sm btn-ghost" id="addHabitBtn">+ Add</button></div>
+            <div class="card-head"><h3 id="habitsH">🔁 Daily Commitments</h3><button class="btn btn-sm btn-ghost" id="addHabitBtn">+ Add</button></div>
             <div class="list" id="habitList"></div>
           </section>
 
+          <section class="card" aria-labelledby="upcomingH">
+            <div class="card-head"><h3 id="upcomingH">⏳ Upcoming Reminders</h3><button class="btn btn-sm btn-ghost" data-nav-jump="reminders">Manage</button></div>
+            <div class="list" id="dashReminders"></div>
+          </section>
         </div>
       </section>
 
@@ -782,12 +721,15 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         <div class="intro-slot" data-intro="goals"></div>
         <div class="page-head">
           <div><h1>Goals</h1><p>Set the destination, track the progress, and celebrate every 100%.</p></div>
-          <button class="btn btn-primary" id="addGoalBtn">+ New Goal</button>
+          <button class="btn btn-primary" id="addGoalBtn">＋ New Goal</button>
         </div>
         <div class="filter-bar">
           <div class="fgroup grow"><label for="goalSearch">Search</label><input type="search" id="goalSearch" placeholder="Search goals…"></div>
           <div class="fgroup"><label for="goalStatus">Status</label>
             <select id="goalStatus"><option value="all">All</option><option value="active">In progress</option><option value="done">Completed</option></select>
+          </div>
+          <div class="fgroup"><label for="goalSort">Sort</label>
+            <select id="goalSort"><option value="new">Newest</option><option value="old">Oldest</option><option value="prog">Most progress</option></select>
           </div>
         </div>
         <div class="grid grid-2" id="goalsList"></div>
@@ -799,12 +741,12 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         <div class="intro-slot" data-intro="archivedments"></div>
         <div class="page-head">
           <div><h1>Archivedments</h1><p>Your hall of fame — every win preserved forever.</p></div>
-          <button class="btn btn-primary" id="addArchBtn">+ Add Achievement</button>
+          <button class="btn btn-primary" id="addArchBtn">＋ Add Achievement</button>
         </div>
 
         <div class="howto" id="howtoArch">
           <div class="howto-head" id="howtoArchHead" role="button" tabindex="0" aria-expanded="true">
-            <h3>How Archivedments works</h3>
+            <h3>✨ How Archivedments works</h3>
             <span class="chev" aria-hidden="true">▼</span>
           </div>
           <div class="howto-body">
@@ -812,16 +754,24 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
             <ul>
               <li>Hit <strong>100% on a Goal</strong> and we will prompt you to archive it.</li>
               <li><strong>Tick off a task</strong> and a quick “Add to Archivedments?” prompt appears.</li>
-              <li>Use <strong>+ Add Achievement</strong> for anything worth celebrating — habits, skills, personal milestones.</li>
-              <li>Tap any card to flip it and read the story behind the win.</li>
+              <li>Use <strong>＋ Add Achievement</strong> for anything worth celebrating — habits, skills, personal milestones.</li>
+              <li>Filter and sort your wall of fame by category and date.</li>
             </ul>
           </div>
         </div>
 
-
+        <div class="filter-bar">
+          <div class="fgroup grow"><label for="archSearch">Search</label><input type="search" id="archSearch" placeholder="Search achievements…"></div>
+          <div class="fgroup"><label for="archCat">Category</label>
+            <select id="archCat"><option value="all">All categories</option><option>Goal</option><option>Habit</option><option>Skill</option><option>Personal</option><option>Other</option></select>
+          </div>
+          <div class="fgroup"><label for="archSort">Sort by date</label>
+            <select id="archSort"><option value="new">Newest first</option><option value="old">Oldest first</option></select>
+          </div>
+        </div>
 
         <div class="arch-grid" id="archList"></div>
-        <div class="empty hidden" id="archEmpty">No achievements here yet — win something and it will live here forever.</div>
+        <div class="empty hidden" id="archEmpty"><span class="big">🏆</span>No achievements here yet — win something and it will live here forever.</div>
         <button class="btn btn-ghost btn-sm load-more hidden" id="archMore">Load more</button>
         <div class="pager-note hidden" id="archPager"></div>
       </section>
@@ -831,7 +781,7 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         <div class="intro-slot" data-intro="skills"></div>
         <div class="page-head">
           <div><h1>Skills</h1><p>Grow deliberately — log what you are learning and how far you have come.</p></div>
-          <button class="btn btn-primary" id="addSkillBtn">+ Add Skill</button>
+          <button class="btn btn-primary" id="addSkillBtn">＋ Add Skill</button>
         </div>
         <div class="filter-bar">
           <div class="fgroup grow"><label for="skillSearch">Search</label><input type="search" id="skillSearch" placeholder="Search skills…"></div>
@@ -870,63 +820,61 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
                 </div>
               </div>
               <div class="timer-controls">
-                <button class="btn btn-primary" id="timerStart">Start</button>
-                <button class="btn btn-ghost" id="timerReset">Reset</button>
-                <button class="btn btn-ghost" id="timerSkip">Skip</button>
+                <button class="btn btn-primary" id="timerStart">▶ Start</button>
+                <button class="btn btn-ghost" id="timerReset">↺ Reset</button>
+                <button class="btn btn-ghost" id="timerSkip">⏭ Skip</button>
               </div>
               <div class="tiny muted" id="timerHint">Sessions are saved to Focus history when they complete.</div>
             </div>
           </section>
           <section class="card">
-            <div class="card-head"><h3>Focus Stats</h3></div>
+            <div class="card-head"><h3>📈 Focus Stats</h3></div>
             <div class="stat-grid" style="grid-template-columns:repeat(2,1fr)">
               <div class="stat-card"><div class="label">Today</div><div class="value" id="focusToday">0m</div><div class="sub" id="focusTodaySub">0 sessions</div></div>
               <div class="stat-card"><div class="label">This week</div><div class="value" id="focusWeek">0m</div><div class="sub">last 7 days</div></div>
             </div>
             <h3 style="margin-top:18px">Session history</h3>
             <div class="list" id="focusLog"></div>
-            <div class="empty hidden" id="focusEmpty">No sessions yet — press Start to begin your first one.</div>
+            <div class="empty hidden" id="focusEmpty"><span class="big">⏱️</span>No sessions yet — press Start to begin your first one.</div>
           </section>
         </div>
       </section>
 
       <!-- ==================== JOURNAL ==================== -->
-        <section class="page" id="page-journal" data-page="journal">
-          <div class="intro-slot" data-intro="journal"></div>
-          <div class="page-head">
-            <div><h1>Journal</h1><p>Think on paper. Capture the day while it is still fresh.</p></div>
-            <span class="badge muted" id="journalSaved" aria-live="polite" hidden>Saved</span>
+      <section class="page" id="page-journal" data-page="journal">
+        <div class="intro-slot" data-intro="journal"></div>
+        <div class="page-head">
+          <div><h1>Journal</h1><p>Think on paper. Capture the day while it is still fresh.</p></div>
+          <button class="btn btn-primary" id="addJournalBtn">＋ New Entry</button>
+        </div>
+        <div class="filter-bar">
+          <div class="fgroup grow"><label for="journalSearch">Search</label><input type="search" id="journalSearch" placeholder="Search entries…"></div>
+          <div class="fgroup"><label for="journalMood">Mood</label>
+            <select id="journalMood"><option value="all">Any mood</option><option value="😄">😄 Great</option><option value="🙂">🙂 Good</option><option value="😐">😐 Okay</option><option value="😔">😔 Low</option><option value="😤">😤 Tough</option></select>
           </div>
-          <section class="card" aria-label="Today entry">
-            <div class="card-head"><h3 id="journalToday">Today</h3></div>
-            <input type="hidden" id="journalId">
-            <div class="field"><input type="text" id="journalTitle" maxlength="120" placeholder="A short headline for the day" aria-label="Entry title"></div>
-            <textarea id="journalBody" maxlength="6000" placeholder="What happened? What did you learn?" aria-label="Entry"></textarea>
-            <div class="tiny muted" style="margin-top:8px">Auto-saves as you write.</div>
-          </section>
-          <div class="card-head"><h3>Past entries</h3></div>
-          <div class="list" id="journalList"></div>
-          <div class="empty hidden" id="journalEmpty">No entries yet.</div>
-          <button class="btn btn-ghost btn-sm load-more hidden" id="journalMore">Load more</button>
-          <div class="pager-note hidden" id="journalPager"></div>
-        </section>
+        </div>
+        <div class="grid grid-2" id="journalList"></div>
+        <div class="empty hidden" id="journalEmpty"><span class="big">📔</span>No entries yet. Write your first one.</div>
+        <button class="btn btn-ghost btn-sm load-more hidden" id="journalMore">Load more</button>
+        <div class="pager-note hidden" id="journalPager"></div>
+      </section>
 
       <!-- ==================== REMINDERS ==================== -->
       <section class="page" id="page-reminders" data-page="reminders">
         <div class="intro-slot" data-intro="reminders"></div>
         <div class="page-head">
           <div><h1>Reminders</h1><p>Nothing slips — browser notifications fire even while this tab is in the background.</p></div>
-          <button class="btn btn-primary" id="addReminderBtn">+ New Reminder</button>
+          <button class="btn btn-primary" id="addReminderBtn">＋ New Reminder</button>
         </div>
         <div class="filter-bar">
           <div class="fgroup grow"><label for="reminderSearch">Search</label><input type="search" id="reminderSearch" placeholder="Search reminders…"></div>
           <div class="fgroup"><label for="reminderStatus">Status</label>
             <select id="reminderStatus"><option value="all">All</option><option value="due">Due today</option><option value="overdue">Overdue</option><option value="done">Completed</option></select>
           </div>
-          <div class="fgroup" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-ghost btn-sm" id="enableNotifyBtn">Enable notifications</button></div>
+          <div class="fgroup" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-ghost btn-sm" id="enableNotifyBtn">🔔 Enable notifications</button></div>
         </div>
         <div class="list" id="reminderList"></div>
-        <div class="empty hidden" id="reminderEmpty">No reminders here.</div>
+        <div class="empty hidden" id="reminderEmpty"><span class="big">⏰</span>No reminders here.</div>
         <button class="btn btn-ghost btn-sm load-more hidden" id="reminderMore">Load more</button>
         <div class="pager-note hidden" id="reminderPager"></div>
       </section>
@@ -936,6 +884,7 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         <div class="intro-slot" data-intro="analytics"></div>
         <div class="page-head">
           <div><h1>Analytics</h1><p>Patterns across your tasks, focus time, goals and money — computed locally.</p></div>
+          <button class="btn btn-ghost" data-open-export>⬇ Export report</button>
         </div>
         <div class="stat-grid" id="analyticsStats"></div>
         <div class="grid grid-2">
@@ -950,7 +899,7 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         <div class="intro-slot" data-intro="brand"></div>
         <div class="page-head">
           <div><h1>Brand</h1><p>Track the projects you are building your name and presence around.</p></div>
-          <button class="btn btn-primary" id="addBrandBtn">+ New Project</button>
+          <button class="btn btn-primary" id="addBrandBtn">＋ New Project</button>
         </div>
         <div class="filter-bar">
           <div class="fgroup grow"><label for="brandSearch">Search</label><input type="search" id="brandSearch" placeholder="Search projects…"></div>
@@ -968,13 +917,13 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         <div class="intro-slot" data-intro="finance"></div>
         <div class="page-head">
           <div><h1>Finance</h1><p>Know where the money goes. Simple income and expense tracking.</p></div>
-          <button class="btn btn-primary" id="addTxnBtn">+ Add Record</button>
+          <button class="btn btn-primary" id="addTxnBtn">＋ Add Record</button>
         </div>
         <div class="stat-grid">
-          <div class="stat-card"><div class="label">Balance</div><div class="value" id="finBalance">0</div><div class="sub" id="finCount">0 records</div></div>
-          <div class="stat-card"><div class="label">Income</div><div class="value pos" id="finIncome">0</div><div class="sub" id="finIncomeSub">all time</div></div>
-          <div class="stat-card"><div class="label">Expenses</div><div class="value neg" id="finExpense">0</div><div class="sub" id="finExpenseSub">all time</div></div>
-          <div class="stat-card"><div class="label">Savings rate</div><div class="value" id="finRate">0%</div><div class="sub">of income kept</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">🏦</span><div class="label">Balance</div><div class="value" id="finBalance">0</div><div class="sub" id="finCount">0 records</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">⬆</span><div class="label">Income</div><div class="value pos" id="finIncome">0</div><div class="sub" id="finIncomeSub">all time</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">⬇</span><div class="label">Expenses</div><div class="value neg" id="finExpense">0</div><div class="sub" id="finExpenseSub">all time</div></div>
+          <div class="stat-card"><span class="ico" aria-hidden="true">%</span><div class="label">Savings rate</div><div class="value" id="finRate">0%</div><div class="sub">of income kept</div></div>
         </div>
         <div class="filter-bar">
           <div class="fgroup grow"><label for="txnSearch">Search</label><input type="search" id="txnSearch" placeholder="Search records…"></div>
@@ -991,7 +940,7 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
             <tbody id="txnBody"></tbody>
           </table>
         </div>
-        <div class="empty hidden" id="txnEmpty">No records match this filter.</div>
+        <div class="empty hidden" id="txnEmpty"><span class="big">💰</span>No records match this filter.</div>
         <button class="btn btn-ghost btn-sm load-more hidden" id="txnMore">Load more</button>
         <div class="pager-note hidden" id="txnPager"></div>
       </section>
@@ -1027,12 +976,24 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
             <div class="info"><strong>Theme</strong><span>Switch between light and dark.</span></div>
             <div class="ctrl">
               <div class="seg" role="group" aria-label="Theme">
-                <button id="themeLight" class="on">Light</button>
-                <button id="themeDark">Dark</button>
+                <button id="themeLight" class="on">☀️ Light</button>
+                <button id="themeDark">🌙 Dark</button>
               </div>
             </div>
           </div>
-          </section>
+          <div class="set-row">
+            <div class="info"><strong>Accent colour</strong><span>Used for buttons, progress and highlights.</span></div>
+            <div class="ctrl">
+              <div class="swatches" id="accentSwatches">
+                <button class="swatch on" data-accent="green" style="background:#6aab3a" aria-label="Green accent"></button>
+                <button class="swatch" data-accent="teal" style="background:#2f8f6b" aria-label="Teal accent"></button>
+                <button class="swatch" data-accent="gold" style="background:#c9a84c" aria-label="Gold accent"></button>
+                <button class="swatch" data-accent="blue" style="background:#3f7fd0" aria-label="Blue accent"></button>
+                <button class="swatch" data-accent="plum" style="background:#a45b98" aria-label="Plum accent"></button>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section class="card settings-sec" aria-labelledby="secTerms">
           <h3 id="secTerms">Terms &amp; Conditions</h3>
@@ -1045,12 +1006,12 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         <section class="card settings-sec" aria-labelledby="secPrivacy">
           <h3 id="secPrivacy">Privacy &amp; Data</h3>
           <div class="set-row">
-            <div class="info"><strong>Export My Data</strong><span>Download a JSON backup or a formatted PDF report.</span></div>
-            <div class="ctrl"><button class="btn btn-primary btn-sm" data-open-export>Open</button></div>
+            <div class="info"><strong>Export Data</strong><span>Download a JSON backup or a formatted PDF report.</span></div>
+            <div class="ctrl"><button class="btn btn-primary btn-sm" data-open-export>⬇ Export…</button></div>
           </div>
           <div class="set-row">
-            <div class="info"><strong>Import My Data</strong><span>Restore from a previously exported JSON file.</span></div>
-            <div class="ctrl"><button class="btn btn-ghost btn-sm" id="importBtn">Open</button></div>
+            <div class="info"><strong>Import Data</strong><span>Restore from a previously exported JSON file.</span></div>
+            <div class="ctrl"><button class="btn btn-ghost btn-sm" id="importBtn">⬆ Import JSON…</button></div>
           </div>
           <div class="set-row">
             <div class="info"><strong>Storage used</strong><span id="setStorage">Calculating…</span>
@@ -1078,12 +1039,13 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
         </div>
         <div class="grid grid-2">
           <section class="card">
-            <div class="card-head"><h3>Data inventory</h3></div>
+            <div class="card-head"><h3>📦 Data inventory</h3></div>
             <div class="tbl-wrap"><table><thead><tr><th>Collection</th><th class="num">Items</th></tr></thead><tbody id="admInventory"></tbody></table></div>
           </section>
           <section class="card">
-            <div class="card-head"><h3>Maintenance</h3></div>
+            <div class="card-head"><h3>🛠 Maintenance</h3></div>
             <div class="list">
+              <div class="item"><div class="grow"><div class="t">Export a backup</div><div class="d">Download everything as JSON or PDF.</div></div><div class="item-actions"><button class="chip-btn" data-open-export>Export</button></div></div>
               <div class="item"><div class="grow"><div class="t">Request notification permission</div><div class="d" id="admNotifyDesc">Required for reminder pop-ups.</div></div><div class="item-actions"><button class="chip-btn" id="admNotifyBtn">Enable</button></div></div>
               <div class="item"><div class="grow"><div class="t">Clear cache &amp; reload</div><div class="d">Flushes unsaved writes and refreshes the app.</div></div><div class="item-actions"><button class="chip-btn" id="admFlushBtn">Run</button></div></div>
               <div class="item"><div class="grow"><div class="t">Load demo data</div><div class="d">Adds sample goals, tasks and journal entries.</div></div><div class="item-actions"><button class="chip-btn" id="admSeedBtn">Load</button></div></div>
@@ -1104,7 +1066,7 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
     <div class="onb-logo" aria-hidden="true">hub</div>
     <h2 id="onbTitle">Your data is safe with us</h2>
     <p class="lead">All your data is encrypted, stored locally on your device, and never shared with any third party.</p>
-    <div class="trust-list"><span>100% local storage</span><span>No servers</span><span>Works offline</span></div>
+    <div class="trust-list"><span>🔒 100% local storage</span><span>🚫 No servers</span><span>📴 Works offline</span></div>
     <label class="tc-box" for="onbTerms">
       <input type="checkbox" id="onbTerms">
       <span>I have read and agree to the <a href="#" id="onbTermsLink">Terms &amp; Conditions</a></span>
@@ -1142,8 +1104,13 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
     <div class="modal-head"><div><h3 id="archModalT">Add Achievement</h3><p>Preserve a win in your hall of fame.</p></div><button class="x-btn" data-close aria-label="Close">✕</button></div>
     <form id="archForm">
       <div class="field"><label for="archTitle">Title</label><input type="text" id="archTitle" maxlength="120" placeholder="e.g. Ran my first 10K" required></div>
-      <div class="field"><label for="archDate">Date achieved</label><input type="date" id="archDate" required></div>
+      <div class="field"><label for="archDesc">Description</label><textarea id="archDesc" maxlength="500" placeholder="What made this worth remembering?"></textarea></div>
+      <div class="row">
+        <div class="field"><label for="archDate">Date achieved</label><input type="date" id="archDate" required></div>
+        <div class="field"><label for="archCategory">Category</label>
+          <select id="archCategory"><option>Goal</option><option>Habit</option><option>Skill</option><option>Personal</option><option>Other</option></select>
         </div>
+      </div>
       <div class="field"><label>Icon</label><div class="emoji-grid" id="archEmoji" role="group" aria-label="Choose an emoji"></div></div>
       <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button type="submit" class="btn btn-primary">Save Achievement</button></div>
     </form>
@@ -1170,7 +1137,25 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
   </div>
 </div>
 
-
+<!-- 5. Journal -->
+<div class="modal-root" id="journalModal" role="dialog" aria-modal="true" aria-labelledby="journalModalT">
+  <div class="veil" data-close></div>
+  <div class="modal">
+    <div class="modal-head"><div><h3 id="journalModalT">New Journal Entry</h3><p>Private, local, and only yours.</p></div><button class="x-btn" data-close aria-label="Close">✕</button></div>
+    <form id="journalForm">
+      <input type="hidden" id="journalId">
+      <div class="row">
+        <div class="field"><label for="journalDate">Date</label><input type="date" id="journalDate" required></div>
+        <div class="field"><label for="journalMoodIn">Mood</label>
+          <select id="journalMoodIn"><option>😄</option><option>🙂</option><option selected>😐</option><option>😔</option><option>😤</option></select>
+        </div>
+      </div>
+      <div class="field"><label for="journalTitle">Title</label><input type="text" id="journalTitle" maxlength="120" placeholder="A short headline for the day" required></div>
+      <div class="field"><label for="journalBody">Entry</label><textarea id="journalBody" maxlength="6000" style="min-height:170px" placeholder="What happened? What did you learn?" required></textarea></div>
+      <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button type="submit" class="btn btn-primary">Save Entry</button></div>
+    </form>
+  </div>
+</div>
 
 <!-- 6. Reminder -->
 <div class="modal-root" id="reminderModal" role="dialog" aria-modal="true" aria-labelledby="reminderModalT">
@@ -1268,8 +1253,8 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
     <div class="field">
       <label>Step 2 — choose format</label>
       <div class="seg" role="group" aria-label="Export format">
-        <button type="button" id="fmtJson" class="on">JSON</button>
-        <button type="button" id="fmtPdf">PDF</button>
+        <button type="button" id="fmtJson" class="on">📄 JSON</button>
+        <button type="button" id="fmtPdf">📕 PDF</button>
       </div>
       <p class="tiny muted" style="margin-top:8px" id="fmtHint">JSON is a raw, restorable backup of your data.</p>
     </div>
@@ -1358,20 +1343,6 @@ h1,h2,h3,h4,strong,th,b,.btn,.chip-btn,.item .t,.stat-card .label,.kural-label,.
 
 <div id="toastHost" role="status" aria-live="polite"></div>
 <div id="printReport" aria-hidden="true"></div>
-  <!-- Daily welcome (once per day) -->
-  <div class="daily-root" id="dailyWelcome" role="dialog" aria-modal="true" aria-labelledby="dwGreet" hidden>
-    <div class="daily-card">
-      <div class="dw-greet" id="dwGreet">Good morning.</div>
-      <div class="dw-date" id="dwDate"></div>
-      <hr>
-      <div class="dw-label" id="dwKuralLabel">Thirukkural of the day</div>
-      <div class="dw-ta" id="dwTa"></div>
-      <div class="dw-tr" id="dwTr"></div>
-      <div class="dw-en" id="dwEn"></div>
-      <button class="btn btn-primary" id="dailyStart" type="button">Start my day →</button>
-    </div>
-  </div>
-
 <script>
 'use strict';
 /* ============================================================
@@ -1391,8 +1362,6 @@ const fmtDateLong = d => d.toLocaleDateString(undefined, { weekday:'long', day:'
 const money = n => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
 const relTime = ts => { const s = (Date.now() - ts) / 1000; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s/60) + 'm ago'; if (s < 86400) return Math.floor(s/3600) + 'h ago'; const d = Math.floor(s/86400); return d === 1 ? 'yesterday' : d + 'd ago'; };
 const raf = fn => requestAnimationFrame(fn);
-const MOODS = { '😄':'Great', '🙂':'Good', '😐':'Okay', '😔':'Low', '😤':'Tough' };
-const moodWord = m => MOODS[m] || m || 'Okay';
 
 /* ============================================================
    1. STORE — in-memory cache, debounced localStorage writes
@@ -1433,7 +1402,7 @@ const Store = {
       if (this.d.settings.pic) localStorage.setItem('userProfilePic', this.d.settings.pic);
       else localStorage.removeItem('userProfilePic');
     } catch (e) {
-      toast('Storage is full — export a backup and delete old records.', { ms:7000 });
+      toast('Storage is full — export a backup and delete old records.', { icon:'⚠️', ms:7000 });
     }
   },
   setSettings(patch){ Object.assign(this.d.settings, patch); this.save(); }
@@ -1449,7 +1418,7 @@ function toast(msg, opts){
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML =
-    '<div style="flex:1"><div>' + esc(msg) + '</div>' +
+    '<div style="flex:1"><div>' + esc(opts.icon || '✅') + ' ' + esc(msg) + '</div>' +
     (opts.action ? '<div class="toast-actions"><button type="button" class="js-act">' + esc(opts.action) + '</button><button type="button" class="ghost js-dismiss">Dismiss</button></div>' : '') +
     '</div><button class="x" aria-label="Close">✕</button>';
   const kill = () => { if (!el.isConnected) return; el.classList.add('leaving'); setTimeout(() => el.remove(), 240); };
@@ -1564,7 +1533,8 @@ function go(page, opts){
   currentPage = page;
   $$('.page').forEach(p => p.classList.toggle('active', p.dataset.page === page));
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === page));
-  $('#crumb').textContent = PAGES[page].crumb.toUpperCase() + ' / ' + PAGES[page].title;
+  $('#pageTitle').textContent = PAGES[page].title;
+  $('#crumb').textContent = PAGES[page].crumb;
   document.title = PAGES[page].title + ' · Personal Productivity Manager';
   if (location.hash !== '#/' + page) history.replaceState(null, '', '#/' + page);
   Store.setSettings({ lastPage: page });
@@ -1572,7 +1542,6 @@ function go(page, opts){
   if (RENDERERS[page]) RENDERERS[page]();
   if (page === 'analytics') setTimeout(renderAnalytics, 40);
   window.scrollTo({ top:0, behavior: opts.instant ? 'auto' : 'smooth' });
-  if (page === 'dashboard') focusTaskInputIfIdle();
   closeDrawer();
 }
 function initRouting(){
@@ -1594,40 +1563,40 @@ function initRouting(){
    7. FEATURE INTRODUCTION CARDS (first visit per module)
    ============================================================ */
 const INTROS = {
-  dashboard: { name:'Your Dashboard',
-    desc:'The command centre for today. Greeting, the daily Thirukkural, your key numbers and quick capture all live on one screen.',
+  dashboard: { ico:'🏠', name:'Your Dashboard',
+    desc:'The command centre for today. Greeting, the daily Thirukkural, a live clock, your key numbers and quick capture all live on one screen.',
     bullets:['Add a task in seconds — with an optional browser reminder','Track daily commitments and keep your streak alive','See tasks, goals, focus time and streak at a glance','Catch upcoming reminders without leaving the page'] },
-  goals: { name:'Goals',
+  goals: { ico:'🎯', name:'Goals',
     desc:'Set the destination and watch the bar fill. Goals carry a category, a target date, progress and notes so nothing drifts.',
     bullets:['Create goals with categories and target dates','Nudge progress by 10% or drag the exact percentage','Hit 100% and get prompted to archive the win','Filter by status and search instantly'] },
-  archivedments: { name:'Archivedments',
+  archivedments: { ico:'🏆', name:'Archivedments',
     desc:'Your hall of fame. Completed goals and ticked-off tasks are offered a permanent home here, and you can add any win manually.',
     bullets:['Auto-archive prompts when a goal hits 100%','Manual achievements with emoji, category and date','Filter by category, sort newest or oldest','Every card keeps a shimmering gold edge forever'] },
-  skills: { name:'Skills',
+  skills: { ico:'🌱', name:'Skills',
     desc:'Deliberate practice, made visible. Log what you are learning and raise the level as you improve.',
     bullets:['Add skills with a category and notes','Level up in 5% jumps as you practise','Sort by progress, newest or alphabetically','Search across everything in one box'] },
-  focus: { name:'Focus',
+  focus: { ico:'⏱️', name:'Focus',
     desc:'A Pomodoro timer that protects your attention. Completed sessions log themselves into your analytics.',
     bullets:['25 / 5 / 15 / 50 minute modes','Start, pause, reset and skip with one tap','See today’s and this week’s focus minutes','Full session history with timestamps'] },
-  journal: { name:'Journal',
+  journal: { ico:'📔', name:'Journal',
     desc:'Think on paper. Capture the day with a mood, a headline and whatever is on your mind — private and local.',
     bullets:['Write entries with date and mood','Search full text instantly','Edit or delete past entries','Everything stays on this device'] },
-  reminders: { name:'Reminders',
+  reminders: { ico:'⏰', name:'Reminders',
     desc:'Nothing slips. Reminders fire browser notifications at the exact minute, even while this tab sits in the background.',
     bullets:['Create reminders with date, time and a note','Enable browser notifications in one click','Filter by due, overdue or completed','Task reminders work inline from the dashboard'] },
-  analytics: { name:'Analytics',
+  analytics: { ico:'📊', name:'Analytics',
     desc:'Patterns across your work — computed on the fly from your own data, never sent anywhere.',
     bullets:['Tasks completed per day for the last week','Focus minutes trend and session counts','Category mix and goal progress','Export the whole report as PDF'] },
-  brand: { name:'Brand',
+  brand: { ico:'🎨', name:'Brand',
     desc:'Track the projects you are building your name and presence around — content, products, channels and campaigns.',
     bullets:['Statuses: Planning, In Progress, Launched, Paused','Progress bar per project with quick links','Notes for next actions and audience','Filter by status, search by name'] },
-  finance: { name:'Finance',
+  finance: { ico:'💰', name:'Finance',
     desc:'Simple income and expense tracking with an instant balance, so you always know where the money went.',
     bullets:['Log income and expenses with categories','Balance, income, expense and savings rate','Search, filter by type or category','Export every record in one click'] },
-  settings: { name:'Settings',
+  settings: { ico:'⚙️', name:'Settings',
     desc:'Make it yours — profile, theme, accent colour, terms, backups and account controls all live here.',
     bullets:['Change your name and profile photo','Light / dark theme and 5 accent colours','Export JSON or PDF, import a backup','Delete every trace of your data'] },
-  admin: { name:'Admin',
+  admin: { ico:'🛡️', name:'Admin',
     desc:'The local system panel: storage usage, data inventory and maintenance tools for this device.',
     bullets:['See record counts and storage consumed','Check notification permission status','Flush the cache or load demo data','Run everything offline'] }
 };
@@ -1639,6 +1608,7 @@ function renderIntro(page){
   if (!it) { slot.innerHTML = ''; return; }
   slot.innerHTML =
     '<div class="intro-card" role="note">' +
+      '<div class="intro-ico" aria-hidden="true">' + it.ico + '</div>' +
       '<div style="flex:1;min-width:0">' +
         '<h2>' + esc(it.name) + '</h2>' +
         '<p>' + esc(it.desc) + '</p>' +
@@ -1649,7 +1619,7 @@ function renderIntro(page){
   slot.querySelector('button').addEventListener('click', () => {
     try { localStorage.setItem('introSeen_' + page, 'true'); } catch (e) {}
     slot.innerHTML = '';
-    toast('Nice — you will not see that intro again.', { ms:3200 });
+    toast('Nice — you will not see that intro again.', { icon:'👋', ms:3200 });
   });
 }
 
@@ -1670,9 +1640,7 @@ function initOnboarding(){
     if (!box.checked) return;
     try { localStorage.setItem('hasSeenWelcome', 'true'); } catch (e) {}
     closeModal('onboarding');
-    showDailyWelcome();
-    focusTaskInputIfIdle();
-    toast('Welcome aboard — everything stays on your device.', { ms:4500 });
+    toast('Welcome aboard — everything stays on your device.', { icon:'🎉', ms:4500 });
   });
 }
 
@@ -1706,7 +1674,7 @@ function closeDropdown(){ $('#avatarMenu').classList.remove('open'); $('#avatarB
 function pickPhoto(){ $('#photoInput').value = ''; $('#photoInput').click(); }
 function handlePhoto(file){
   if (!file) return;
-  if (!/^image\//.test(file.type)) { toast('That file is not an image.', {}); return; }
+  if (!/^image\//.test(file.type)) { toast('That file is not an image.', { icon:'⚠️' }); return; }
   const reader = new FileReader();
   reader.onload = ev => {
     const img = new Image();
@@ -1721,9 +1689,9 @@ function handlePhoto(file){
       try { data = cv.toDataURL('image/jpeg', 0.85); } catch (e) { data = ev.target.result; }
       Store.setSettings({ pic: data });
       renderAvatar();
-      toast('Profile photo updated.', {});
+      toast('Profile photo updated.', { icon:'📷' });
     };
-    img.onerror = () => toast('Could not read that image.', {});
+    img.onerror = () => toast('Could not read that image.', { icon:'⚠️' });
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
@@ -1741,7 +1709,7 @@ function initProfile(){
   $('#setRemovePhoto').addEventListener('click', () => {
     Store.setSettings({ pic:'' });
     renderAvatar();
-    toast('Profile photo removed.', {});
+    toast('Profile photo removed.', { icon:'🗑️' });
   });
   $('#photoInput').addEventListener('change', e => handlePhoto(e.target.files && e.target.files[0]));
   $('#ddViewProfile').addEventListener('click', () => { closeDropdown(); openProfile(); });
@@ -1800,9 +1768,8 @@ const KURALS = [
  {n:1330,ta:'ஊடுதல் காமத்திற்கு இன்பம் அதற்கின்பம்\nகூடி முயங்கப் பெறின்.',tr:'Ootudhal Kaamaththirku Inpam Adharkinpam / Kooti Muyangap Perin',en:'A lover’s quarrel lends delight to love, and reunion after it lends even deeper delight.'}
 ];
 function dayOfYear(d){ return Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(d.getFullYear(), 0, 0)) / 86400000); }
-function kuralOfDay(){ return KURALS[dayOfYear(new Date()) % KURALS.length]; }
 function renderKural(){
-  const k = kuralOfDay();
+  const k = KURALS[dayOfYear(new Date()) % KURALS.length];
   $('#kuralNo').textContent = 'Kural #' + k.n;
   $('#kuralTa').textContent = k.ta;
   $('#kuralTr').textContent = k.tr;
@@ -1810,17 +1777,30 @@ function renderKural(){
 }
 
 /* ============================================================
-   11. GREETING
+   11. LIVE CLOCK + GREETING
    ============================================================ */
+function startClock(){
+  const tick = () => {
+    const now = new Date();
+    let h = now.getHours();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    $('#clockTime').textContent = pad2(h12) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+    $('#clockAmPm').textContent = ampm;
+    $('#clockDate').textContent = fmtDateLong(now);
+  };
+  tick();
+  setInterval(tick, 1000);
+}
 function greetingFor(h){
-  if (h < 12) return 'morning';
-  if (h < 17) return 'afternoon';
-  if (h < 21) return 'evening';
-  return 'night';
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  if (h < 21) return 'Good Evening';
+  return 'Good Night';
 }
 function renderGreeting(){
   const name = Store.d.settings.name || 'User';
-  $('#dashGreet').textContent = 'Good ' + greetingFor(new Date().getHours()) + ', ' + name + '.';
+  $('#dashGreet').textContent = greetingFor(new Date().getHours()) + ', ' + name + '! 👋';
   const today = dateKey();
   const open = Store.d.tasks.filter(t => !t.done && (t.date || today) <= today).length;
   const due = Store.d.reminders.filter(r => !r.done && (r.date || '') <= today).length;
@@ -1837,22 +1817,22 @@ function notifySupported(){ return typeof window.Notification !== 'undefined'; }
 function notifyState(){ return notifySupported() ? Notification.permission : 'unsupported'; }
 function requestNotify(cb){
   try {
-    if (!notifySupported()) { toast('This browser does not support notifications.', {}); if (cb) cb('unsupported'); return; }
+    if (!notifySupported()) { toast('This browser does not support notifications.', { icon:'⚠️' }); if (cb) cb('unsupported'); return; }
     if (Notification.permission === 'granted') { if (cb) cb('granted'); return; }
-    if (Notification.permission === 'denied') { toast('Notifications are blocked in your browser settings.', {}); if (cb) cb('denied'); return; }
+    if (Notification.permission === 'denied') { toast('Notifications are blocked in your browser settings.', { icon:'🔕' }); if (cb) cb('denied'); return; }
     if (typeof Notification.requestPermission !== 'function') { if (cb) cb(Notification.permission || 'default'); return; }
     let answered = false;
     const done = p => {
       if (answered) return;
       answered = true;
-      if (p === 'granted') toast('Notifications enabled — reminders will pop up.', {});
+      if (p === 'granted') toast('Notifications enabled — reminders will pop up.', { icon:'🔔' });
       if (cb) cb(p);
     };
     const res = Notification.requestPermission(done);
     if (res && typeof res.then === 'function') res.then(done, () => done('denied'));
   } catch (e) {
     if (cb) cb('denied');
-    toast('Notifications are unavailable in this context.', {});
+    toast('Notifications are unavailable in this context.', { icon:'⚠️' });
   }
 }
 function fireNotification(title, body){
@@ -1875,7 +1855,7 @@ function checkDueNotifications(){
       if (ts && ts <= now && now - ts < 3600000) {
         fireNotification('Task reminder', t.title + (t.date ? ' — due ' + fmtDate(t.date) : ''));
         t.reminderFired = true; changed = true;
-        toast('Reminder: ' + t.title, { ms:9000 });
+        toast('Reminder: ' + t.title, { icon:'⏰', ms:9000 });
       }
     }
   });
@@ -1886,12 +1866,10 @@ function checkDueNotifications(){
       if (ts && ts <= now && now - ts < 3600000) {
         fireNotification('Reminder', r.title + (r.note ? ' — ' + r.note : ''));
         r.firedAt = now; changed = true;
-        toast('Reminder: ' + r.title, { ms:9000 });
+        toast('Reminder: ' + r.title, { icon:'⏰', ms:9000 });
       }
     }
   });
-  const keep = Store.d.reminders.filter(r => !(r.firedAt && now - r.firedAt > 86400000));
-  if (keep.length !== Store.d.reminders.length) { Store.d.reminders = keep; changed = true; }
   if (changed) Store.save();
 }
 
@@ -1917,21 +1895,19 @@ function renderStats(){
   const doneToday = todayTasks.filter(t => t.done).length;
   $('#statTasks').textContent = doneToday + '/' + todayTasks.length;
   $('#statTasksSub').textContent = (todayTasks.length - doneToday) + ' open today';
-  const kept = d.habits.filter(h => h.log && h.log[today]).length;
-  $('#statCommit').textContent = d.habits.length ? kept + '/' + d.habits.length : '0';
-  $('#statCommitSub').textContent = !d.habits.length ? 'nothing scheduled' :
-    (kept === d.habits.length ? 'all kept today' : kept + ' kept today');
-  const overdue = d.tasks.filter(t => !t.done && t.date && t.date < today).length;
-  $('#statOverdue').textContent = overdue;
-  $('#statOverdueSub').textContent = !overdue ? 'nothing overdue' :
-    (overdue === 1 ? '1 task past due' : overdue + ' tasks past due');
   const active = d.goals.filter(g => g.progress < 100);
   const avg = d.goals.length ? Math.round(d.goals.reduce((s, g) => s + (g.progress || 0), 0) / d.goals.length) : 0;
   $('#statGoals').textContent = active.length;
   $('#statGoalsSub').textContent = avg + '% average progress';
+  const focusToday = d.focusLog.filter(s => s.day === today);
+  const mins = focusToday.reduce((s, x) => s + (x.minutes || 0), 0);
+  $('#statFocus').textContent = mins + 'm';
+  $('#statFocusSub').textContent = focusToday.length + ' session' + (focusToday.length === 1 ? '' : 's');
+  const st = streakDays();
+  $('#statStreak').textContent = st;
+  $('#statStreakSub').textContent = st === 1 ? 'day in a row' : 'days in a row';
 }
 let taskShown = 20;
-let showCompleted = false;
 function taskMatches(t){
   const q = ($('#taskSearch').value || '').trim().toLowerCase();
   const f = $('#taskFilter').value;
@@ -1947,40 +1923,30 @@ function renderTasks(){
   const list = $('#taskList');
   const more = $('#taskMore'), pager = $('#taskPager');
   if (!all.length) {
-    list.innerHTML = '<div class="empty">' + (Store.d.tasks.length ? 'No tasks match your filter.' : 'No tasks yet. Add one above.') + '</div>';
+    list.innerHTML = '<div class="empty"><span class="big">📋</span>No tasks match. Add one on the left.</div>';
     more.classList.add('hidden'); pager.classList.add('hidden'); return;
   }
-  const open = all.filter(t => !t.done);
-  const done = all.filter(t => t.done);
-  const openSlice = open.slice(0, taskShown);
-  const doneSlice = showCompleted ? done : done.slice(0, 3);
-  const row = t => {
+  const slice = all.slice(0, taskShown);
+  let html = '';
+  slice.forEach(t => {
     const overdue = !t.done && t.date && t.date < today;
-    const dueLabel = t.date && t.date !== today ? fmtDate(t.date) : 'Today';
-    return '<div class="item' + (t.done ? ' done' : '') + (overdue ? ' overdue' : '') + '" data-id="' + t.id + '">' +
-      '<button class="tick' + (t.done ? ' on' : '') + '" data-act="toggle" aria-label="Mark done" aria-pressed="' + (t.done ? 'true' : 'false') + '">\u2713</button>' +
+    const rem = t.remindAt ? ' 🔔' : '';
+    html += '<div class="item' + (t.done ? ' done' : '') + (overdue ? ' overdue' : '') + '" data-id="' + t.id + '">' +
+      '<button class="tick' + (t.done ? ' on' : '') + '" data-act="toggle" aria-label="Mark done" aria-pressed="' + (t.done ? 'true' : 'false') + '">✓</button>' +
       '<div class="grow"><div class="t">' + esc(t.title) + '</div>' +
-      (overdue ? '<div class="d"><strong style="color:var(--warning)">Overdue</strong></div>' : '') + '</div>' +
-      (t.remindAt ? '<span class="item-bell" title="Reminder set">\ud83d\udd14</span>' : '') +
-      '<span class="item-date">' + esc(dueLabel) + '</span>' +
-      '<div class="item-actions"><button class="chip-btn" data-act="del" aria-label="Delete task">\u2715</button></div></div>';
-  };
-  let html = openSlice.map(row).join('');
-  if (done.length) {
-    html += '<button class="compl-head" data-act="toggle-done" aria-expanded="' + (showCompleted ? 'true' : 'false') + '">' +
-      (showCompleted ? 'Hide completed' : 'Show ' + done.length + ' completed') + '</button>';
-    html += doneSlice.map(row).join('');
-  }
+      '<div class="d">' + esc(fmtDate(t.date || today)) + ' · ' + esc(t.cat || 'Other') + rem + (overdue ? ' · <strong style="color:var(--warning)">overdue</strong>' : '') + '</div></div>' +
+      '<div class="item-actions"><button class="chip-btn" data-act="del" aria-label="Delete task">✕</button></div></div>';
+  });
   list.innerHTML = html;
-  const hidden = Math.max(open.length - openSlice.length, 0) + (showCompleted ? Math.max(done.length - doneSlice.length, 0) : 0);
+  const hidden = all.length - slice.length;
   more.classList.toggle('hidden', hidden <= 0);
   more.textContent = 'Load more (' + hidden + ')';
   pager.classList.toggle('hidden', all.length <= 20);
-  pager.textContent = 'Showing ' + (openSlice.length + doneSlice.length) + ' of ' + all.length;
+  pager.textContent = 'Showing ' + slice.length + ' of ' + all.length;
 }
 function offerArchive(obj, kind){
   toast('Add to Archivedments?', {
-    ms:10000, action:'Yes, archive it',
+    icon:'🏆', ms:10000, action:'Yes, archive it',
     onAction: () => {
       Store.d.archived.unshift({
         id: uid(), title: obj.title, desc: obj.desc || (kind === 'goal' ? 'Completed a goal in full.' : 'Completed a task.'),
@@ -1989,7 +1955,7 @@ function offerArchive(obj, kind){
       });
       Store.save();
       if (currentPage === 'archivedments') RENDERERS.archivedments();
-      toast('"' + obj.title + '" added to Archivedments \u2713', {});
+      toast('Archived in your hall of fame.', { icon:'✨' });
     }
   });
 }
@@ -1998,33 +1964,34 @@ function renderHabits(){
   const today = dateKey();
   const list = Store.d.habits;
   if (!list.length) {
-    host.innerHTML = '<div class="empty">No daily commitments yet \u2014 add one.</div>';
+    host.innerHTML = '<div class="empty"><span class="big">🔁</span>No daily commitments yet — add one.</div>';
     return;
   }
-  const dows = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const dowsRow = '<div class="habit-dows">' + dows.map(d => '<span>' + d + '</span>').join('') + '</div>';
   host.innerHTML = list.map(h => {
     const on = !!(h.log && h.log[today]);
     let s = 0; const d = new Date();
     for (let i = 0; i < 365; i++) { const k = dateKey(d); if (h.log && h.log[k]) { s++; d.setDate(d.getDate() - 1); } else { if (i === 0) { d.setDate(d.getDate() - 1); continue; } break; } }
-    const dow = (new Date().getDay() + 6) % 7;
-    let dots = '';
-    for (let i = 0; i < 7; i++) {
-      const dd = new Date(); dd.setDate(dd.getDate() - (dow - i));
-      const got = !!(h.log && h.log[dateKey(dd)]);
-      dots += '<span class="habit-dot' + (got ? ' on' : '') + '" aria-hidden="true">\u2713</span>';
-    }
     return '<div class="item' + (on ? ' done' : '') + '" data-id="' + h.id + '">' +
-      '<div class="grow"><div class="t">' + esc(h.name) + '</div>' +
-      '<div class="habit-week">' + dowsRow + '<div class="habit-dots">' + dots + '</div></div>' +
-      (s >= 3 ? '<div class="d">' + s + '-day streak \ud83d\udd25</div>' : '') + '</div>' +
-      '<button class="chip-btn habit-checkin' + (on ? ' on' : '') + '" data-act="toggle">' + (on ? 'Kept today' : 'Check In') + '</button>' +
-      '<div class="item-actions"><button class="chip-btn" data-act="del" aria-label="Delete commitment">\u2715</button></div></div>';
+      '<button class="tick' + (on ? ' on' : '') + '" data-act="toggle" aria-label="Toggle today" aria-pressed="' + on + '">✓</button>' +
+      '<div class="grow"><div class="t">' + esc(h.name) + '</div><div class="d">🔥 ' + s + '-day streak</div></div>' +
+      '<div class="item-actions"><button class="chip-btn" data-act="del" aria-label="Delete">✕</button></div></div>';
   }).join('');
 }
-
+function renderDashReminders(){
+  const host = $('#dashReminders');
+  const today = dateKey();
+  const list = Store.d.reminders.filter(r => !r.done).sort((a, b) =>
+    ((a.date || '') + (a.time || '')).localeCompare((b.date || '') + (b.time || ''))).slice(0, 6);
+  if (!list.length) { host.innerHTML = '<div class="empty"><span class="big">⏳</span>Nothing pending. Enjoy the quiet.</div>'; return; }
+  host.innerHTML = list.map(r => {
+    const overdue = r.date && r.date < today;
+    return '<div class="item' + (overdue ? ' overdue' : '') + '" data-id="' + r.id + '">' +
+      '<div class="grow"><div class="t">' + esc(r.title) + '</div>' +
+      '<div class="d">' + esc(fmtDate(r.date)) + ' · ' + esc(r.time || '') + (overdue ? ' · <strong style="color:var(--warning)">overdue</strong>' : '') + '</div></div></div>';
+  }).join('');
+}
 function renderDashboard(){
-  renderGreeting(); renderKural(); renderStats(); renderTasks(); renderHabits();
+  renderGreeting(); renderKural(); renderStats(); renderTasks(); renderHabits(); renderDashReminders();
 }
 RENDERERS.dashboard = renderDashboard;
 /* ============================================================
@@ -2033,54 +2000,29 @@ RENDERERS.dashboard = renderDashboard;
 function initDashboard(){
   const form = $('#taskForm');
   $('#taskDate').value = dateKey();
-  const syncDateLabel = () => {
-    const v = $('#taskDate').value;
-    $('#taskDateLabel').textContent = !v || v === dateKey() ? 'Today' : fmtDate(v);
-  };
-  $('#taskDate').addEventListener('change', syncDateLabel);
-  syncDateLabel();
-  const remindToggle = $('#taskRemindToggle'), remindFields = $('#taskRemindFields');
-  remindToggle.addEventListener('click', () => {
-    const opening = remindFields.hidden;
-    remindFields.hidden = !opening;
-    remindToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
-    remindToggle.textContent = opening ? '\u2013 Hide reminder' : '+ Set Reminder';
-    if (opening) {
-      $('#taskRemindChk').checked = true;
-      $('#taskRemindWrap').hidden = false;
-      requestNotify();
-      const t = $('#taskRemindTime'); if (t) t.focus();
-    }
-  });
   $('#taskRemindChk').addEventListener('change', e => {
-    $('#taskRemindWrap').hidden = !e.target.checked;
+    $('#taskRemindFields').hidden = !e.target.checked;
+    if (e.target.checked) requestNotify();
   });
   form.addEventListener('submit', e => {
     e.preventDefault();
     const title = $('#taskTitle').value.trim();
-    if (!title) { $('#taskTitle').focus(); toast('Give the task a name first.', {}); return; }
+    if (!title) { $('#taskTitle').focus(); toast('Give the task a name first.', { icon:'✏️' }); return; }
     const date = $('#taskDate').value || dateKey();
     let remindAt = null;
-    if ($('#taskRemindChk').checked && !remindFields.hidden && $('#taskRemindTime').value) remindAt = date + 'T' + $('#taskRemindTime').value;
-    const taskId = uid();
+    if ($('#taskRemindChk').checked && $('#taskRemindTime').value) remindAt = date + 'T' + $('#taskRemindTime').value;
     Store.d.tasks.unshift({
-      id: taskId, title, date, cat: 'Other', done: false,
+      id: uid(), title, date, cat: $('#taskCat').value, done: false,
       createdAt: Date.now(), remindAt, reminderFired: false, archivedOffered: false
     });
     Store.save();
     form.reset();
     $('#taskDate').value = dateKey();
-    syncDateLabel();
-    remindFields.hidden = true;
-    remindToggle.setAttribute('aria-expanded', 'false');
-    remindToggle.textContent = '+ Set Reminder';
-    $('#taskRemindChk').checked = true;
-    $('#taskRemindWrap').hidden = false;
+    $('#taskRemindFields').hidden = true;
+    $('#taskRemindChk').checked = false;
     taskShown = 20;
     renderTasks(); renderStats(); renderGreeting();
-    const fresh = $('#taskList').querySelector('[data-id="' + taskId + '"]');
-    if (fresh) fresh.classList.add('fresh');
-    toast(remindAt ? 'Task added — reminder set for ' + $('#taskRemindTime').value + '.' : 'Task added.', {});
+    toast(remindAt ? 'Task added — reminder set for ' + $('#taskRemindTime').value + '.' : 'Task added.', { icon:'✅' });
     if (remindAt) requestNotify();
   });
   $('#taskSearch').addEventListener('input', debounce(() => { taskShown = 20; renderTasks(); }, 200));
@@ -2088,7 +2030,6 @@ function initDashboard(){
   $('#taskMore').addEventListener('click', () => { taskShown += 20; renderTasks(); });
   $('#taskList').addEventListener('click', e => {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
-    if (btn.dataset.act === 'toggle-done') { showCompleted = !showCompleted; renderTasks(); return; }
     const id = btn.closest('.item').dataset.id;
     const t = Store.d.tasks.find(x => x.id === id); if (!t) return;
     if (btn.dataset.act === 'toggle') {
@@ -2100,7 +2041,7 @@ function initDashboard(){
     } else if (btn.dataset.act === 'del') {
       Store.d.tasks = Store.d.tasks.filter(x => x.id !== id);
       Store.save(); renderTasks(); renderStats(); renderGreeting();
-      toast('Task deleted.', { ms:2600 });
+      toast('Task deleted.', { icon:'🗑️', ms:2600 });
     }
   });
   $('#addHabitBtn').addEventListener('click', () => { $('#habitForm').reset(); openModal('habitModal'); });
@@ -2110,7 +2051,7 @@ function initDashboard(){
     Store.d.habits.push({ id: uid(), name: n, log: {}, createdAt: Date.now() });
     Store.save(); closeModal('habitModal'); $('#habitForm').reset();
     renderHabits(); renderStats();
-    toast('Daily commitment added.', {});
+    toast('Daily commitment added.', { icon:'🔁' });
   });
   $('#habitList').addEventListener('click', e => {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
@@ -2126,12 +2067,6 @@ function initDashboard(){
       Store.save(); renderHabits(); renderStats();
     }
   });
-  const kuralMore = $('#kuralMore');
-  if (kuralMore) kuralMore.addEventListener('click', () => {
-    const collapsed = $('#kuralBody').classList.toggle('collapsed');
-    kuralMore.textContent = collapsed ? 'Read more' : 'Show less';
-    kuralMore.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-  });
 }
 
 /* ============================================================
@@ -2141,20 +2076,23 @@ let goalShown = 20;
 function goalFiltered(){
   const q = ($('#goalSearch').value || '').trim().toLowerCase();
   const st = $('#goalStatus').value;
+  const sort = $('#goalSort').value;
   let list = Store.d.goals.filter(g => {
     if (st === 'active' && g.progress >= 100) return false;
     if (st === 'done' && g.progress < 100) return false;
     if (q && (g.title + ' ' + (g.cat || '') + ' ' + (g.notes || '')).toLowerCase().indexOf(q) < 0) return false;
     return true;
   });
-  list.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+  if (sort === 'new') list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  else if (sort === 'old') list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  else list.sort((a, b) => (b.progress || 0) - (a.progress || 0));
   return list;
 }
 function renderGoals(){
   const all = goalFiltered();
   const host = $('#goalsList'), more = $('#goalsMore'), pager = $('#goalsPager');
   if (!all.length) {
-    host.innerHTML = '<div class="empty" style="grid-column:1/-1">No goals here yet — set your first one.</div>';
+    host.innerHTML = '<div class="empty" style="grid-column:1/-1"><span class="big">🎯</span>No goals here yet — set your first one.</div>';
     more.classList.add('hidden'); pager.classList.add('hidden'); return;
   }
   const slice = all.slice(0, goalShown);
@@ -2166,13 +2104,12 @@ function renderGoals(){
       (g.due ? '<span class="badge ' + (overdue ? 'warn' : 'muted') + '" style="margin-left:6px">' + (overdue ? 'Overdue · ' : 'Due ') + esc(fmtDate(g.due)) + '</span>' : '') +
       '</div><div class="item-actions"><button class="chip-btn" data-act="edit">Edit</button><button class="chip-btn" data-act="del">✕</button></div></div>' +
       '<h3 style="margin-bottom:4px">' + esc(g.title) + '</h3>' +
+      (g.notes ? '<p class="small muted" style="margin-bottom:6px">' + esc(g.notes) + '</p>' : '') +
       '<div class="progress' + (done ? ' gold' : '') + '"><span style="width:' + clamp(g.progress || 0, 0, 100) + '%"></span></div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">' +
-      '<strong style="font-size:.95rem" class="goal-pct" data-pct="' + (g.progress || 0) + '">' + (g.progress || 0) + '%</strong>' +
-      '<span class="small muted">Last updated: ' + esc(relTime(g.updatedAt || g.createdAt)) + '</span>' +
-      '<div class="item-actions">' + (done ? '<button class="chip-btn" data-act="archive">Archive</button>' :
-        '<button class="chip-btn" data-act="update">+ Update</button><button class="chip-btn on" data-act="complete">Mark 100%</button>') + '</div></div>' +
-      (g.notes ? '<p class="small muted" style="margin:8px 0 0">' + esc(g.notes) + '</p>' : '') + '</div>';
+      '<strong style="font-size:.95rem">' + (g.progress || 0) + '%</strong>' +
+      '<div class="item-actions">' + (done ? '<button class="chip-btn" data-act="archive">🏆 Archive</button>' :
+        '<button class="chip-btn" data-act="plus">+10%</button><button class="chip-btn on" data-act="complete">Mark 100%</button>') + '</div></div></div>';
   }).join('');
   const hidden = all.length - slice.length;
   more.classList.toggle('hidden', hidden <= 0);
@@ -2210,7 +2147,7 @@ function initGoals(){
     const payload = {
       title, cat: $('#goalCategory').value, due: $('#goalDue').value,
       progress: clamp(parseInt($('#goalProgress').value, 10) || 0, 0, 100),
-      notes: $('#goalNotes').value.trim(), updatedAt: Date.now()
+      notes: $('#goalNotes').value.trim()
     };
     let g;
     if (id) { g = Store.d.goals.find(x => x.id === id); if (g) Object.assign(g, payload); }
@@ -2218,7 +2155,7 @@ function initGoals(){
     Store.save(); closeModal('goalModal');
     renderGoals(); renderStats();
     if (g) goalArchiveCheck(g);
-    toast(id ? 'Goal updated.' : 'Goal created.', {});
+    toast(id ? 'Goal updated.' : 'Goal created.', { icon:'🎯' });
   });
   $('#goalsList').addEventListener('click', e => {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
@@ -2226,38 +2163,19 @@ function initGoals(){
     const g = Store.d.goals.find(x => x.id === id); if (!g) return;
     const act = btn.dataset.act;
     if (act === 'edit') { openGoalModal(g); return; }
-    if (act === 'update') {
-      const card = btn.closest('.card');
-      const pct = card.querySelector('.goal-pct');
-      if (!pct || card.querySelector('.goal-edit')) return;
-      const inp = document.createElement('input');
-      inp.type = 'number'; inp.min = 0; inp.max = 100; inp.step = 1;
-      inp.className = 'goal-edit'; inp.value = g.progress || 0;
-      inp.setAttribute('aria-label', 'Update percent');
-      pct.replaceWith(inp); inp.focus(); inp.select();
-      const commit = () => {
-        if (inp._done) return; inp._done = true;
-        g.progress = clamp(parseInt(inp.value, 10) || 0, 0, 100);
-        g.updatedAt = Date.now();
-        Store.save(); renderGoals(); renderStats(); goalArchiveCheck(g);
-      };
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
-      inp.addEventListener('blur', commit);
-      return;
-    }
     if (act === 'del') {
       Store.d.goals = Store.d.goals.filter(x => x.id !== id);
-      Store.save(); renderGoals(); renderStats(); toast('Goal deleted.', { ms:2600 }); return;
+      Store.save(); renderGoals(); renderStats(); toast('Goal deleted.', { icon:'🗑️', ms:2600 }); return;
     }
     if (act === 'plus') g.progress = clamp((g.progress || 0) + 10, 0, 100);
     if (act === 'complete') g.progress = 100;
-    if (act === 'plus' || act === 'complete') g.updatedAt = Date.now();
     if (act === 'archive') { offerArchive({ title: g.title, desc: g.notes || 'Completed a goal in full.' }, 'goal'); return; }
     Store.save(); renderGoals(); renderStats();
     if (act !== 'archive') goalArchiveCheck(g);
   });
   $('#goalSearch').addEventListener('input', debounce(() => { goalShown = 20; renderGoals(); }, 200));
   $('#goalStatus').addEventListener('change', () => { goalShown = 20; renderGoals(); });
+  $('#goalSort').addEventListener('change', () => { goalShown = 20; renderGoals(); });
   $('#goalsMore').addEventListener('click', () => { goalShown += 20; renderGoals(); });
 }
 RENDERERS.goals = renderGoals;
@@ -2269,8 +2187,17 @@ const ARCH_EMOJIS = ['🏆','🥇','🎯','⭐','🎉','💪','🚀','📚','�
 let archShown = 20;
 let archEmojiPicked = '🏆';
 function archFiltered(){
-  return Store.d.archived.slice().sort((a, b) =>
-    String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
+  const q = ($('#archSearch').value || '').trim().toLowerCase();
+  const cat = $('#archCat').value;
+  const sort = $('#archSort').value;
+  let list = Store.d.archived.filter(a => {
+    if (cat !== 'all' && a.cat !== cat) return false;
+    if (q && (a.title + ' ' + (a.desc || '')).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  list.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
+  if (sort === 'old') list.reverse();
+  return list;
 }
 function renderArchivedments(){
   const all = archFiltered();
@@ -2278,24 +2205,21 @@ function renderArchivedments(){
   if (!all.length) {
     host.innerHTML = '';
     empty.classList.remove('hidden');
-    empty.textContent = 'No achievements here yet \u2014 win something and it will live here forever.';
+    if (Store.d.archived.length) empty.innerHTML = '<span class="big">🔍</span>No achievements match this filter.';
+    else empty.innerHTML = '<span class="big">🏆</span>No achievements here yet — win something and it will live here forever.';
     more.classList.add('hidden'); pager.classList.add('hidden'); return;
   }
   empty.classList.add('hidden');
   const slice = all.slice(0, archShown);
   host.innerHTML = slice.map(a =>
-    '<div class="arch-flip" data-id="' + a.id + '">' +
-      '<div class="arch-face arch-front" data-act="flip" role="button" tabindex="0" aria-label="Flip achievement card">' +
-        '<button class="x-btn del" data-act="del" aria-label="Delete achievement">\u2715</button>' +
-        '<span class="a-emoji" aria-hidden="true">' + esc(a.emoji || '\ud83c\udfc6') + '</span>' +
-        '<p class="a-title">' + esc(a.title) + '</p>' +
-        '<span class="a-date">' + esc(fmtDate(a.date)) + '</span>' +
-      '</div>' +
-      '<div class="arch-face arch-back" data-act="flip">' +
-        '<p>' + esc(a.desc || a.title) + '</p>' +
-        '<span class="a-date">' + esc(fmtDate(a.date)) + '</span>' +
-      '</div>' +
-    '</div>').join('');
+    '<article class="arch-card" data-id="' + a.id + '">' +
+      '<button class="x-btn del" data-act="del" aria-label="Delete achievement">✕</button>' +
+      '<div class="medal" aria-hidden="true">' + esc(a.emoji || '🏆') + '</div>' +
+      '<h4>' + esc(a.title) + '</h4>' +
+      '<p>' + esc(a.desc || '') + '</p>' +
+      '<div class="arch-meta"><span class="badge gold">' + esc(a.cat || 'Other') + '</span>' +
+      '<span class="date">' + esc(fmtDate(a.date)) + '</span></div>' +
+    '</article>').join('');
   const hidden = all.length - slice.length;
   more.classList.toggle('hidden', hidden <= 0);
   more.textContent = 'Load more (' + hidden + ')';
@@ -2322,28 +2246,26 @@ function initArchivedments(){
     const title = $('#archTitle').value.trim();
     if (!title) { $('#archTitle').focus(); return; }
     Store.d.archived.unshift({
-      id: uid(), title, desc: '', date: $('#archDate').value || dateKey(),
-      cat: 'Other', emoji: archEmojiPicked, createdAt: Date.now()
+      id: uid(), title, desc: $('#archDesc').value.trim(), date: $('#archDate').value || dateKey(),
+      cat: $('#archCategory').value, emoji: archEmojiPicked, createdAt: Date.now()
     });
     Store.save(); closeModal('archModal');
     archShown = 20; renderArchivedments();
-    toast('"' + title + '" added to Archivedments \u2713', {});
+    toast('Achievement archived forever. 🏆', { icon:'✨' });
   });
   $('#archList').addEventListener('click', e => {
-    const del = e.target.closest('[data-act="del"]');
-    const card = e.target.closest('.arch-flip'); if (!card) return;
-    const id = card.dataset.id;
-    if (del) {
-      Store.d.archived = Store.d.archived.filter(x => x.id !== id);
-      Store.save(); renderArchivedments();
-      toast('Achievement removed.', { ms:2600 });
-      return;
-    }
-    if (e.target.closest('[data-act="flip"]')) card.classList.toggle('flip');
+    const btn = e.target.closest('[data-act="del"]'); if (!btn) return;
+    const id = btn.closest('.arch-card').dataset.id;
+    Store.d.archived = Store.d.archived.filter(x => x.id !== id);
+    Store.save(); renderArchivedments();
+    toast('Achievement removed.', { icon:'🗑️', ms:2600 });
   });
   const toggleHow = () => { const h = $('#howtoArch'); const c = h.classList.toggle('collapsed'); $('#howtoArchHead').setAttribute('aria-expanded', c ? 'false' : 'true'); };
   $('#howtoArchHead').addEventListener('click', toggleHow);
   $('#howtoArchHead').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleHow(); } });
+  $('#archSearch').addEventListener('input', debounce(() => { archShown = 20; renderArchivedments(); }, 200));
+  $('#archCat').addEventListener('change', () => { archShown = 20; renderArchivedments(); });
+  $('#archSort').addEventListener('change', () => { archShown = 20; renderArchivedments(); });
   $('#archMore').addEventListener('click', () => { archShown += 20; renderArchivedments(); });
 }
 RENDERERS.archivedments = renderArchivedments;
@@ -2361,7 +2283,7 @@ function renderSkills(){
   else list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const host = $('#skillsList'), more = $('#skillsMore'), pager = $('#skillsPager');
   if (!list.length) {
-    host.innerHTML = '<div class="empty" style="grid-column:1/-1">No skills yet — add what you are practising.</div>';
+    host.innerHTML = '<div class="empty" style="grid-column:1/-1"><span class="big">🌱</span>No skills yet — add what you are practising.</div>';
     more.classList.add('hidden'); pager.classList.add('hidden'); return;
   }
   const slice = list.slice(0, skillShown);
@@ -2405,7 +2327,7 @@ function initSkills(){
     if (id) { const s = Store.d.skills.find(x => x.id === id); if (s) Object.assign(s, payload); }
     else Store.d.skills.unshift(Object.assign({ id: uid(), createdAt: Date.now() }, payload));
     Store.save(); closeModal('skillModal'); skillShown = 20; renderSkills();
-    toast(id ? 'Skill updated.' : 'Skill added.', {});
+    toast(id ? 'Skill updated.' : 'Skill added.', { icon:'🌱' });
   });
   $('#skillsList').addEventListener('click', e => {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
@@ -2413,12 +2335,12 @@ function initSkills(){
     const s = Store.d.skills.find(x => x.id === id); if (!s) return;
     const act = btn.dataset.act;
     if (act === 'edit') return openSkillModal(s);
-    if (act === 'del') { Store.d.skills = Store.d.skills.filter(x => x.id !== id); Store.save(); renderSkills(); return toast('Skill deleted.', { ms:2600 }); }
+    if (act === 'del') { Store.d.skills = Store.d.skills.filter(x => x.id !== id); Store.save(); renderSkills(); return toast('Skill deleted.', { icon:'🗑️', ms:2600 }); }
     if (act === 'up') {
       s.level = clamp((s.level || 0) + 5, 0, 100);
       Store.save(); renderSkills();
       if (s.level >= 100) offerArchive({ title: s.name, desc: 'Reached mastery in ' + s.name + '.' }, 'task');
-      else toast('Leveled up to ' + s.level + '%!', { ms:2400 });
+      else toast('Leveled up to ' + s.level + '%!', { icon:'⬆️', ms:2400 });
     }
   });
   $('#skillSearch').addEventListener('input', debounce(() => { skillShown = 20; renderSkills(); }, 200));
@@ -2453,14 +2375,14 @@ function startTimer(){
   if (FOCUS.running) return;
   FOCUS.running = true;
   FOCUS.endsAt = Date.now() + FOCUS.left * 1000;
-  $('#timerStart').textContent = 'Pause';
+  $('#timerStart').textContent = '⏸ Pause';
   $('#timerHint').textContent = 'Stay with it — notifications are silenced until you return.';
   FOCUS.rafId = raf(timerLoop);
 }
 function pauseTimer(){
   FOCUS.running = false;
   if (FOCUS.rafId) cancelAnimationFrame(FOCUS.rafId);
-  $('#timerStart').textContent = 'Resume';
+  $('#timerStart').textContent = '▶ Resume';
   $('#timerHint').textContent = 'Paused. Resume when you are ready.';
   document.title = 'Personal Productivity Manager';
 }
@@ -2469,7 +2391,7 @@ function resetTimer(){
   if (FOCUS.rafId) cancelAnimationFrame(FOCUS.rafId);
   FOCUS.left = FOCUS.total;
   FOCUS.lastSec = -1;
-  $('#timerStart').textContent = 'Start';
+  $('#timerStart').textContent = '▶ Start';
   $('#timerHint').textContent = 'Sessions are saved to Focus history when they complete.';
   document.title = 'Personal Productivity Manager';
   paintTimer();
@@ -2482,13 +2404,13 @@ function finishSession(){
     Store.d.focusLog.unshift({ id: uid(), minutes, day: dateKey(), at: Date.now(), label: FOCUS.label });
     Store.save();
     fireNotification('Focus session complete', FOCUS.label + ' — ' + minutes + ' minutes logged.');
-    toast('Session complete — ' + minutes + ' minutes logged.', {});
+    toast('Session complete — ' + minutes + ' minutes logged.', { icon:'🎉' });
   } else {
-    toast('Break is over — back to it!', {});
+    toast('Break is over — back to it!', { icon:'☕' });
   }
   FOCUS.left = FOCUS.total;
   FOCUS.lastSec = -1;
-  $('#timerStart').textContent = 'Start';
+  $('#timerStart').textContent = '▶ Start';
   $('#timerHint').textContent = 'Sessions are saved to Focus history when they complete.';
   document.title = 'Personal Productivity Manager';
   paintTimer();
@@ -2538,97 +2460,74 @@ RENDERERS.focus = renderFocus;
    19. JOURNAL
    ============================================================ */
 let journalShown = 20;
-let journalTimer = null;
-function journalSorted(){
-  return Store.d.journal.slice().sort((a, b) =>
-    String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
+function journalFiltered(){
+  const q = ($('#journalSearch').value || '').trim().toLowerCase();
+  const mood = $('#journalMood').value;
+  return Store.d.journal.filter(j => {
+    if (mood !== 'all' && j.mood !== mood) return false;
+    if (q && (j.title + ' ' + j.body).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  }).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
 }
 function renderJournal(){
-  const all = journalSorted();
+  const all = journalFiltered();
   const host = $('#journalList'), empty = $('#journalEmpty'), more = $('#journalMore'), pager = $('#journalPager');
   if (!all.length) {
     host.innerHTML = '';
     empty.classList.remove('hidden');
-    empty.textContent = 'No entries yet.';
+    empty.innerHTML = Store.d.journal.length ? '<span class="big">🔍</span>No entries match this filter.' : '<span class="big">📔</span>No entries yet. Write your first one.';
     more.classList.add('hidden'); pager.classList.add('hidden'); return;
   }
   empty.classList.add('hidden');
   const slice = all.slice(0, journalShown);
   host.innerHTML = slice.map(j =>
-    '<div class="item" data-id="' + j.id + '" role="button" tabindex="0">' +
-      '<div class="grow"><div class="t">' + esc(j.title || 'Untitled') + '</div>' +
-      '<div class="d">' + esc(fmtDate(j.date)) + '</div></div>' +
-      '<div class="item-actions"><button class="chip-btn" data-act="del" aria-label="Delete entry">\u2715</button></div>' +
-    '</div>').join('');
+    '<article class="card" style="margin-bottom:0" data-id="' + j.id + '">' +
+      '<div class="card-head"><div><span class="badge muted">' + esc(fmtDate(j.date)) + '</span> <span class="badge">' + esc(j.mood || '😐') + ' mood</span></div>' +
+      '<div class="item-actions"><button class="chip-btn" data-act="edit">Edit</button><button class="chip-btn" data-act="del">✕</button></div></div>' +
+      '<h3 style="margin-bottom:6px">' + esc(j.title) + '</h3>' +
+      '<p style="white-space:pre-wrap;margin:0;font-size:.9rem">' + esc(j.body) + '</p>' +
+    '</article>').join('');
   const hidden = all.length - slice.length;
   more.classList.toggle('hidden', hidden <= 0);
   more.textContent = 'Load more (' + hidden + ')';
   pager.classList.toggle('hidden', all.length <= 20);
   pager.textContent = 'Showing ' + slice.length + ' of ' + all.length;
 }
-function loadJournalEntry(j){
+function openJournalModal(j){
+  $('#journalForm').reset();
   $('#journalId').value = j ? j.id : '';
+  $('#journalModalT').textContent = j ? 'Edit Entry' : 'New Journal Entry';
+  $('#journalDate').value = j ? j.date : dateKey();
+  $('#journalMoodIn').value = j ? (j.mood || '😐') : '😐';
   $('#journalTitle').value = j ? j.title : '';
   $('#journalBody').value = j ? j.body : '';
-  $('#journalToday').textContent = j ? fmtDate(j.date) : 'Today';
-}
-function flashSaved(){
-  const el = $('#journalSaved'); if (!el) return;
-  el.hidden = false; el.classList.add('on');
-  clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; el.classList.remove('on'); }, 1400);
-}
-function saveJournalEntry(){
-  const title = $('#journalTitle').value.trim();
-  const body = $('#journalBody').value.trim();
-  const id = $('#journalId').value;
-  if (!title && !body) {
-    if (id) {
-      Store.d.journal = Store.d.journal.filter(x => x.id !== id);
-      $('#journalId').value = ''; Store.save(); renderJournal();
-    }
-    return;
-  }
-  if (id) {
-    const j = Store.d.journal.find(x => x.id === id);
-    if (j) { j.title = title || 'Untitled'; j.body = body; }
-    else {
-      Store.d.journal.unshift({ id: uid(), title: title || 'Untitled', body, date: dateKey(), createdAt: Date.now() });
-      $('#journalId').value = Store.d.journal[0].id;
-    }
-  } else {
-    Store.d.journal.unshift({ id: uid(), title: title || 'Untitled', body, date: dateKey(), createdAt: Date.now() });
-    $('#journalId').value = Store.d.journal[0].id;
-  }
-  Store.save(); renderJournal(); flashSaved();
+  openModal('journalModal');
 }
 function initJournal(){
-  const onInput = () => { clearTimeout(journalTimer); journalTimer = setTimeout(saveJournalEntry, 3000); };
-  $('#journalTitle').addEventListener('input', onInput);
-  $('#journalBody').addEventListener('input', onInput);
-  const blurSave = () => { clearTimeout(journalTimer); saveJournalEntry(); };
-  $('#journalTitle').addEventListener('blur', blurSave);
-  $('#journalBody').addEventListener('blur', blurSave);
-  $('#journalList').addEventListener('click', e => {
-    const del = e.target.closest('[data-act="del"]');
-    const row = e.target.closest('[data-id]'); if (!row) return;
-    const id = row.dataset.id;
-    if (del) {
-      Store.d.journal = Store.d.journal.filter(x => x.id !== id);
-      if ($('#journalId').value === id) loadJournalEntry(null);
-      Store.save(); renderJournal();
-      toast('Entry deleted.', { ms:2600 });
-      return;
-    }
-    const j = Store.d.journal.find(x => x.id === id); if (j) loadJournalEntry(j);
+  $('#addJournalBtn').addEventListener('click', () => openJournalModal(null));
+  $('#journalForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const title = $('#journalTitle').value.trim(), body = $('#journalBody').value.trim();
+    if (!title || !body) { toast('Add a title and some words first.', { icon:'✏️' }); return; }
+    const id = $('#journalId').value;
+    if (id) { const j = Store.d.journal.find(x => x.id === id); if (j) Object.assign(j, { title, body, date: $('#journalDate').value || dateKey(), mood: $('#journalMoodIn').value }); }
+    else Store.d.journal.unshift({ id: uid(), title, body, date: $('#journalDate').value || dateKey(), mood: $('#journalMoodIn').value, createdAt: Date.now() });
+    Store.save(); closeModal('journalModal'); journalShown = 20; renderJournal();
+    toast(id ? 'Entry updated.' : 'Entry saved.', { icon:'📔' });
   });
+  $('#journalList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-act]'); if (!btn) return;
+    const id = btn.closest('[data-id]').dataset.id;
+    const j = Store.d.journal.find(x => x.id === id); if (!j) return;
+    if (btn.dataset.act === 'edit') return openJournalModal(j);
+    Store.d.journal = Store.d.journal.filter(x => x.id !== id);
+    Store.save(); renderJournal(); toast('Entry deleted.', { icon:'🗑️', ms:2600 });
+  });
+  $('#journalSearch').addEventListener('input', debounce(() => { journalShown = 20; renderJournal(); }, 200));
+  $('#journalMood').addEventListener('change', () => { journalShown = 20; renderJournal(); });
   $('#journalMore').addEventListener('click', () => { journalShown += 20; renderJournal(); });
-  loadJournalEntry(Store.d.journal.find(j => j.date === dateKey()) || null);
 }
-RENDERERS.journal = () => {
-  renderJournal();
-  const body = $('#journalBody');
-  if (body && !document.querySelector('.modal-root.open') && $('#dailyWelcome').hidden) body.focus();
-};
+RENDERERS.journal = renderJournal;
 
 /* ============================================================
    20. REMINDERS
@@ -2653,7 +2552,7 @@ function renderReminders(){
   if (!all.length) {
     host.innerHTML = '';
     empty.classList.remove('hidden');
-    empty.innerHTML = Store.d.reminders.length ? 'No reminders match this filter.' : 'No reminders yet.';
+    empty.innerHTML = Store.d.reminders.length ? '<span class="big">🔍</span>No reminders match this filter.' : '<span class="big">⏰</span>No reminders yet.';
     more.classList.add('hidden'); pager.classList.add('hidden'); return;
   }
   empty.classList.add('hidden');
@@ -2664,7 +2563,7 @@ function renderReminders(){
     return '<div class="item' + (r.done ? ' done' : '') + (overdue ? ' overdue' : '') + '" data-id="' + r.id + '">' +
       '<button class="tick' + (r.done ? ' on' : '') + '" data-act="toggle" aria-label="Mark done" aria-pressed="' + !!r.done + '">✓</button>' +
       '<div class="grow"><div class="t">' + esc(r.title) + (r.note ? ' <span class="muted" style="font-weight:400">— ' + esc(r.note) + '</span>' : '') + '</div>' +
-      '<div class="d">' + esc(fmtDate(r.date)) + ' · ' + esc(r.time || '') + (overdue ? ' · <strong style="color:var(--warning)">overdue</strong>' : '') + (r.firedAt ? ' · notified' : '') + '</div></div>' +
+      '<div class="d">' + esc(fmtDate(r.date)) + ' · ' + esc(r.time || '') + (overdue ? ' · <strong style="color:var(--warning)">overdue</strong>' : '') + (r.firedAt ? ' · 🔔 sent' : '') + '</div></div>' +
       '<div class="item-actions"><button class="chip-btn" data-act="edit">Edit</button><button class="chip-btn" data-act="del">✕</button></div></div>';
   }).join('');
   const hidden = all.length - slice.length;
@@ -2698,8 +2597,8 @@ function initReminders(){
     } else {
       Store.d.reminders.push({ id: uid(), title, date, time, note: $('#reminderNote').value.trim(), done: false, firedAt: 0, createdAt: Date.now() });
     }
-    Store.save(); closeModal('reminderModal'); reminderShown = 20; renderReminders();
-    toast(id ? 'Reminder updated.' : 'Reminder set for ' + fmtDate(date) + ' at ' + time + '.', {});
+    Store.save(); closeModal('reminderModal'); reminderShown = 20; renderReminders(); renderDashReminders();
+    toast(id ? 'Reminder updated.' : 'Reminder set for ' + fmtDate(date) + ' at ' + time + '.', { icon:'⏰' });
     requestNotify();
   });
   $('#reminderList').addEventListener('click', e => {
@@ -2707,10 +2606,10 @@ function initReminders(){
     const id = btn.closest('.item').dataset.id;
     const r = Store.d.reminders.find(x => x.id === id); if (!r) return;
     const act = btn.dataset.act;
-    if (act === 'toggle') { r.done = !r.done; Store.save(); renderReminders(); return; }
+    if (act === 'toggle') { r.done = !r.done; Store.save(); renderReminders(); renderDashReminders(); return; }
     if (act === 'edit') return openReminderModal(r);
     Store.d.reminders = Store.d.reminders.filter(x => x.id !== id);
-    Store.save(); renderReminders(); toast('Reminder deleted.', { ms:2600 });
+    Store.save(); renderReminders(); renderDashReminders(); toast('Reminder deleted.', { icon:'🗑️', ms:2600 });
   });
   $('#reminderSearch').addEventListener('input', debounce(() => { reminderShown = 20; renderReminders(); }, 200));
   $('#reminderStatus').addEventListener('change', () => { reminderShown = 20; renderReminders(); });
@@ -2719,10 +2618,10 @@ function initReminders(){
 function renderReminderBtn(state){
   const s = state || notifyState();
   const btn = $('#enableNotifyBtn');
-  if (s === 'granted') { btn.textContent = 'Notifications on'; btn.classList.add('on'); }
-  else if (s === 'denied') { btn.textContent = 'Blocked in browser'; btn.classList.remove('on'); }
-  else if (s === 'unsupported') { btn.textContent = 'Not supported'; btn.classList.remove('on'); }
-  else { btn.textContent = 'Enable notifications'; btn.classList.remove('on'); }
+  if (s === 'granted') { btn.textContent = '🔔 Notifications on'; btn.classList.add('on'); }
+  else if (s === 'denied') { btn.textContent = '🔕 Blocked in browser'; btn.classList.remove('on'); }
+  else if (s === 'unsupported') { btn.textContent = '⚠️ Not supported'; btn.classList.remove('on'); }
+  else { btn.textContent = '🔔 Enable notifications'; btn.classList.remove('on'); }
 }
 RENDERERS.reminders = () => { renderReminders(); renderReminderBtn(); };
 
@@ -2740,7 +2639,7 @@ function renderBrand(){
   }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const host = $('#brandList'), more = $('#brandMore'), pager = $('#brandPager');
   if (!list.length) {
-    host.innerHTML = '<div class="empty" style="grid-column:1/-1">No brand projects yet — start one.</div>';
+    host.innerHTML = '<div class="empty" style="grid-column:1/-1"><span class="big">🎨</span>No brand projects yet — start one.</div>';
     more.classList.add('hidden'); pager.classList.add('hidden'); return;
   }
   const slice = list.slice(0, brandShown);
@@ -2784,7 +2683,7 @@ function initBrand(){
     if (id) { const b = Store.d.brand.find(x => x.id === id); if (b) Object.assign(b, payload); }
     else Store.d.brand.unshift(Object.assign({ id: uid(), createdAt: Date.now() }, payload));
     Store.save(); closeModal('brandModal'); brandShown = 20; renderBrand();
-    toast(id ? 'Project updated.' : 'Brand project added.', {});
+    toast(id ? 'Project updated.' : 'Brand project added.', { icon:'🎨' });
   });
   $('#brandList').addEventListener('click', e => {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
@@ -2792,13 +2691,13 @@ function initBrand(){
     const b = Store.d.brand.find(x => x.id === id); if (!b) return;
     const act = btn.dataset.act;
     if (act === 'edit') return openBrandModal(b);
-    if (act === 'del') { Store.d.brand = Store.d.brand.filter(x => x.id !== id); Store.save(); renderBrand(); return toast('Project deleted.', { ms:2600 }); }
+    if (act === 'del') { Store.d.brand = Store.d.brand.filter(x => x.id !== id); Store.save(); renderBrand(); return toast('Project deleted.', { icon:'🗑️', ms:2600 }); }
     if (act === 'up') {
       b.progress = clamp((b.progress || 0) + 10, 0, 100);
       if (b.progress === 100 && b.status !== 'Launched') b.status = 'Launched';
       Store.save(); renderBrand();
       if (b.progress === 100) offerArchive({ title: b.name, desc: 'Launched the brand project “' + b.name + '”.' }, 'goal');
-      else toast('Progress: ' + b.progress + '%', { ms:2200 });
+      else toast('Progress: ' + b.progress + '%', { icon:'📈', ms:2200 });
     }
   });
   $('#brandSearch').addEventListener('input', debounce(() => { brandShown = 20; renderBrand(); }, 200));
@@ -2871,21 +2770,21 @@ function initFinance(){
   $('#txnForm').addEventListener('submit', e => {
     e.preventDefault();
     const amount = parseFloat($('#txnAmount').value);
-    if (!(amount > 0)) { $('#txnAmount').focus(); toast('Enter an amount greater than zero.', {}); return; }
+    if (!(amount > 0)) { $('#txnAmount').focus(); toast('Enter an amount greater than zero.', { icon:'⚠️' }); return; }
     Store.d.finance.unshift({
       id: uid(), type: $('#txnTypeIn').value, amount: amount,
       date: $('#txnDate').value || dateKey(), cat: $('#txnCategory').value,
       note: $('#txnNote').value.trim(), createdAt: Date.now()
     });
     Store.save(); closeModal('txnModal'); txnShown = 20; renderFinance(); renderFinanceAdminSync();
-    toast('Record saved.', {});
+    toast('Record saved.', { icon:'💰' });
   });
   $('#txnBody').addEventListener('click', e => {
     const btn = e.target.closest('[data-act="del"]'); if (!btn) return;
     const id = btn.closest('tr').dataset.id;
     Store.d.finance = Store.d.finance.filter(x => x.id !== id);
     Store.save(); renderFinance(); renderFinanceAdminSync();
-    toast('Record deleted.', { ms:2600 });
+    toast('Record deleted.', { icon:'🗑️', ms:2600 });
   });
   $('#txnSearch').addEventListener('input', debounce(() => { txnShown = 20; renderFinance(); }, 200));
   $('#txnType').addEventListener('change', () => { txnShown = 20; renderFinance(); });
@@ -3093,13 +2992,21 @@ function initSettings(){
     const v = nameInput.value.trim() || 'User';
     Store.setSettings({ name: v });
     renderAvatar(); renderGreeting();
-    toast('Display name saved.', {});
+    toast('Display name saved.', { icon:'👤' });
   };
   $('#setNameSave').addEventListener('click', saveName);
   nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveName(); } });
 
   $('#themeLight').addEventListener('click', () => { Store.setSettings({ theme:'light' }); applyAppearance(); if (currentPage === 'analytics') renderAnalytics(); });
   $('#themeDark').addEventListener('click', () => { Store.setSettings({ theme:'dark' }); applyAppearance(); if (currentPage === 'analytics') renderAnalytics(); });
+  $('#accentSwatches').addEventListener('click', e => {
+    const sw = e.target.closest('.swatch'); if (!sw) return;
+    Store.setSettings({ accent: sw.dataset.accent });
+    applyAppearance();
+    if (currentPage === 'analytics') renderAnalytics();
+    toast('Accent colour updated.', { icon:'🎨', ms:2200 });
+  });
+
   $('#viewTermsBtn').addEventListener('click', () => openModal('termsModal'));
   $('#importBtn').addEventListener('click', () => { $('#importInput').value = ''; $('#importInput').click(); });
   $('#importInput').addEventListener('change', importFromJSON);
@@ -3122,7 +3029,7 @@ function initSettings(){
     } catch (e) {}
     Store.d = defaultData();
     closeModal('deleteModal');
-    toast('All data deleted.', { ms:1600 });
+    toast('All data deleted.', { icon:'🗑️', ms:1600 });
     setTimeout(() => location.reload(), 700);
   });
 }
@@ -3137,9 +3044,9 @@ function importFromJSON(e){
   const reader = new FileReader();
   reader.onload = ev => {
     let data;
-    try { data = JSON.parse(ev.target.result); } catch (err) { toast('That file is not valid JSON.', {}); return; }
+    try { data = JSON.parse(ev.target.result); } catch (err) { toast('That file is not valid JSON.', { icon:'⚠️' }); return; }
     const payload = data && data.data ? data.data : data;
-    if (!payload || typeof payload !== 'object') { toast('Unrecognised backup format.', {}); return; }
+    if (!payload || typeof payload !== 'object') { toast('Unrecognised backup format.', { icon:'⚠️' }); return; }
     let count = 0;
     ['tasks','goals','archived','journal','habits','reminders','skills','finance','brand','focusLog'].forEach(k => {
       if (Array.isArray(payload[k])) { Store.d[k] = payload[k]; count += payload[k].length; }
@@ -3151,7 +3058,7 @@ function importFromJSON(e){
     Store.flush();
     renderAvatar();
     go(currentPage, { instant:true });
-    toast('Imported ' + count + ' records from backup.', {});
+    toast('Imported ' + count + ' records from backup.', { icon:'⬆️' });
   };
   reader.readAsText(file);
 }
@@ -3196,11 +3103,11 @@ function downloadBlob(blob, filename){
 }
 function exportJSON(){
   const sel = collectExportData();
-  if (!sel.cats.length) { toast('Pick at least one category to export.', {}); return; }
+  if (!sel.cats.length) { toast('Pick at least one category to export.', { icon:'⚠️' }); return; }
   const payload = Object.assign(exportMeta(), { data: sel.data });
   const stamp = dateKey();
   downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' }), 'productivity-backup-' + stamp + '.json');
-  toast('JSON backup downloaded.', {});
+  toast('JSON backup downloaded.', { icon:'📄' });
 }
 function loadJsPdf(){
   if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
@@ -3338,7 +3245,7 @@ function pdfReport(doc, payload, meta){
   if (any('journal') && d.journal) {
     doc.addPage(); y = M;
     heading('Journal Entries');
-    d.journal.length ? d.journal.forEach(j => block(fmtDate(j.date) + ' · ' + j.title,
+    d.journal.length ? d.journal.forEach(j => block(fmtDate(j.date) + ' · ' + (j.mood || '😐') + ' · ' + j.title,
       String(j.body).slice(0, 900))) : para('No journal entries.');
   }
   if (any('habits') && d.habits) {
@@ -3402,7 +3309,7 @@ function printReportFallback(payload, meta){
   const catTitle = c => EXPORT_LABELS[c];
   let html = '<div class="pr-cover"><div style="background:#1a3a0a;color:#fff;padding:34px 40px;border-radius:10px;display:inline-block">' +
     '<div style="font-family:Leckerli One,cursive;font-size:34px">hub</div>' +
-    '<div style="font-size:20px;font-weight:500">Personal Productivity Manager</div></div>' +
+    '<div style="font-size:20px;font-weight:700">Personal Productivity Manager</div></div>' +
     '<h1>Personal data export</h1><p><strong>' + esc(meta.user) + '</strong> · ' + esc(meta.email) + '</p>' +
     '<p>' + esc(meta.dateLabel) + '</p></div>';
   payload.cats.forEach(c => {
@@ -3436,16 +3343,16 @@ function printReportFallback(payload, meta){
 }
 function exportPDF(){
   const sel = collectExportData();
-  if (!sel.cats.length) { toast('Pick at least one category to export.', {}); return; }
+  if (!sel.cats.length) { toast('Pick at least one category to export.', { icon:'⚠️' }); return; }
   const meta = exportMeta();
-  toast('Preparing your PDF…', { ms:4000 });
+  toast('Preparing your PDF…', { icon:'📕', ms:4000 });
   loadJsPdf().then(JSPDF => {
     if (!JSPDF) { printReportFallback(sel, meta); return; }
     try {
       const doc = new JSPDF({ unit: 'pt', format: 'a4' });
       pdfReport(doc, sel, meta);
       doc.save('productivity-report-' + dateKey() + '.pdf');
-      toast('PDF report downloaded.', {});
+      toast('PDF report downloaded.', { icon:'📕' });
     } catch (err) {
       printReportFallback(sel, meta);
     }
@@ -3456,6 +3363,7 @@ function initExport(){
     const t = e.target.closest('[data-open-export]');
     if (t) { updateExportCount(); openModal('exportModal'); }
   });
+  $('#btnExportTop').addEventListener('click', () => { updateExportCount(); openModal('exportModal'); });
   $$('.ex-cat').forEach(c => c.addEventListener('change', updateExportCount));
   $('#exportAll').addEventListener('click', () => { $$('.ex-cat').forEach(c => { c.checked = true; }); updateExportCount(); });
   $('#exportNone').addEventListener('click', () => { $$('.ex-cat').forEach(c => { c.checked = false; }); updateExportCount(); });
@@ -3468,7 +3376,7 @@ function initExport(){
     $('#fmtHint').textContent = 'PDF is a formatted report with cover page, tables and page numbers.';
   });
   $('#doExport').addEventListener('click', () => {
-    if (!selectedExportCats().length) { toast('Pick at least one category to export.', {}); return; }
+    if (!selectedExportCats().length) { toast('Pick at least one category to export.', { icon:'⚠️' }); return; }
     closeModal('exportModal');
     if (exportFormat === 'json') exportJSON(); else exportPDF();
   });
@@ -3497,7 +3405,7 @@ function renderAdmin(){
 }
 function initAdmin(){
   $('#admNotifyBtn').addEventListener('click', () => requestNotify(() => renderAdmin()));
-  $('#admFlushBtn').addEventListener('click', () => { Store.flush(); toast('Cache flushed and synced.', { ms:2600 }); });
+  $('#admFlushBtn').addEventListener('click', () => { Store.flush(); toast('Cache flushed and synced.', { icon:'💾', ms:2600 }); });
   $('#admSeedBtn').addEventListener('click', () => {
     const now = Date.now();
     const demo = {
@@ -3513,7 +3421,7 @@ function initAdmin(){
       skills: [{ id: uid(), name: 'Public speaking', cat: 'Communication', level: 45, notes: 'Weekly practice talk', createdAt: now }],
       habits: [{ id: uid(), name: 'Drink 2L water', log: {}, createdAt: now }],
       reminders: [{ id: uid(), title: 'Plan tomorrow before bed', date: dateKey(), time: '21:30', note: 'Ten minute review', done: false, firedAt: 0, createdAt: now }],
-      journal: [{ id: uid(), title: 'A solid start', body: 'Got the dashboard reorganised and finally tracked a full focus session. Momentum feels good.', mood: 'Good', date: dateKey(), createdAt: now }],
+      journal: [{ id: uid(), title: 'A solid start', body: 'Got the dashboard reorganised and finally tracked a full focus session. Momentum feels good.', mood: '🙂', date: dateKey(), createdAt: now }],
       finance: [{ id: uid(), type: 'income', amount: 2500, date: dateKey(), cat: 'Salary', note: 'Monthly pay', createdAt: now },
                 { id: uid(), type: 'expense', amount: 42.5, date: dateKey(), cat: 'Food', note: 'Groceries', createdAt: now }],
       brand: [{ id: uid(), name: 'Personal site refresh', status: 'In Progress', progress: 40, url: '', notes: 'New case studies this month.', createdAt: now }],
@@ -3528,7 +3436,7 @@ function initAdmin(){
     });
     Store.flush();
     go(currentPage, { instant:true });
-    toast('Demo data loaded — ' + added + ' records added.', {});
+    toast('Demo data loaded — ' + added + ' records added.', { icon:'🧪' });
   });
 }
 RENDERERS.admin = renderAdmin;
@@ -3536,41 +3444,6 @@ RENDERERS.admin = renderAdmin;
 /* ============================================================
    27. BOOT
    ============================================================ */
-function dailyGreeting(){
-  const h = new Date().getHours();
-  if (h >= 5 && h < 12) return 'Good morning';
-  if (h >= 12 && h < 17) return 'Good afternoon';
-  if (h >= 17 && h < 21) return 'Good evening';
-  return 'Good night';
-}
-function showDailyWelcome(){
-  try { if (localStorage.getItem('lastGreetedDate') === new Date().toDateString()) return; } catch (e) {}
-  const k = kuralOfDay();
-  let stored = null;
-  try { stored = localStorage.getItem('userName'); } catch (e) {}
-  const name = Store.d.settings.name || stored || 'there';
-  $('#dwGreet').textContent = dailyGreeting() + ', ' + name + '.';
-  $('#dwDate').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  $('#dwKuralLabel').textContent = 'Thirukkural of the day \u00b7 Kural #' + k.n;
-  $('#dwTa').textContent = k.ta;
-  $('#dwTr').textContent = k.tr;
-  $('#dwEn').textContent = k.en;
-  $('#dailyWelcome').hidden = false;
-  try { localStorage.setItem('lastGreetedDate', new Date().toDateString()); } catch (e) {}
-}
-function dismissDailyWelcome(cb){
-  const root = $('#dailyWelcome');
-  if (!root || root.hidden) { if (cb) cb(); return; }
-  root.classList.add('closing');
-  setTimeout(() => { root.hidden = true; root.classList.remove('closing'); if (cb) cb(); }, 200);
-}
-function focusTaskInputIfIdle(){
-  const el = $('#taskTitle');
-  if (!el || currentPage !== 'dashboard') return;
-  if (document.querySelector('.modal-root.open')) return;
-  if ($('#dailyWelcome') && !$('#dailyWelcome').hidden) return;
-  el.focus();
-}
 function boot(){
   Store.load();
   applyAppearance();
@@ -3590,14 +3463,13 @@ function boot(){
   initSettings();
   initAdmin();
   initExport();
+  startClock();
   renderReminderBtn();
 
   const hash = (location.hash || '').replace('#/', '');
   const start = PAGES[hash] ? hash : (PAGES[Store.d.settings.lastPage] ? Store.d.settings.lastPage : 'dashboard');
   go(start, { instant:true });
   initOnboarding();
-  $('#dailyStart').addEventListener('click', () => dismissDailyWelcome(focusTaskInputIfIdle));
-  try { if (localStorage.getItem('hasSeenWelcome') === 'true') { showDailyWelcome(); focusTaskInputIfIdle(); } } catch (e) {}
 
   setInterval(checkDueNotifications, 15000);
   setTimeout(checkDueNotifications, 1500);
