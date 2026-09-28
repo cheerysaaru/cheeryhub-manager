@@ -41,7 +41,7 @@ export function Layout() {
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <Link to="/" className="logo">
-            <LayoutIcon size={28} />
+            <span className="logo-mark" aria-hidden="true"><LayoutIcon size={15} /></span>
             <span>Productivity</span>
           </Link>
         </div>
@@ -86,8 +86,8 @@ export function Layout() {
           justify-content: space-between;
           gap: 12px;
           padding: 6px 16px;
-          background: var(--bg-card);
-          border-bottom: 1px solid var(--border);
+          background: #1a1a1a;
+          border-bottom: none;
           position: sticky;
           top: 0;
           z-index: 100;
@@ -103,7 +103,7 @@ export function Layout() {
           height: 44px;
           border: none;
           background: transparent;
-          color: var(--text);
+          color: #ffffff;
           border-radius: 8px;
         }
         .logo {
@@ -111,9 +111,22 @@ export function Layout() {
           align-items: center;
           gap: 8px;
           text-decoration: none;
-          color: var(--text);
-          font-weight: 800;
+          color: #ffffff;
+          font-weight: 600;
           font-size: 0.95rem;
+        }
+        .logo-mark {
+          display: grid;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          border-radius: 7px;
+          background: #2D5A1B;
+          color: #ffffff;
+        }
+        .logo-mark svg {
+          width: 15px;
+          height: 15px;
         }
         .app-nav ul {
           display: flex;
@@ -127,37 +140,38 @@ export function Layout() {
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 5px 10px;
+          padding: 6px 12px;
           border: none;
           background: transparent;
-          color: var(--text-muted);
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 12px;
+          color: #b5b5b5;
+          border-radius: 999px;
+          font-weight: 500;
+          font-size: 13px;
           text-decoration: none;
-          min-height: 44px;
-          height: 44px;
+          min-height: 36px;
+          height: 36px;
         }
         .nav-link svg {
           width: 16px;
           height: 16px;
         }
         .nav-link:hover {
-          background: var(--bg-hover);
-          color: var(--text);
+          background: rgba(255, 255, 255, 0.08);
+          color: #ffffff;
         }
         .nav-link.active {
-          background: var(--primary);
-          color: white;
+          background: #2D5A1B;
+          color: #ffffff;
         }
         .nav-link.active svg {
-          stroke: white;
+          stroke: #ffffff;
         }
         .logout-btn {
-          color: var(--danger);
+          color: #e8604c;
         }
         .logout-btn:hover {
-          background: var(--danger-bg);
+          background: rgba(232, 96, 76, 0.15);
+          color: #ff7a66;
         }
         .header-right {
           display: flex;
@@ -166,8 +180,8 @@ export function Layout() {
         }
         .user-name {
           font-weight: 600;
-          font-size: 12px;
-          color: var(--text);
+          font-size: 13px;
+          color: #ffffff;
         }
         .app-main {
           flex: 1;
@@ -188,8 +202,8 @@ export function Layout() {
             bottom: 0;
             width: 300px;
             max-width: 85vw;
-            background: var(--bg-card);
-            border-left: 1px solid var(--border);
+            background: #1a1a1a;
+            border-left: 1px solid #2a2a2a;
             padding: 80px 24px 24px;
             transform: translateX(100%);
             transition: transform 0.3s ease;
@@ -208,6 +222,7 @@ export function Layout() {
             font-size: 14px;
             height: auto;
             min-height: 44px;
+            border-radius: 8px;
           }
           .nav-link svg {
             width: 18px;

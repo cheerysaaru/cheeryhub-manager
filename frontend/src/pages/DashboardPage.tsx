@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Target, Trophy, Brain, BookOpen, Bell, BarChart2, Briefcase, DollarSign, CheckCircle2, Circle, CircleX, Coffee, AlertTriangle, Clock, Flame, ArrowRight, X } from 'lucide-react';
+import { Plus, Target, Trophy, Brain, BookOpen, Bell, BarChart2, Briefcase, DollarSign, CheckCircle2, Circle, CircleX, Coffee, AlertTriangle, Clock, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
@@ -139,7 +139,7 @@ export default function DashboardPage() {
         </div>
         <div className="header-stats">
           <div className="xp-badge">
-            <Flame size={18} />
+            <span className="xp-flame" aria-hidden="true">🔥</span>
             <span>Level {level} · {xpInLevel}/100 XP</span>
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function DashboardPage() {
             <div className="stat-value-row">
               <strong>{activeGoals}</strong>
             </div>
-            <p className="stat-desc">{activeGoals} goals in progress</p>
+            <p className="stat-desc stat-link">{activeGoals} goals in progress</p>
           </div>
         </Card>
       </section>
@@ -218,7 +218,7 @@ export default function DashboardPage() {
 
           {activeTasks.length === 0 ? (
             <div className="empty-state">
-              <Circle size={32} />
+              <Circle size={36} strokeWidth={2} />
               <strong>No tasks yet</strong>
               <p>Add your first task above to get started</p>
             </div>

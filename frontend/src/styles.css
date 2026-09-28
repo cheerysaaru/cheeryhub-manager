@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -9,8 +9,8 @@
   --color-secondary-hover: #cfe2c9;
   --color-secondary-active: #c1d9ba;
   --color-secondary-fg: #244b2b;
-  --color-bg: #f4f0e8;
-  --color-card: #fffdf8;
+  --color-bg: #f0ede6;
+  --color-card: #ffffff;
   --color-hover: #f0ede4;
   --color-active: #e8e4d9;
   --color-border: #d7ded1;
@@ -34,8 +34,8 @@
   --secondary-hover: #cfe2c9;
   --secondary-active: #c1d9ba;
   --secondary-fg: #244b2b;
-  --bg: #f4f0e8;
-  --bg-card: #fffdf8;
+  --bg: #f0ede6;
+  --bg-card: #ffffff;
   --bg-hover: #f0ede4;
   --bg-active: #e8e4d9;
   --border: #d7ded1;
@@ -76,7 +76,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: radial-gradient(circle at 90% 0%, #dfead9 0, transparent 34%), var(--bg);
+  background: var(--bg);
   color: var(--text);
   font-family: Manrope, sans-serif;
   font-size: 16px;
@@ -436,14 +436,90 @@ button:active { transform: translateY(1px); }
   gap: 14px;
 }
 .dashboard-page .page { gap: 14px; }
-.dashboard-page .task-form,
-.dashboard-page .commitment-form { gap: 10px; }
-.dashboard-page input,
-.dashboard-page select,
-.dashboard-page textarea {
-  min-height: 30px;
-  font-size: 12px;
+
+/* Dashboard header (original UI) */
+.dashboard-page .eyebrow {
+  color: #888888;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
 }
+.dashboard-page .page-header h1 {
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+  margin-bottom: 6px;
+}
+.dashboard-page .header-date { font-size: 14px; color: #8a8a86; }
+.dashboard-page .xp-badge {
+  background: #fdf6e3;
+  border: 1px solid #e8d5a3;
+  color: #8b6914;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 32px;
+  padding: 0 14px;
+}
+.dashboard-page .xp-flame { font-size: 14px; line-height: 1; }
+
+/* Stat cards */
+.dashboard-page .stats-grid { gap: 12px; }
+.dashboard-page .stats-grid .card {
+  background: #ffffff;
+  border: 1px solid #e8e5de;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.dashboard-page .stats-grid .card-md { padding: 16px 18px; }
+.dashboard-page .stat-card { gap: 10px; }
+.dashboard-page .stat-label {
+  color: #8a8a86;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.dashboard-page .stat-value-row strong {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+.dashboard-page .stat-card-overdue .stat-value-row strong { color: var(--danger); }
+.dashboard-page .stat-desc { font-size: 12px; color: #8a8a86; }
+.dashboard-page .stat-link { color: #4a7c2f; font-weight: 600; }
+.dashboard-page .stats-grid .progress-label { font-size: 10px; color: #8a8a86; }
+.dashboard-page .stats-grid .progress-track { height: 4px; background: #e5e2db; }
+.dashboard-page .stats-grid .progress-fill { background: #2D5A1B; }
+.dashboard-page .stats-grid .progress-fill.danger { background: var(--danger); }
+
+/* Panels */
+.dashboard-page .panel {
+  background: #ffffff;
+  border: 1px solid #e8e5de;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 18px;
+}
+.dashboard-page .panel-header {
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.dashboard-page .panel-header h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.dashboard-page .panel-subtitle { font-size: 13px; color: #8a8a86; margin-top: 3px; }
+.dashboard-page .panel-link {
+  color: #8a8a86;
+  font-weight: 500;
+  font-size: 13px;
+}
+.dashboard-page .panel-link:hover { color: var(--text); }
+
+/* Compact controls still used on the dashboard */
 .dashboard-page .btn-md {
   min-height: 30px;
   font-size: 12px;
@@ -454,24 +530,174 @@ button:active { transform: translateY(1px); }
   font-size: 11px;
   padding: 2px 8px;
 }
-.dashboard-page .task-row {
-  min-height: 48px;
-  padding: 6px 10px;
-  gap: 8px;
-}
-.dashboard-page .task-check { width: 36px; height: 36px; }
-.dashboard-page .commitment-card {
-  padding: 10px 12px;
-  gap: 10px;
-}
-.dashboard-page .commitment-list { gap: 10px; }
-.dashboard-page .empty-state {
-  min-height: 100px;
-  padding: 12px;
-  gap: 6px;
+.dashboard-page input,
+.dashboard-page select,
+.dashboard-page textarea {
+  min-height: 30px;
+  font-size: 12px;
 }
 .dashboard-page .form-row,
 .dashboard-page .task-form-row { gap: 10px; }
+
+/* Task form */
+.dashboard-page .task-form { gap: 10px; }
+.dashboard-page .task-form-row { gap: 10px; }
+.dashboard-page .task-form-row input {
+  min-height: 48px;
+  font-size: 14px;
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+}
+.dashboard-page .task-form-row .btn {
+  background: #2D5A1B;
+  color: #ffffff;
+  border: 1px solid #2D5A1B;
+  border-radius: 6px;
+  padding: 10px 18px;
+  min-height: 48px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dashboard-page .task-form-options { display: block; }
+.dashboard-page .date-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font-size: 14px;
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+}
+
+/* Task rows (when tasks exist) */
+.dashboard-page .task-row {
+  min-height: 52px;
+  padding: 8px 10px;
+  gap: 8px;
+}
+.dashboard-page .task-check { width: 36px; height: 36px; }
+
+/* Empty state */
+.dashboard-page .empty-state {
+  min-height: 0;
+  padding: 40px;
+  gap: 10px;
+  border: 1.5px dashed #dddddd;
+  border-radius: 8px;
+  background: transparent;
+}
+.dashboard-page .empty-state svg {
+  width: 36px;
+  height: 36px;
+  color: #cccccc;
+}
+.dashboard-page .empty-state strong { font-size: 15px; font-weight: 500; color: var(--text); }
+.dashboard-page .empty-state p { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+/* Commitments */
+.dashboard-page .commitment-form { gap: 10px; }
+.dashboard-page .commitment-form input {
+  min-height: 44px;
+  font-size: 14px;
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+}
+.dashboard-page .commitment-form .btn {
+  background: #2D5A1B;
+  color: #ffffff;
+  border: 1px solid #2D5A1B;
+  border-radius: 6px;
+  padding: 10px 18px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dashboard-page .commitment-list { gap: 12px; }
+.dashboard-page .commitment-card {
+  background: #ffffff;
+  border: 1px solid #e8e5de;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 16px;
+  gap: 14px;
+}
+.dashboard-page .commitment-info strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+}
+.dashboard-page .commitment-info span { font-size: 12px; color: var(--text-muted); }
+.dashboard-page .week-heading strong { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.dashboard-page .week-heading span { color: #8a8a86; font-size: 12px; }
+.dashboard-page .day-check {
+  background: #fafaf7;
+  border: 1px solid #e2e0d9;
+  color: #8a8a86;
+  border-radius: 8px;
+}
+.dashboard-page .day-check small { color: var(--text-muted); }
+.dashboard-page .day-check b { color: var(--text); font-weight: 600; }
+.dashboard-page .day-check.today { border: 2px solid #2D5A1B; }
+.dashboard-page .day-check.checked {
+  background: #e8f5e0;
+  border-color: #c8e6b0;
+  color: #2D5A1B;
+}
+.dashboard-page .day-check.checked svg { color: #2D5A1B; }
+.dashboard-page .day-check.checked svg circle { fill: #2D5A1B; stroke: #2D5A1B; }
+.dashboard-page .day-check.checked svg path { stroke: #ffffff; fill: none; }
+.dashboard-page .day-check.checked small { color: #2D5A1B; }
+.dashboard-page .day-check.checked b { color: #2D5A1B; }
+.dashboard-page .commitment-actions { gap: 8px; }
+.dashboard-page .check-in-btn { flex: 1; min-width: 160px; }
+.dashboard-page .check-in-btn.btn-secondary {
+  background: #e8f5e0;
+  color: #2D5A1B;
+  border: 1px solid #c8e6b0;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.dashboard-page .check-in-btn.btn-secondary:hover:not(:disabled) {
+  background: #e8f5e0;
+  filter: none;
+}
+.dashboard-page .undo-day { color: #8a8a86; }
+.dashboard-page .day-action {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+}
+
+/* Bottom shortcut bar */
+.dashboard-page .quick-links { margin-top: 8px; }
+.dashboard-page .quick-link-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 10px;
+}
+.dashboard-page .quick-link-card {
+  background: #ffffff;
+  border: 1px solid #e8e5de;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 12px;
+  gap: 6px;
+  min-height: 98px;
+}
+.dashboard-page .quick-link-card svg:first-child {
+  color: #444a42;
+  width: 18px;
+  height: 18px;
+}
+.dashboard-page .quick-link-card strong { font-size: 13px; font-weight: 600; color: var(--text); }
+.dashboard-page .quick-link-card span { font-size: 11px; color: #8a8a86; }
+.dashboard-page .quick-link-card svg:last-child { color: #b0b0aa; }
+.dashboard-page .quick-link-card:hover {
+  border-color: #c8c5bc;
+  box-shadow: var(--shadow-md);
+}
 
 /* Forms */
 input, select, textarea {
@@ -1089,6 +1315,7 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 @media (max-width: 900px) {
   .dashboard-grid { grid-template-columns: 1fr; }
   .reports-grid { grid-template-columns: 1fr; }
+  .dashboard-page .quick-link-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
@@ -1099,11 +1326,16 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stats-grid .card-md { padding: 12px 16px; }
   .stat-value-row strong { font-size: 22px; }
+  .dashboard-page .stat-value-row strong { font-size: 26px; }
+  .dashboard-page .page-header h1 { font-size: 24px; }
   .stat-label { font-size: 12px; }
   .stat-desc { font-size: 11px; }
   .panel { padding: 12px 14px; }
+  .dashboard-page .panel { padding: 14px; }
   .dashboard-grid { gap: 10px; }
   .quick-link-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .dashboard-page .quick-link-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .dashboard-page .quick-link-card { min-height: 0; }
   .task-form-row, .commitment-form { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .commitment-main { grid-template-columns: 1fr; }
