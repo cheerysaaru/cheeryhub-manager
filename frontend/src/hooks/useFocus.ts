@@ -22,7 +22,7 @@ export function useFocus(userId: string | null) {
   useEffect(() => {
     fetchSessions();
     const cleanup = on<FocusSession>('focus:created', (session) => {
-      setSessions((prev) => [session, ...prev]);
+      setSessions((prev) => (prev.some((s) => s.id === session.id) ? prev : [session, ...prev]));
     });
     const cleanup2 = on<FocusSession>('focus:completed', (session) => {
       setSessions((prev) => prev.map((s) => (s.id === session.id ? session : s)));
@@ -38,7 +38,7 @@ export function useFocus(userId: string | null) {
       method: 'POST',
       body: JSON.stringify({ durationMinutes, taskId }),
     });
-    setSessions((prev) => [session, ...prev]);
+    setSessions((prev) => (prev.some((s) => s.id === session.id) ? prev : [session, ...prev]));
     return session;
   }, []);
 

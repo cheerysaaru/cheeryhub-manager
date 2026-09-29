@@ -22,7 +22,7 @@ export function useSkills(userId: string | null) {
   useEffect(() => {
     fetchSkills();
     const cleanup = on<Skill>('skill:created', (skill) => {
-      setSkills((prev) => [skill, ...prev]);
+      setSkills((prev) => (prev.some((s) => s.id === skill.id) ? prev : [skill, ...prev]));
     });
     const cleanup2 = on<Skill>('skill:updated', (skill) => {
       setSkills((prev) => prev.map((s) => (s.id === skill.id ? skill : s)));
@@ -39,7 +39,7 @@ export function useSkills(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Skill>) => {
     const skill = await api<Skill>('/skills', { method: 'POST', body: JSON.stringify(data) });
-    setSkills((prev) => [skill, ...prev]);
+    setSkills((prev) => (prev.some((s) => s.id === skill.id) ? prev : [skill, ...prev]));
     return skill;
   }, []);
 

@@ -7,7 +7,8 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<User>;
-  resetPassword: (email: string, name: string, newPassword: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<string>;
+  resetPassword: (token: string, newPassword: string) => Promise<string>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -85,11 +86,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return adoptUser(result.user);
   }, [adoptUser]);
 
-  const resetPassword = useCallback(async (email: string, name: string, newPassword: string) => {
-    await api('/auth/reset-password', {
+  const forgotPassword = useCallback(async (email: string) => {
+    const result = await api<{ message: string }>('/auth/forgot', {
       method: 'POST',
-      body: JSON.stringify({ email, name, newPassword }),
+      body: JSON.stringify({ email }),
     });
+    return result.message;
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
+    const result = await api<{ message: string }>('/auth/reset', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+    return result.message;
   }, []);
 
   const logout = useCallback(async () => {
@@ -103,8 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, resetPassword, logout, refreshUser: fetchUser }),
-    [user, loading, login, register, resetPassword, logout, fetchUser]
+    () => ({
+      user,
+      loading,
+      login,
+      register,
+      forgotPassword,
+      resetPassword,
+      logout,
+      refreshUser: fetchUser,
+    }),
+    [user, loading, login, register, forgotPassword, resetPassword, logout, fetchUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

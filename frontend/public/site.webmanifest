@@ -1,0 +1,17 @@
+{
+  "name": "Personal Productivity Manager",
+  "short_name": "Productivity",
+  "description": "Your personal dashboard for goals, focus, journal, finance and more.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f5f0",
+  "theme_color": "#1a5c4a",
+  "icons": [
+    { "src": "android-chrome-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "favicon-32x32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "favicon-16x16.png", "sizes": "16x16", "type": "image/png" }
+  ]
+}

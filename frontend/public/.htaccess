@@ -1,0 +1,14 @@
+# Static asset caching for LiteSpeed/Apache (cheeryhub.space origin).
+# Vite hashes filenames under /assets/, so those can be cached forever;
+# HTML, the manifest and the service worker must revalidate so new deploys
+# take effect immediately.
+
+<IfModule mod_headers.c>
+  <LocationMatch "^/assets/">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </LocationMatch>
+
+  <FilesMatch "(^|/)(index\.html|sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

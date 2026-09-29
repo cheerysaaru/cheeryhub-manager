@@ -1,9 +1,12 @@
 import bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { Request, Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { setAuthCookie } from '../utils/auth';
 import { prisma } from '../lib/prisma';
+import { getAppUrl } from '../lib/config';
+import { sendPasswordChangedEmail, sendPasswordResetEmail } from '../lib/email';
 import { fail, ok } from '../utils/response';
 import {
   PASSWORD_REQUIREMENT,
@@ -32,11 +35,20 @@ const registerSchema = z.object({
   timezone: timezoneSchema.optional(),
 });
 
-const resetPasswordSchema = z.object({
-  email: z.string().trim().min(1).max(254),
-  name: usernameSchema,
+const forgotSchema = z.object({
+  email: z.string().trim().max(254),
+});
+
+const resetTokenSchema = z.object({
+  token: z.string().min(1).max(200),
   newPassword: strongPasswordSchema,
 });
+
+const sha256 = (value: string) =>
+  createHash('sha256').update(value).digest('hex');
+
+const FORGOT_MESSAGE = 'If that email exists, a reset link was sent.';
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
 
 const publicUser = (user: {
   id: string;
@@ -96,6 +108,7 @@ export async function register(request: Request, response: Response) {
       role: 'USER',
       status: 'ACTIVE',
       timezone: parsed.data.timezone ?? 'UTC',
+      lastLoginAt: new Date(),
       settings: { create: {} },
     },
   });
@@ -131,8 +144,36 @@ export async function login(request: Request, response: Response) {
   return ok(response, { user: publicUser(updated) });
 }
 
-export async function resetPassword(request: Request, response: Response) {
-  const parsed = resetPasswordSchema.safeParse(request.body);
+export async function forgotPassword(request: Request, response: Response) {
+  const parsed = forgotSchema.safeParse(request.body);
+  const submitted = parsed.success ? parsed.data.email : '';
+  const candidates = [...new Set([submitted, submitted.toLowerCase()])];
+
+  // Uniform response whether the account exists, is disabled, or the input is
+  // malformed — the endpoint must never confirm which emails are registered.
+  if (submitted && emailFormatSchema.safeParse(submitted).success) {
+    const user = await prisma.user.findFirst({
+      where: { email: { in: candidates }, status: 'ACTIVE' },
+      select: { id: true, email: true },
+    });
+    if (user) {
+      const token = randomBytes(32).toString('hex');
+      await prisma.passwordReset.deleteMany({ where: { userId: user.id } });
+      await prisma.passwordReset.create({
+        data: {
+          userId: user.id,
+          tokenHash: sha256(token),
+          expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+        },
+      });
+      await sendPasswordResetEmail(user.email, token, getAppUrl());
+    }
+  }
+  return ok(response, { message: FORGOT_MESSAGE });
+}
+
+export async function resetPasswordWithToken(request: Request, response: Response) {
+  const parsed = resetTokenSchema.safeParse(request.body);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     if (issue?.path[0] === 'newPassword') {
@@ -143,22 +184,38 @@ export async function resetPassword(request: Request, response: Response) {
       const message = passwordError(newPassword);
       return fail(response, message || PASSWORD_REQUIREMENT);
     }
-    return fail(response, issue?.message ?? 'Invalid reset request');
+    return fail(response, 'Invalid reset request');
   }
 
-  const user = await prisma.user.findFirst({
-    where: { email: parsed.data.email, name: parsed.data.name },
-    select: { id: true, status: true },
+  const record = await prisma.passwordReset.findFirst({
+    where: {
+      tokenHash: sha256(parsed.data.token),
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true, userId: true },
   });
-  if (!user || user.status !== 'ACTIVE') {
-    return fail(response, 'Username and email do not match an account', 400);
-  }
+  if (!record) return fail(response, 'Invalid or expired link', 400);
+
+  // Atomic single-use consume: only one request can flip usedAt.
+  const consumed = await prisma.passwordReset.updateMany({
+    where: { id: record.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  if (consumed.count !== 1) return fail(response, 'Invalid or expired link', 400);
+
+  const user = await prisma.user.findFirst({
+    where: { id: record.userId, status: 'ACTIVE' },
+    select: { id: true, email: true },
+  });
+  if (!user) return fail(response, 'Invalid or expired link', 400);
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await prisma.user.update({
     where: { id: user.id },
-    data: { passwordHash, updatedAt: new Date() },
+    data: { passwordHash, passwordChangedAt: new Date() },
   });
+  await sendPasswordChangedEmail(user.email);
   return ok(response, { message: 'Password updated successfully' });
 }
 

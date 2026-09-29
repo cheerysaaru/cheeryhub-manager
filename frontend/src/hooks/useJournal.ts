@@ -22,7 +22,7 @@ export function useJournal(userId: string | null) {
   useEffect(() => {
     fetchEntries();
     const cleanup = on<JournalEntry>('journal:created', (entry) => {
-      setEntries((prev) => [entry, ...prev]);
+      setEntries((prev) => (prev.some((e) => e.id === entry.id || (entry.date && e.date === entry.date)) ? prev : [entry, ...prev]));
     });
     const cleanup2 = on<JournalEntry>('journal:updated', (entry) => {
       setEntries((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));

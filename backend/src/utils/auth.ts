@@ -37,15 +37,21 @@ export async function requireAuth(
   if (!token)
     return response.status(401).json({ error: 'Authentication required' });
   try {
-    const payload = jwt.verify(token, getJwtSecret()) as { userId: string };
+    const payload = jwt.verify(token, getJwtSecret()) as { userId: string; iat?: number };
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, role: true, status: true },
+      select: { id: true, role: true, status: true, passwordChangedAt: true },
     });
     if (!user)
       return response.status(401).json({ error: 'Invalid or expired session' });
     if (user.status !== 'ACTIVE')
       return response.status(403).json({ error: 'Account disabled' });
+    // Tokens issued before the last password change are dead everywhere.
+    if (
+      user.passwordChangedAt &&
+      (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
+    )
+      return response.status(401).json({ error: 'Invalid or expired session' });
     request.userId = user.id;
     request.userRole = user.role;
     next();

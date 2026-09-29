@@ -78,6 +78,7 @@ model User {
   emailVerificationToken String?
   emailVerificationExpires DateTime?
   lastLoginAt DateTime?
+  passwordChangedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   settings UserSettings?
@@ -94,6 +95,18 @@ model User {
   brandProjects BrandProject[]
   taskCheckIns TaskCheckIn[]
   transactions Transaction[]
+  passwordResets PasswordReset[]
+}
+
+model PasswordReset {
+  id String @id @default(cuid())
+  userId String
+  tokenHash String @unique
+  expiresAt DateTime
+  usedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }
 
 model UserSettings {

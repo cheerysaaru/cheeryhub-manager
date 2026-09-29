@@ -3,6 +3,9 @@ export type RuntimeConfig = {
   frontendUrl?: string;
   cookieSecure?: boolean;
   cookieSameSite?: 'lax' | 'strict' | 'none';
+  emailApiKey?: string;
+  emailFrom?: string;
+  appUrl?: string;
 };
 
 let config: RuntimeConfig = {};
@@ -49,4 +52,22 @@ export function getCookieSecure(): boolean {
 
 export function getCookieDomain(): string | undefined {
   return process.env.COOKIE_DOMAIN || undefined;
+}
+
+export function getEmailApiKey(): string | undefined {
+  return config.emailApiKey ?? process.env.EMAIL_API_KEY ?? undefined;
+}
+
+export function getEmailFrom(): string {
+  return (
+    config.emailFrom ??
+    process.env.EMAIL_FROM ??
+    'Productivity <onboarding@resend.dev>'
+  );
+}
+
+export function getAppUrl(): string {
+  if (config.appUrl) return config.appUrl;
+  if (process.env.APP_URL) return process.env.APP_URL;
+  return getFrontendUrl().split(',')[0]?.trim() || 'http://localhost:5173';
 }

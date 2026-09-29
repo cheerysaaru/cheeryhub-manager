@@ -14,7 +14,8 @@ import {
   logout,
   me,
   register,
-  resetPassword as resetOwnPassword,
+  forgotPassword,
+  resetPasswordWithToken,
 } from './controllers/auth';
 import {
   listUsers,
@@ -62,6 +63,7 @@ import {
 import {
   getSettings,
   updateSettings,
+  getGoalMilestones,
   createGoalMilestone,
   updateGoalMilestone,
   deleteGoalMilestone,
@@ -111,7 +113,10 @@ class TimerFreeStore {
 function createLimit(
   windowMs: number,
   limit: number,
-  options?: { skipSuccessfulRequests?: boolean }
+  options?: {
+    skipSuccessfulRequests?: boolean;
+    keyGenerator?: (request: Request) => string;
+  }
 ) {
   return rateLimit({
     windowMs,
@@ -134,6 +139,8 @@ export function createApp(options?: { rateLimit?: boolean }) {
   const isAllowedOrigin = (origin: string | undefined): boolean => {
     if (!origin) return true;
     if (allowedOrigins.includes(origin)) return true;
+
+    if (process.env.NODE_ENV === 'production') return false;
 
     try {
       const url = new URL(origin);
@@ -174,6 +181,12 @@ export function createApp(options?: { rateLimit?: boolean }) {
   app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
 
+  // API responses are private per-user data; never let browsers or shared caches store them.
+  app.use('/api', (_request, response, next) => {
+    response.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   const apiLimiter = enableRateLimit
     ? createLimit(15 * 60 * 1000, 300)
     : ((_request: Request, _response: Response, next: NextFunction) => next());
@@ -192,9 +205,25 @@ export function createApp(options?: { rateLimit?: boolean }) {
     ? createLimit(60 * 60 * 1000, 3)
     : ((_request: Request, _response: Response, next: NextFunction) => next());
 
-  // Forgot-password resets: max 3 attempts per IP per hour.
-  const resetPasswordLimiter = enableRateLimit
+  // Forgot-password: max 3 requests per IP per hour.
+  const forgotPasswordLimiter = enableRateLimit
     ? createLimit(60 * 60 * 1000, 3)
+    : ((_request: Request, _response: Response, next: NextFunction) => next());
+
+  // Forgot-password: max 3 requests per target account per hour, so
+  // distributed IPs cannot probe one account's email address.
+  const forgotAccountLimiter = enableRateLimit
+    ? createLimit(60 * 60 * 1000, 3, {
+        keyGenerator: (request: Request) => {
+          const body = (request.body ?? {}) as Record<string, unknown>;
+          return `forgot:${String(body.email ?? '').toLowerCase()}`;
+        },
+      })
+    : ((_request: Request, _response: Response, next: NextFunction) => next());
+
+  // Token reset attempts: max 10 per IP per hour.
+  const resetTokenLimiter = enableRateLimit
+    ? createLimit(60 * 60 * 1000, 10)
     : ((_request: Request, _response: Response, next: NextFunction) => next());
 
   app.get('/api/health', async (_request, response) => {
@@ -208,7 +237,12 @@ export function createApp(options?: { rateLimit?: boolean }) {
 
   app.post('/api/auth/register', registerLimiter, register);
   app.post('/api/auth/login', loginLimiter, login);
-  app.post('/api/auth/reset-password', resetPasswordLimiter, resetOwnPassword);
+  app.post('/api/auth/forgot', forgotPasswordLimiter, forgotAccountLimiter, forgotPassword);
+  app.post('/api/auth/reset', resetTokenLimiter, resetPasswordWithToken);
+  // The old display-name reset was an account-takeover vector; keep it gone.
+  app.post('/api/auth/reset-password', (_request: Request, response: Response) =>
+    response.status(410).json({ error: 'This endpoint has been removed' })
+  );
   app.post('/api/auth/logout', authLimiter, logout);
   app.get('/api/auth/me', requireAuth, me);
 
@@ -251,7 +285,7 @@ export function createApp(options?: { rateLimit?: boolean }) {
   app.post('/api/habits/:id/skip', skipHabitToday);
   app.delete('/api/habits/:id/today', clearHabitToday);
 
-  app.get('/api/goals/:id/milestones', getOne);
+  app.get('/api/goals/:id/milestones', getGoalMilestones);
   app.post('/api/goals/:id/milestones', createGoalMilestone);
   app.put(
     '/api/goals/:id/milestones/:milestoneId',
@@ -311,6 +345,10 @@ export function createApp(options?: { rateLimit?: boolean }) {
       _next: express.NextFunction
     ) => {
       console.error(error);
+
+      if ((error as { name?: string }).name === 'PrismaClientValidationError') {
+        return response.status(400).json({ error: 'Invalid request data' });
+      }
 
       if (error.message === 'Not allowed by CORS') {
         return response

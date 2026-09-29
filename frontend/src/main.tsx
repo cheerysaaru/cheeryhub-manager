@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from 'react';
+import { StrictMode, lazy, Suspense, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './styles.css';
@@ -7,18 +7,33 @@ import { useSocket } from './hooks/useSocket';
 import { syncPendingWrites } from './services/api';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/Toast';
+import { getTheme, applyTheme } from './utils/theme';
 import AuthPage from './pages/AuthPage';
+import ResetPage from './pages/ResetPage';
 import DashboardPage from './pages/DashboardPage';
-import GoalsPage from './pages/GoalsPage';
-import SkillsPage from './pages/SkillsPage';
-import FocusPage from './pages/FocusPage';
-import JournalPage from './pages/JournalPage';
-import RemindersPage from './pages/RemindersPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import BrandPage from './pages/BrandPage';
-import FinancePage from './pages/FinancePage';
-import SettingsPage from './pages/SettingsPage';
-import AdminPage from './pages/AdminPage';
+
+const GoalsPage = lazy(() => import('./pages/GoalsPage'));
+const SkillsPage = lazy(() => import('./pages/SkillsPage'));
+const ArchivedmentsPage = lazy(() => import('./pages/ArchivedmentsPage'));
+const FocusPage = lazy(() => import('./pages/FocusPage'));
+const JournalPage = lazy(() => import('./pages/JournalPage'));
+const RemindersPage = lazy(() => import('./pages/RemindersPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const BrandPage = lazy(() => import('./pages/BrandPage'));
+const FinancePage = lazy(() => import('./pages/FinancePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+
+function PageLoading() {
+  return (
+    <div className="app-loading-screen">
+      <div className="spinner" />
+      <p>Loading…</p>
+    </div>
+  );
+}
+
+applyTheme(getTheme());
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -55,28 +70,33 @@ function App() {
     return (
       <Routes>
         <Route path="/" element={<AuthPage />} />
+        <Route path="/reset" element={<ResetPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/goals" element={<GoalsPage />} />
-        <Route path="/skills" element={<SkillsPage />} />
-        <Route path="/focus" element={<FocusPage />} />
-        <Route path="/journal" element={<JournalPage />} />
-        <Route path="/reminders" element={<RemindersPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/brand" element={<BrandPage />} />
-        <Route path="/finance" element={<FinancePage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <Suspense fallback={<PageLoading />}>
+      <Routes>
+        <Route path="/reset" element={<ResetPage />} />
+        <Route element={<Layout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/goals" element={<GoalsPage />} />
+          <Route path="/skills" element={<SkillsPage />} />
+          <Route path="/archivedments" element={<ArchivedmentsPage />} />
+          <Route path="/focus" element={<FocusPage />} />
+          <Route path="/journal" element={<JournalPage />} />
+          <Route path="/reminders" element={<RemindersPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/brand" element={<BrandPage />} />
+          <Route path="/finance" element={<FinancePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
 

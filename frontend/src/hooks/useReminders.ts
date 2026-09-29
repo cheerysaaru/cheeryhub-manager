@@ -22,7 +22,7 @@ export function useReminders(userId: string | null) {
   useEffect(() => {
     fetchReminders();
     const cleanup = on<Reminder>('reminder:created', (reminder) => {
-      setReminders((prev) => [reminder, ...prev]);
+      setReminders((prev) => (prev.some((r) => r.id === reminder.id) ? prev : [reminder, ...prev]));
     });
     const cleanup2 = on<Reminder>('reminder:updated', (reminder) => {
       setReminders((prev) => prev.map((r) => (r.id === reminder.id ? reminder : r)));
@@ -39,7 +39,7 @@ export function useReminders(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Reminder>) => {
     const reminder = await api<Reminder>('/reminders', { method: 'POST', body: JSON.stringify(data) });
-    setReminders((prev) => [reminder, ...prev]);
+    setReminders((prev) => (prev.some((r) => r.id === reminder.id) ? prev : [reminder, ...prev]));
     return reminder;
   }, []);
 

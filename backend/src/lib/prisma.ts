@@ -8,9 +8,10 @@ const globalForPrisma = globalThis as unknown as {
 let client: PrismaClient | undefined;
 
 function createLocalClient(): PrismaClient {
+  const nodeEnv: string | undefined = process.env.NODE_ENV;
   return new PrismaClient({
     log:
-      process.env.NODE_ENV === 'development'
+      nodeEnv === 'development'
         ? ['query', 'error', 'warn']
         : ['error'],
   });

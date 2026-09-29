@@ -169,7 +169,10 @@ export async function resetPassword(request: AuthRequest, response: Response) {
   if (!target) return fail(response, 'User not found', 404);
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  await prisma.user.update({ where: { id }, data: { passwordHash } });
+  await prisma.user.update({
+    where: { id },
+    data: { passwordHash, passwordChangedAt: new Date() },
+  });
   return ok(response, { reset: true });
 }
 

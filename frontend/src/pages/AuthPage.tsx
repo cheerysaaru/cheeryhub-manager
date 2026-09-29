@@ -23,22 +23,18 @@ function strengthOf(password: string): { score: number; label: string } {
 }
 
 export default function AuthPage() {
-  const { login, register, resetPassword } = useAuth();
+  const { login, register, forgotPassword } = useAuth();
   const [mode, setMode] = useState<Mode>('signin');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [resetEmail, setResetEmail] = useState('');
-  const [resetUsername, setResetUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNew, setConfirmNew] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
 
   const strength = useMemo(() => strengthOf(password), [password]);
-  const resetStrength = useMemo(() => strengthOf(newPassword), [newPassword]);
 
   function resetState(next: Mode) {
     setMode(next);
@@ -87,28 +83,16 @@ export default function AuthPage() {
     }
   }
 
-  async function handleReset(e: React.FormEvent) {
+  async function handleForgot(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const problem = passwordProblem(newPassword);
-    if (problem) {
-      setError(problem);
-      return;
-    }
-    if (newPassword !== confirmNew) {
-      setError('Passwords do not match.');
-      return;
-    }
     setLoading(true);
     try {
-      await resetPassword(resetEmail.trim(), resetUsername.trim(), newPassword);
-      setNotice('Password updated! You can sign in now.');
-      setPassword('');
-      setConfirm('');
-      setMode('signin');
-      setError('');
+      const message = await forgotPassword(resetEmail.trim());
+      setNotice(message);
+      setResetEmail('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to reset the password');
+      setError(err instanceof Error ? err.message : 'Unable to send the reset link');
     } finally {
       setLoading(false);
     }
@@ -220,7 +204,7 @@ export default function AuthPage() {
         )}
 
         {mode === 'forgot' && (
-          <form onSubmit={handleReset} className="auth-form">
+          <form onSubmit={handleForgot} className="auth-form">
             <Input
               label="Email"
               type="email"
@@ -230,46 +214,11 @@ export default function AuthPage() {
               autoComplete="email"
               required
             />
-            <Input
-              label="Username"
-              placeholder="Your username"
-              value={resetUsername}
-              onChange={(e) => setResetUsername(e.target.value)}
-              autoComplete="username"
-              required
-            />
-            <Input
-              label="New password"
-              type="password"
-              placeholder="New password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
-            {newPassword && (
-              <div className="password-strength" aria-live="polite">
-                <div className="strength-track">
-                  {[1, 2, 3, 4].map((step) => (
-                    <span key={step} className={`strength-seg ${resetStrength.score >= step ? `on level-${resetStrength.score}` : ''}`} />
-                  ))}
-                </div>
-                <small>{resetStrength.label}</small>
-              </div>
-            )}
-            <Input
-              label="Confirm new password"
-              type="password"
-              placeholder="Repeat the new password"
-              value={confirmNew}
-              onChange={(e) => setConfirmNew(e.target.value)}
-              autoComplete="new-password"
-              error={confirmNew && confirmNew !== newPassword ? 'Passwords do not match.' : undefined}
-              required
-            />
-            <p className="auth-hint">{PASSWORD_RULES}</p>
+            <p className="auth-hint">
+              We&apos;ll email you a link that&apos;s valid for 15 minutes.
+            </p>
             <Button type="submit" size="lg" loading={loading}>
-              Update password
+              Send reset link
             </Button>
             <div className="auth-links">
               <button type="button" className="link-button" onClick={() => resetState('signin')}>

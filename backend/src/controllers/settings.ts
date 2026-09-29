@@ -49,6 +49,15 @@ const milestoneSchema = z.object({
   description: z.string().max(2000).optional(),
 });
 
+export async function getGoalMilestones(request: AuthRequest, response: Response) {
+  const goal = await prisma.goal.findFirst({
+    where: { id: String(request.params.id), userId: request.userId },
+    select: { milestones: { orderBy: { createdAt: 'asc' } } },
+  });
+  if (!goal) return fail(response, 'Goal not found', 404);
+  return ok(response, goal.milestones);
+}
+
 export async function createGoalMilestone(request: AuthRequest, response: Response) {
   const goal = await prisma.goal.findFirst({ where: { id: String(request.params.id), userId: request.userId } });
   if (!goal) return fail(response, 'Goal not found', 404);

@@ -14,6 +14,48 @@ function emitEvent(userId: string, resource: string, action: 'created' | 'update
   emitToUser(userId, `${singular}:${action}`, data);
 }
 
+const FORBIDDEN_WRITE_KEYS = new Set(['id', 'userId', 'createdAt', 'updatedAt', 'deletedAt']);
+
+// Scalar foreign-key fields a client may set: each must reference a record owned by the caller.
+const REFERENCE_MODELS: Record<string, 'goal' | 'skill' | 'habit' | 'task'> = {
+  goalId: 'goal',
+  skillId: 'skill',
+  habitId: 'habit',
+  taskId: 'task',
+};
+
+// Strips ownership/PK/timestamp columns and nested-write vectors (plain objects and
+// arrays of objects) from validated-but-passthrough request bodies so a client cannot
+// reassign records or create rows for other users through relation payloads.
+function sanitizeWriteData(input: Record<string, unknown>): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (FORBIDDEN_WRITE_KEYS.has(key)) continue;
+    if (Array.isArray(value)) {
+      if (value.some((item) => item !== null && typeof item === 'object')) continue;
+      clean[key] = value;
+      continue;
+    }
+    if (value !== null && typeof value === 'object' && !(value instanceof Date)) continue;
+    clean[key] = value;
+  }
+  return clean;
+}
+
+async function validateReferences(
+  data: Record<string, unknown>,
+  userId: string
+): Promise<string | null> {
+  for (const [field, value] of Object.entries(data)) {
+    const modelKey = REFERENCE_MODELS[field];
+    if (!modelKey || value === null || value === undefined) continue;
+    const model = prisma[modelKey] as any;
+    const owned = await model.findFirst({ where: { id: String(value), userId } });
+    if (!owned) return field;
+  }
+  return null;
+}
+
 function getUserToday(timezone: string): Date {
   const tz = timezone || 'UTC';
   const key = new Intl.DateTimeFormat('en-CA', {
@@ -49,7 +91,7 @@ export async function list(request: AuthRequest, response: Response) {
   const user = await prisma.user.findUnique({ where: { id: request.userId }, select: { timezone: true } });
   const today = getUserToday(user?.timezone || 'UTC');
   const where = { userId: request.userId, ...(key === 'tasks' || key === 'habits' ? { deletedAt: null } : {}) };
-  const records = await model.findMany({ where, orderBy: { createdAt: 'desc' }, ...(key === 'tasks' ? { include: { checkIns: { where: { userId: request.userId, date: today } } } } : key === 'habits' ? { include: { completions: true } } : {}) });
+  const records = await model.findMany({ where, orderBy: { createdAt: 'desc' }, ...(key === 'tasks' ? { include: { checkIns: { where: { userId: request.userId, date: today } } } } : key === 'habits' ? { include: { completions: { where: { userId: request.userId } } } } : {}) });
   if (key === 'tasks') {
     return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; checkIns: Array<{ checked: boolean }> }) => {
       let normalized = task;
@@ -77,15 +119,21 @@ export async function list(request: AuthRequest, response: Response) {
 }
 export async function create(request: AuthRequest, response: Response) {
   const key = getResource(request); const parsed = bodySchema.safeParse(request.body); if (!parsed.success) return fail(response, 'Invalid request data');
-  const model = prisma[modelMap[key]] as any; const record = await model.create({ data: { ...parsed.data, userId: request.userId } });
+  const data = sanitizeWriteData(parsed.data);
+  const badRef = await validateReferences(data, request.userId!);
+  if (badRef) return fail(response, `Invalid ${badRef} reference`, 400);
+  const model = prisma[modelMap[key]] as any; const record = await model.create({ data: { ...data, userId: request.userId } });
   emitEvent(request.userId!, key, 'created', record);
   return ok(response, record, 201);
 }
 export async function update(request: AuthRequest, response: Response) {
   const key = getResource(request); const parsed = bodySchema.safeParse(request.body); if (!parsed.success) return fail(response, 'Invalid request data');
+  const data = sanitizeWriteData(parsed.data);
+  const badRef = await validateReferences(data, request.userId!);
+  if (badRef) return fail(response, `Invalid ${badRef} reference`, 400);
   const model = prisma[modelMap[key]] as any; const existing = await model.findFirst({ where: { id: request.params.id, userId: request.userId } });
   if (!existing) return fail(response, 'Record not found', 404);
-  const record = await model.update({ where: { id: existing.id }, data: parsed.data });
+  const record = await model.update({ where: { id: existing.id }, data });
   emitEvent(request.userId!, key, 'updated', record);
   return ok(response, record);
 }

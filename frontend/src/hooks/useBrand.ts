@@ -22,7 +22,7 @@ export function useBrand(userId: string | null) {
   useEffect(() => {
     fetchProjects();
     const cleanup = on<BrandProject>('brand:created', (project) => {
-      setProjects((prev) => [project, ...prev]);
+      setProjects((prev) => (prev.some((p) => p.id === project.id) ? prev : [project, ...prev]));
     });
     const cleanup2 = on<BrandProject>('brand:updated', (project) => {
       setProjects((prev) => prev.map((p) => (p.id === project.id ? project : p)));
@@ -39,7 +39,7 @@ export function useBrand(userId: string | null) {
 
   const create = useCallback(async (data: Partial<BrandProject>) => {
     const project = await api<BrandProject>('/brand', { method: 'POST', body: JSON.stringify(data) });
-    setProjects((prev) => [project, ...prev]);
+    setProjects((prev) => (prev.some((p) => p.id === project.id) ? prev : [project, ...prev]));
     return project;
   }, []);
 

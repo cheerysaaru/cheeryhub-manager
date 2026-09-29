@@ -1,16 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Target, Trophy, Brain, BookOpen, Bell, BarChart2, Briefcase, DollarSign, CheckCircle2, Circle, CircleX, Coffee, AlertTriangle, Clock, ArrowRight, X } from 'lucide-react';
+import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, AlertTriangle, Clock, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
 import { useGoals } from '../hooks/useGoals';
-import { useSkills } from '../hooks/useSkills';
-import { useFocus } from '../hooks/useFocus';
-import { useJournal } from '../hooks/useJournal';
-import { useReminders } from '../hooks/useReminders';
 import { useAnalytics } from '../hooks/useAnalytics';
-import { useBrand } from '../hooks/useBrand';
 import { Button } from '../components/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -20,6 +15,7 @@ import { useToast } from '../components/Toast';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { ConfirmDialog } from '../components/Modal';
 import { formatDate, greeting, parseLocalDate, todayISO } from '../utils/date';
+import { getDisplayName } from '../utils/profile';
 import type { Task, Habit } from '../types';
 
 function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string) => void }) {
@@ -64,12 +60,7 @@ export default function DashboardPage() {
   const { tasks, loading: tasksLoading, create: createTask, checkIn, complete: completeTask, remove: removeTask } = useTasks(user?.id ?? null);
   const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday, failToday, skipToday, remove: removeHabit } = useHabits(user?.id ?? null);
   const { goals } = useGoals(user?.id ?? null);
-  const { skills } = useSkills(user?.id ?? null);
-  const { sessions: focusSessions } = useFocus(user?.id ?? null);
-  const { entries: journalEntries } = useJournal(user?.id ?? null);
-  const { reminders } = useReminders(user?.id ?? null);
   const { xp } = useAnalytics(user?.id ?? null);
-  const { projects: brandProjects } = useBrand(user?.id ?? null);
 
   const [taskForm, setTaskForm] = useState({ title: '', date: todayISO() });
   const [habitForm, setHabitForm] = useState({ name: '' });
@@ -134,7 +125,7 @@ export default function DashboardPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">Dashboard</p>
-          <h1>{greeting(user?.name || 'there')}</h1>
+          <h1>{greeting(getDisplayName(user?.name || 'there'))}</h1>
           <p className="header-date">{formatDate()}</p>
         </div>
         <div className="header-stats">
@@ -367,60 +358,6 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
-
-      <section className="quick-links" aria-label="Quick navigation">
-        <h2 className="sr-only">Quick Links</h2>
-        <div className="quick-link-grid">
-          <Link to="/goals" className="quick-link-card">
-            <Target size={24} />
-            <strong>Goals</strong>
-            <span>{goals.filter(g => g.status === 'ACTIVE').length} active</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/skills" className="quick-link-card">
-            <Trophy size={24} />
-            <strong>Skills</strong>
-            <span>{skills.length} tracking</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/focus" className="quick-link-card">
-            <Brain size={24} />
-            <strong>Focus</strong>
-            <span>{focusSessions.filter(s => s.status === 'COMPLETED').length} sessions</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/journal" className="quick-link-card">
-            <BookOpen size={24} />
-            <strong>Journal</strong>
-            <span>{journalEntries.length} entries</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/reminders" className="quick-link-card">
-            <Bell size={24} />
-            <strong>Reminders</strong>
-            <span>{reminders.filter(r => r.enabled).length} active</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/analytics" className="quick-link-card">
-            <BarChart2 size={24} />
-            <strong>Analytics</strong>
-            <span>View progress</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/brand" className="quick-link-card">
-            <Briefcase size={24} />
-            <strong>Brand</strong>
-            <span>{brandProjects.length} projects</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/finance" className="quick-link-card">
-            <DollarSign size={24} />
-            <strong>Finance</strong>
-            <span>Track money</span>
-            <ArrowRight size={16} />
-          </Link>
-        </div>
-      </section>
 
       <ContextMenu
         state={taskMenu.menu}

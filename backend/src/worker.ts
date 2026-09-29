@@ -10,6 +10,9 @@ configureRuntime({
   frontendUrl: env.FRONTEND_URL ?? process.env.FRONTEND_URL,
   cookieSecure: true,
   cookieSameSite: 'none',
+  emailApiKey: env.EMAIL_API_KEY,
+  emailFrom: env.EMAIL_FROM,
+  appUrl: env.APP_URL,
 });
 
 configurePrisma(env.DB);

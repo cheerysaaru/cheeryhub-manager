@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Layout as LayoutIcon, Home, Target, Trophy, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield } from 'lucide-react';
+import { Home, Target, Trophy, Award, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { Avatar } from './Avatar';
+import { GreetingPopup } from './GreetingPopup';
+import { getDisplayName, getProfilePic, PROFILE_EVENT, initAvatar } from '../utils/profile';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Home },
   { path: '/goals', label: 'Goals', icon: Target },
   { path: '/skills', label: 'Skills', icon: Trophy },
+  { path: '/archivedments', label: 'Archivedments', icon: Award },
   { path: '/focus', label: 'Focus', icon: Brain },
   { path: '/journal', label: 'Journal', icon: BookOpen },
   { path: '/reminders', label: 'Reminders', icon: Bell },
@@ -22,6 +26,19 @@ export function Layout() {
   const { user, loading, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileName, setProfileName] = useState(() => getDisplayName(user?.name ?? ''));
+  const [profilePic, setProfilePic] = useState(() => getProfilePic());
+
+  useEffect(() => {
+    setProfileName(getDisplayName(user?.name ?? ''));
+    initAvatar();
+    const onProfileUpdated = () => {
+      setProfileName(getDisplayName(user?.name ?? ''));
+      setProfilePic(getProfilePic());
+    };
+    window.addEventListener(PROFILE_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(PROFILE_EVENT, onProfileUpdated);
+  }, [user]);
   const visibleNavItems =
     user?.role === 'ADMIN' ? [...navItems, ...adminItems] : navItems;
 
@@ -41,11 +58,17 @@ export function Layout() {
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <Link to="/" className="logo">
-            <span className="logo-mark" aria-hidden="true"><LayoutIcon size={15} /></span>
-            <span>Productivity</span>
+            <span>cheeryhub</span>
           </Link>
         </div>
         <nav className={`app-nav ${mobileMenuOpen ? 'open' : ''}`}>
+          <div className="nav-drawer-head">
+            <span className="nav-drawer-title">Menu</span>
+            <button type="button" className="nav-drawer-close" onClick={() => setMobileMenuOpen(false)} aria-label="Close menu">
+              <X size={20} />
+              <span>Close</span>
+            </button>
+          </div>
           <ul>
             {visibleNavItems.map((item) => (
               <li key={item.path}>
@@ -68,12 +91,13 @@ export function Layout() {
           </ul>
         </nav>
         <div className="header-right">
-          <span className="user-name">{user.name}</span>
+          <Avatar size="md" className="nav-avatar" name={profileName || user?.name || '?'} src={profilePic} alt={profileName} />
         </div>
       </header>
       <main className="app-main">
         <Outlet />
       </main>
+      <GreetingPopup username={profileName || user?.name || 'there'} />
       <style>{`
         .app-layout {
           min-height: 100vh;
@@ -115,18 +139,8 @@ export function Layout() {
           font-weight: 600;
           font-size: 0.95rem;
         }
-        .logo-mark {
-          display: grid;
-          place-items: center;
-          width: 26px;
-          height: 26px;
-          border-radius: 7px;
-          background: #2D5A1B;
-          color: #ffffff;
-        }
-        .logo-mark svg {
-          width: 15px;
-          height: 15px;
+        .nav-drawer-head {
+          display: none;
         }
         .app-nav ul {
           display: flex;
@@ -198,19 +212,51 @@ export function Layout() {
           .app-nav {
             position: fixed;
             top: 0;
-            right: 0;
+            left: 0;
             bottom: 0;
             width: 300px;
             max-width: 85vw;
             background: #1a1a1a;
-            border-left: 1px solid #2a2a2a;
-            padding: 80px 24px 24px;
-            transform: translateX(100%);
+            border-right: 1px solid #2a2a2a;
+            padding: 12px 16px 20px;
+            transform: translateX(-100%);
             transition: transform 0.3s ease;
             z-index: 200;
+            overflow-y: auto;
           }
           .app-nav.open {
             transform: translateX(0);
+          }
+          .nav-drawer-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 4px 12px;
+            border-bottom: 1px solid #2a2a2a;
+            margin-bottom: 10px;
+          }
+          .nav-drawer-title {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 14px;
+          }
+          .nav-drawer-close {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 40px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #b5b5b5;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+          }
+          .nav-drawer-close:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
           }
           .app-nav ul {
             flex-direction: column;

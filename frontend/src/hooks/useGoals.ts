@@ -22,7 +22,7 @@ export function useGoals(userId: string | null) {
   useEffect(() => {
     fetchGoals();
     const cleanup = on<Goal>('goal:created', (goal) => {
-      setGoals((prev) => [goal, ...prev]);
+      setGoals((prev) => (prev.some((g) => g.id === goal.id) ? prev : [goal, ...prev]));
     });
     const cleanup2 = on<Goal>('goal:updated', (goal) => {
       setGoals((prev) => prev.map((g) => (g.id === goal.id ? goal : g)));
@@ -39,7 +39,7 @@ export function useGoals(userId: string | null) {
 
   const create = useCallback(async (data: Partial<Goal>) => {
     const goal = await api<Goal>('/goals', { method: 'POST', body: JSON.stringify(data) });
-    setGoals((prev) => [goal, ...prev]);
+    setGoals((prev) => (prev.some((g) => g.id === goal.id) ? prev : [goal, ...prev]));
     return goal;
   }, []);
 

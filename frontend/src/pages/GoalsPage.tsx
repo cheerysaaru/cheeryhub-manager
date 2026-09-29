@@ -10,13 +10,16 @@ import { Badge } from '../components/Badge';
 import { Progress } from '../components/Progress';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
+import { useToast } from '../components/Toast';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
+import { archiveGoal } from '../utils/archivedments';
 import type { Goal, GoalMilestone } from '../types';
 import { daysUntil } from '../utils/date';
 
 export default function GoalsPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { goals, loading, create, update, remove, createMilestone, updateMilestone, deleteMilestone } = useGoals(user?.id ?? null);
   const { tasks } = useTasks(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
@@ -53,12 +56,24 @@ export default function GoalsPage() {
       status: form.status,
       progress: form.progress,
     };
+    let archivedId = editingGoal?.id;
     if (editingGoal) {
       await update(editingGoal.id, data);
     } else {
-      await create(data);
+      const created = await create(data);
+      archivedId = created.id;
     }
     setShowForm(false);
+    if (data.progress === 100 && (!editingGoal || editingGoal.progress < 100)) {
+      const archived = archiveGoal({
+        id: archivedId ?? `goal-draft-${Date.now()}`,
+        title: data.title,
+        description: data.description,
+      });
+      if (archived) {
+        toast({ type: 'success', title: `"${data.title}" completed! Added to Archivedments.` });
+      }
+    }
   }
 
   async function handleDelete() {
@@ -78,6 +93,12 @@ export default function GoalsPage() {
     const completedCount = goal.milestones.filter((m) => (m.id === milestone.id ? !milestone.completed : m.completed)).length;
     const newProgress = goal.milestones.length > 0 ? Math.round((completedCount / goal.milestones.length) * 100) : 0;
     await update(goal.id, { progress: newProgress });
+    if (newProgress === 100 && goal.progress < 100) {
+      const archived = archiveGoal({ id: goal.id, title: goal.title, description: goal.description ?? undefined });
+      if (archived) {
+        toast({ type: 'success', title: `"${goal.title}" completed! Added to Archivedments.` });
+      }
+    }
   }
 
   function toggleExpand(id: string) {
