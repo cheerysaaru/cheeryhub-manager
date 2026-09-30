@@ -12,6 +12,7 @@ import AuthPage from './pages/AuthPage';
 import ResetPage from './pages/ResetPage';
 import DashboardPage from './pages/DashboardPage';
 
+const TasksPage = lazy(() => import('./pages/TasksPage'));
 const GoalsPage = lazy(() => import('./pages/GoalsPage'));
 const SkillsPage = lazy(() => import('./pages/SkillsPage'));
 const ArchivedmentsPage = lazy(() => import('./pages/ArchivedmentsPage'));
@@ -90,6 +91,7 @@ function App() {
         <Route path="/reset" element={<ResetPage />} />
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/archivedments" element={<ArchivedmentsPage />} />

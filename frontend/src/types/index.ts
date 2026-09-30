@@ -28,10 +28,13 @@ export interface Task {
   description?: string;
   category?: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED';
+  status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_COMPLETED' | 'ARCHIVED';
   scheduledDate?: string;
   scheduledTime?: string;
   deadlineTime?: string;
+  startAt?: string;
+  dueAt?: string;
+  extendedAt?: string;
   timerStartedAt?: string;
   recurrence: 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
   isMandatory: boolean;
@@ -47,6 +50,18 @@ export interface Task {
   checkedDays: number;
   missedDays: number;
   isOverdue: boolean;
+}
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body?: string;
+  link?: string;
+  readAt?: string | null;
+  dedupeKey: string;
+  createdAt: string;
 }
 
 export interface Habit {
