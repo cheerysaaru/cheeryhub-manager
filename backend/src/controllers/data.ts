@@ -10,6 +10,7 @@ import {
   todayKey,
   dayKeyInTz,
   resolveDeadline,
+  shiftDayKey,
 } from '../lib/time';
 
 const bodySchema = z.object({ title: z.string().trim().min(1).max(200).optional(), name: z.string().trim().min(1).max(200).optional(), description: z.string().max(5000).optional(), category: z.string().max(100).optional(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(), status: z.string().max(30).optional(), scheduledDate: z.coerce.date().optional(), scheduledTime: z.string().max(20).optional(), deadlineTime: z.string().max(20).optional(), dueAt: z.union([z.string().max(40), z.date()]).optional(), recurrence: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), isMandatory: z.boolean().optional(), reminderEnabled: z.boolean().optional(), estimatedMinutes: z.number().int().positive().max(1440).optional(), progress: z.number().int().min(0).max(100).optional(), deadline: z.coerce.date().optional(), currentLevel: z.number().int().min(1).max(100).optional(), targetLevel: z.number().int().min(1).max(100).optional(), reminderDate: z.coerce.date().optional(), reminderTime: z.string().max(20).optional(), repeatType: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), enabled: z.boolean().optional() }).passthrough();
@@ -189,6 +190,32 @@ async function getUserTodayFor(userId: string): Promise<Date> {
 
 type HabitDayStatus = 'COMPLETED' | 'FAILED' | 'SKIPPED';
 
+/** Users may fix yesterday and the day before; nothing older, nothing future. */
+const BACK_FILL_DAYS = 2;
+
+const habitDaySchema = z.object({ date: z.string().max(10).optional() });
+
+type HabitDayResult = { ok: true; date: Date } | { ok: false; error: string };
+
+/**
+ * Resolves the day a habit action targets: today when no date is given,
+ * otherwise a 'YYYY-MM-DD' key inside the back-fill window (user timezone).
+ */
+async function resolveHabitDay(userId: string, raw: unknown): Promise<HabitDayResult> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  const timezone = timezoneOf(user?.timezone);
+  const today = todayKey(timezone);
+  if (raw === undefined || raw === null || raw === '') {
+    return { ok: true, date: new Date(`${today}T00:00:00.000Z`) };
+  }
+  const key = String(raw).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return { ok: false, error: 'Invalid date' };
+  if (key > today) return { ok: false, error: 'Cannot update a future day' };
+  const earliest = shiftDayKey(today, -BACK_FILL_DAYS);
+  if (key < earliest) return { ok: false, error: `Only today and the last ${BACK_FILL_DAYS} days can be updated` };
+  return { ok: true, date: new Date(`${key}T00:00:00.000Z`) };
+}
+
 function completionStatus(status: string | null | undefined): HabitDayStatus {
   if (status === 'FAILED' || status === 'SKIPPED') return status;
   return 'COMPLETED';
@@ -224,7 +251,12 @@ async function setHabitDayStatus(request: AuthRequest, response: Response, statu
   const habitId = String(request.params.id);
   const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: request.userId!, deletedAt: null } });
   if (!habit) return fail(response, 'Habit not found', 404);
-  const date = await getUserTodayFor(request.userId!);
+  const parsed = habitDaySchema.safeParse(request.body ?? {});
+  if (!parsed.success) return fail(response, 'Invalid date');
+  const target = await resolveHabitDay(request.userId!, parsed.data.date);
+  if (!target.ok) return fail(response, target.error, 400);
+  const date = target.date;
+  const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
   const existing = await prisma.habitCompletion.findUnique({ where: { habitId_date: { habitId: habit.id, date } } });
   const previouslyCompleted = existing != null && completionStatus(existing.status) === 'COMPLETED';
   const completion = await prisma.habitCompletion.upsert({
@@ -234,13 +266,13 @@ async function setHabitDayStatus(request: AuthRequest, response: Response, statu
   });
   const awardXp = status === 'COMPLETED' && !previouslyCompleted;
   if (awardXp) await prisma.xPTransaction.create({ data: { userId: request.userId!, habitId: habit.id, amount: 5, reason: 'Daily commitment completed' } });
-  const payload = await habitDayPayload(habit, request.userId!, date);
+  const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
   emitEvent(request.userId!, 'habits', 'updated', payload);
   if (awardXp) emitToUser(request.userId!, 'xp:updated', { reason: 'Daily commitment completed', amount: 5 });
   if (status === 'COMPLETED') {
-    return ok(response, { ...completion, weekCompletedDays: payload.weekCompletedDays, weekComplete: payload.weekCompletedDays === 7 }, 201);
+    return ok(response, { ...payload, ...completion, dayKey: dayKey(date), weekCompletedDays: payload.weekCompletedDays, weekComplete: payload.weekCompletedDays === 7 }, 201);
   }
-  return ok(response, { ...completion, ...payload });
+  return ok(response, { ...payload, ...completion, dayKey: dayKey(date) });
 }
 
 export async function completeHabit(request: AuthRequest, response: Response) {
@@ -275,11 +307,15 @@ export async function stopTaskTimer(request: AuthRequest, response: Response) {
 }
 export async function clearHabitToday(request: AuthRequest, response: Response) {
   const habitId = String(request.params.id); const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: request.userId!, deletedAt: null } }); if (!habit) return fail(response, 'Habit not found', 404);
-  const date = await getUserTodayFor(request.userId!);
-  await prisma.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date } });
-  const payload = await habitDayPayload(habit, request.userId!, date);
-  emitEvent(request.userId!, 'habits', 'updated', { ...payload, completedToday: false, failedToday: false, skippedToday: false });
-  return ok(response, { cleared: true });
+  const parsed = habitDaySchema.safeParse(request.body ?? {});
+  if (!parsed.success) return fail(response, 'Invalid date');
+  const target = await resolveHabitDay(request.userId!, parsed.data.date);
+  if (!target.ok) return fail(response, target.error, 400);
+  const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
+  await prisma.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date: target.date } });
+  const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
+  emitEvent(request.userId!, 'habits', 'updated', payload);
+  return ok(response, { cleared: true, dayKey: dayKey(target.date) });
 }
 
 /** Soft-deleted tasks = the Trash Bin. */

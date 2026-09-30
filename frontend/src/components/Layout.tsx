@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Home, Target, Trophy, Award, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield, ListTodo } from 'lucide-react';
+import { Home, Target, Trophy, Award, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield, ListTodo, CalendarCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Avatar } from './Avatar';
 import { GreetingPopup } from './GreetingPopup';
@@ -10,6 +10,7 @@ import { getDisplayName, getProfilePic, PROFILE_EVENT, initAvatar } from '../uti
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Home },
   { path: '/tasks', label: 'Tasks', icon: ListTodo },
+  { path: '/commitments', label: 'Commitments', icon: CalendarCheck },
   { path: '/goals', label: 'Goals', icon: Target },
   { path: '/skills', label: 'Skills', icon: Trophy },
   { path: '/achievements', label: 'Achievements', icon: Award },

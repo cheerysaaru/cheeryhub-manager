@@ -14,13 +14,14 @@ import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { TaskRow } from '../components/TaskRow';
 import { DeadlinePicker } from '../components/DeadlinePicker';
-import { formatDate, formatShortDate, greeting, parseLocalDate, todayISO } from '../utils/date';
+import { formatDate, formatShortDate, greeting, parseLocalDate, shiftDate, todayISO } from '../utils/date';
 import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
 import type { Task, Habit } from '../types';
 
-function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string) => void }) {
+function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string, date?: string) => void }) {
   const today = todayISO();
+  const backFillUntil = shiftDate(today, -2);
   return (
     <div className="week-panel">
       <div className="week-heading">
@@ -33,16 +34,19 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
           const failed = habit.failedDates.includes(date);
           const skipped = habit.skippedDates.includes(date);
           const future = date > today;
+          const beforeWindow = date < backFillUntil;
+          const editable = !future && !beforeWindow;
           const label = parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short' });
           const number = parseLocalDate(date).getDate();
+          const statusText = checked ? ', checked in' : failed ? ', failed' : skipped ? ', left' : future ? ', not started' : beforeWindow ? ', outside back-fill window' : ', nothing recorded';
           return (
             <button
               key={date}
-              disabled={future}
-              className={`day-check ${checked ? 'checked' : ''} ${failed ? 'failed' : ''} ${skipped ? 'skipped' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''}`}
-              onClick={() => !future && !checked && !failed && !skipped && onCheck(habit.id)}
-              aria-label={`${label} ${number}${future ? ', not started' : failed ? ', failed' : skipped ? ', left' : ''}`}
-              title={future ? 'This day has not started yet' : failed ? 'Failed that day' : skipped ? 'Left today' : date}
+              disabled={!editable}
+              className={`day-check ${checked ? 'checked' : ''} ${failed ? 'failed' : ''} ${skipped ? 'skipped' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''} ${beforeWindow ? 'outside-window' : ''} ${editable && !checked && !failed && !skipped ? 'backfill' : ''}`}
+              onClick={() => editable && !checked && onCheck(habit.id, date)}
+              aria-label={`${label} ${number}${statusText}${editable && !checked ? ', tap to check in' : ''}`}
+              title={future ? 'This day has not started yet' : beforeWindow ? 'Too old to edit' : failed ? 'Failed that day' : skipped ? 'Left this day' : checked ? 'Checked in' : editable ? 'Check in for this day' : date}
             >
               {checked ? <CheckCircle2 size={18} /> : failed ? <CircleX size={18} /> : skipped ? <Coffee size={18} /> : <Circle size={18} />}
               <small>{label}</small>
@@ -51,6 +55,7 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
           );
         })}
       </div>
+      <p className="week-backfill-note">Yesterday and the day before stay editable — tap an empty day to back-fill.</p>
     </div>
   );
 }
