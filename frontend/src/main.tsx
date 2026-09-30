@@ -33,6 +33,14 @@ function PageLoading() {
   );
 }
 
+function AdminRoute() {
+  const { user } = useAuth();
+  if (user?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
+  return <AdminPage />;
+}
+
 applyTheme(getTheme());
 
 if ('serviceWorker' in navigator) {
@@ -92,7 +100,7 @@ function App() {
           <Route path="/brand" element={<BrandPage />} />
           <Route path="/finance" element={<FinancePage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin" element={<AdminRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
