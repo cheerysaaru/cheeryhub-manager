@@ -4,8 +4,15 @@ import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
+import { generateNotifications } from '../lib/notifications';
+import {
+  timezoneOf,
+  todayKey,
+  dayKeyInTz,
+  resolveDeadline,
+} from '../lib/time';
 
-const bodySchema = z.object({ title: z.string().trim().min(1).max(200).optional(), name: z.string().trim().min(1).max(200).optional(), description: z.string().max(5000).optional(), category: z.string().max(100).optional(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(), status: z.string().max(30).optional(), scheduledDate: z.coerce.date().optional(), scheduledTime: z.string().max(20).optional(), deadlineTime: z.string().max(20).optional(), recurrence: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), isMandatory: z.boolean().optional(), reminderEnabled: z.boolean().optional(), estimatedMinutes: z.number().int().positive().max(1440).optional(), progress: z.number().int().min(0).max(100).optional(), deadline: z.coerce.date().optional(), currentLevel: z.number().int().min(1).max(100).optional(), targetLevel: z.number().int().min(1).max(100).optional(), reminderDate: z.coerce.date().optional(), reminderTime: z.string().max(20).optional(), repeatType: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), enabled: z.boolean().optional() }).passthrough();
+const bodySchema = z.object({ title: z.string().trim().min(1).max(200).optional(), name: z.string().trim().min(1).max(200).optional(), description: z.string().max(5000).optional(), category: z.string().max(100).optional(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(), status: z.string().max(30).optional(), scheduledDate: z.coerce.date().optional(), scheduledTime: z.string().max(20).optional(), deadlineTime: z.string().max(20).optional(), dueAt: z.union([z.string().max(40), z.date()]).optional(), recurrence: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), isMandatory: z.boolean().optional(), reminderEnabled: z.boolean().optional(), estimatedMinutes: z.number().int().positive().max(1440).optional(), progress: z.number().int().min(0).max(100).optional(), deadline: z.coerce.date().optional(), currentLevel: z.number().int().min(1).max(100).optional(), targetLevel: z.number().int().min(1).max(100).optional(), reminderDate: z.coerce.date().optional(), reminderTime: z.string().max(20).optional(), repeatType: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), enabled: z.boolean().optional() }).passthrough();
 const modelMap = { tasks: 'task', habits: 'habit', goals: 'goal', skills: 'skill', reminders: 'reminder', brand: 'brandProject' } as const;
 type Resource = keyof typeof modelMap;
 function getResource(request: AuthRequest): Resource { const segment = request.baseUrl.split('/').filter(Boolean).pop() ?? 'tasks'; return (segment in modelMap ? segment : 'tasks') as Resource; }
@@ -14,7 +21,7 @@ function emitEvent(userId: string, resource: string, action: 'created' | 'update
   emitToUser(userId, `${singular}:${action}`, data);
 }
 
-const FORBIDDEN_WRITE_KEYS = new Set(['id', 'userId', 'createdAt', 'updatedAt', 'deletedAt']);
+const FORBIDDEN_WRITE_KEYS = new Set(['id', 'userId', 'createdAt', 'updatedAt', 'deletedAt', 'startAt', 'extendedAt']);
 
 // Scalar foreign-key fields a client may set: each must reference a record owned by the caller.
 const REFERENCE_MODELS: Record<string, 'goal' | 'skill' | 'habit' | 'task'> = {
@@ -57,14 +64,7 @@ async function validateReferences(
 }
 
 function getUserToday(timezone: string): Date {
-  const tz = timezone || 'UTC';
-  const key = new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-  return new Date(`${key}T00:00:00.000Z`);
+  return new Date(`${todayKey(timezoneOf(timezone))}T00:00:00.000Z`);
 }
 
 function getWeekStart(date: Date): Date {
@@ -93,7 +93,7 @@ export async function list(request: AuthRequest, response: Response) {
   const where = { userId: request.userId, ...(key === 'tasks' || key === 'habits' ? { deletedAt: null } : {}) };
   const records = await model.findMany({ where, orderBy: { createdAt: 'desc' }, ...(key === 'tasks' ? { include: { checkIns: { where: { userId: request.userId, date: today } } } } : key === 'habits' ? { include: { completions: { where: { userId: request.userId } } } } : {}) });
   if (key === 'tasks') {
-    return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; checkIns: Array<{ checked: boolean }> }) => {
+    return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; dueAt: Date | null; startAt: Date | null; extendedAt: Date | null; checkIns: Array<{ checked: boolean }> }) => {
       let normalized = task;
       if (task.recurrence !== 'NONE' && task.completedAt) {
         const completed = new Date(task.completedAt); completed.setUTCHours(0, 0, 0, 0);
@@ -102,17 +102,20 @@ export async function list(request: AuthRequest, response: Response) {
         normalized = dueAgain ? { ...task, status: 'TODO', completedAt: null } : task;
       }
       let overdueStatus = false;
-      if (task.scheduledDate && task.status !== 'COMPLETED' && task.status !== 'ARCHIVED' && task.status !== 'IN_PROGRESS') {
-        const scheduled = new Date(task.scheduledDate);
-        scheduled.setUTCHours(23, 59, 59, 999);
-        if (today.getTime() > scheduled.getTime()) overdueStatus = true;
+      if (task.status !== 'COMPLETED' && task.status !== 'ARCHIVED' && task.status !== 'IN_PROGRESS') {
+        if (task.dueAt) {
+          overdueStatus = Date.now() > new Date(task.dueAt).getTime();
+        } else if (task.scheduledDate) {
+          const scheduled = new Date(task.scheduledDate);
+          scheduled.setUTCHours(23, 59, 59, 999);
+          overdueStatus = today.getTime() > scheduled.getTime();
+        }
       }
       const history = await prisma.taskCheckIn.groupBy({ by: ['checked'], where: { taskId: task.id, userId: request.userId }, _count: { _all: true } });
       return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.find((item) => item.checked)?._count._all ?? 0, missedDays: history.find((item) => !item.checked)?._count._all ?? 0, isOverdue: overdueStatus };
     })));
   }
   if (key === 'habits') {
-    const todayKey = dayKey(today);
     return ok(response, await Promise.all(records.map((habit: { id: string }) => habitDayPayload(habit, request.userId!, today))));
   }
   return ok(response, records);
@@ -122,8 +125,22 @@ export async function create(request: AuthRequest, response: Response) {
   const data = sanitizeWriteData(parsed.data);
   const badRef = await validateReferences(data, request.userId!);
   if (badRef) return fail(response, `Invalid ${badRef} reference`, 400);
+  if (key === 'tasks') {
+    const rawDue = data.dueAt;
+    const user = await prisma.user.findUnique({ where: { id: request.userId! }, select: { timezone: true } });
+    const timezone = timezoneOf(user?.timezone);
+    const startAt = new Date();
+    const deadline = resolveDeadline(rawDue, startAt, timezone);
+    if (!deadline.ok) return fail(response, deadline.error, 400);
+    data.startAt = startAt;
+    data.dueAt = deadline.dueAt;
+    if (!data.scheduledDate && rawDue !== undefined && rawDue !== null && rawDue !== '') {
+      data.scheduledDate = new Date(`${dayKeyInTz(deadline.dueAt, timezone)}T00:00:00.000Z`);
+    }
+  }
   const model = prisma[modelMap[key]] as any; const record = await model.create({ data: { ...data, userId: request.userId } });
   emitEvent(request.userId!, key, 'created', record);
+  if (key === 'tasks') void generateNotifications(request.userId!).catch(() => undefined);
   return ok(response, record, 201);
 }
 export async function update(request: AuthRequest, response: Response) {
@@ -133,8 +150,17 @@ export async function update(request: AuthRequest, response: Response) {
   if (badRef) return fail(response, `Invalid ${badRef} reference`, 400);
   const model = prisma[modelMap[key]] as any; const existing = await model.findFirst({ where: { id: request.params.id, userId: request.userId } });
   if (!existing) return fail(response, 'Record not found', 404);
+  if (key === 'tasks' && data.dueAt !== undefined) {
+    const user = await prisma.user.findUnique({ where: { id: request.userId! }, select: { timezone: true } });
+    const timezone = timezoneOf(user?.timezone);
+    const startAt = existing.startAt ?? existing.createdAt ?? new Date();
+    const deadline = resolveDeadline(data.dueAt, startAt, timezone);
+    if (!deadline.ok) return fail(response, deadline.error, 400);
+    data.dueAt = deadline.dueAt;
+  }
   const record = await model.update({ where: { id: existing.id }, data });
   emitEvent(request.userId!, key, 'updated', record);
+  if (key === 'tasks') void generateNotifications(request.userId!).catch(() => undefined);
   return ok(response, record);
 }
 export async function remove(request: AuthRequest, response: Response) {
@@ -254,4 +280,88 @@ export async function clearHabitToday(request: AuthRequest, response: Response) 
   const payload = await habitDayPayload(habit, request.userId!, date);
   emitEvent(request.userId!, 'habits', 'updated', { ...payload, completedToday: false, failedToday: false, skippedToday: false });
   return ok(response, { cleared: true });
+}
+
+/** Soft-deleted tasks = the Trash Bin. */
+export async function listTrash(request: AuthRequest, response: Response) {
+  const records = await prisma.task.findMany({
+    where: { userId: request.userId, deletedAt: { not: null } },
+    orderBy: { deletedAt: 'desc' },
+  });
+  return ok(response, records);
+}
+
+async function findOwnTask(request: AuthRequest, response: Response) {
+  const task = await prisma.task.findFirst({
+    where: { id: String(request.params.id), userId: request.userId },
+  });
+  if (!task) {
+    fail(response, 'Task not found', 404);
+    return null;
+  }
+  return task;
+}
+
+export async function restoreTask(request: AuthRequest, response: Response) {
+  const task = await findOwnTask(request, response);
+  if (!task) return;
+  if (!task.deletedAt) return fail(response, 'Task is not in the trash', 400);
+  const updated = await prisma.task.update({
+    where: { id: task.id },
+    data: { deletedAt: null },
+  });
+  emitToUser(request.userId!, 'task:restored', updated);
+  void generateNotifications(request.userId!).catch(() => undefined);
+  return ok(response, updated);
+}
+
+export async function purgeTask(request: AuthRequest, response: Response) {
+  const task = await findOwnTask(request, response);
+  if (!task) return;
+  try {
+    await prisma.task.delete({ where: { id: task.id } });
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2025') return fail(response, 'Task not found', 404);
+    throw error;
+  }
+  emitToUser(request.userId!, 'task:deleted', { id: task.id, permanent: true });
+  return ok(response, { deleted: true });
+}
+
+export async function markNotCompleted(request: AuthRequest, response: Response) {
+  const task = await findOwnTask(request, response);
+  if (!task) return;
+  const updated = await prisma.task.update({
+    where: { id: task.id },
+    data: { status: 'NOT_COMPLETED', completedAt: null, deletedAt: new Date() },
+  });
+  emitToUser(request.userId!, 'task:deleted', { id: task.id });
+  void generateNotifications(request.userId!).catch(() => undefined);
+  return ok(response, updated);
+}
+
+const extendSchema = z.object({ dueAt: z.union([z.string().max(40), z.date()]) });
+
+/** "Give more time": pushes the deadline out and stamps extendedAt. */
+export async function extendTaskDeadline(request: AuthRequest, response: Response) {
+  const parsed = extendSchema.safeParse(request.body);
+  if (!parsed.success) return fail(response, 'A new deadline is required', 400);
+  const task = await findOwnTask(request, response);
+  if (!task) return;
+  if (task.status === 'COMPLETED') return fail(response, 'Task is already completed', 400);
+  const user = await prisma.user.findUnique({ where: { id: request.userId! }, select: { timezone: true } });
+  const timezone = timezoneOf(user?.timezone);
+  const startAt = task.startAt ?? task.createdAt;
+  const deadline = resolveDeadline(parsed.data.dueAt, startAt, timezone);
+  if (!deadline.ok) return fail(response, deadline.error, 400);
+  if (task.dueAt && deadline.dueAt.getTime() <= new Date(task.dueAt).getTime()) {
+    return fail(response, 'The new deadline must be later than the current one', 400);
+  }
+  const updated = await prisma.task.update({
+    where: { id: task.id },
+    data: { dueAt: deadline.dueAt, extendedAt: new Date() },
+  });
+  emitToUser(request.userId!, 'task:updated', updated);
+  void generateNotifications(request.userId!).catch(() => undefined);
+  return ok(response, updated);
 }

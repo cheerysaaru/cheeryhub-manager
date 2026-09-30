@@ -43,7 +43,18 @@ import {
   checkInTask,
   startTaskTimer,
   stopTaskTimer,
+  listTrash,
+  restoreTask,
+  purgeTask,
+  markNotCompleted,
+  extendTaskDeadline,
 } from './controllers/data';
+import {
+  listNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  regenerateNotifications,
+} from './controllers/notifications';
 import {
   startFocus,
   completeFocus,
@@ -268,6 +279,9 @@ export function createApp(options?: { rateLimit?: boolean }) {
   ]) {
     const router = express.Router();
 
+    // Must be registered before '/:id' so "trash" is not treated as a task id.
+    if (resource === 'tasks') router.get('/trash', listTrash);
+
     router.get('/', list);
     router.get('/:id', getOne);
     router.post('/', create);
@@ -281,6 +295,15 @@ export function createApp(options?: { rateLimit?: boolean }) {
   app.post('/api/tasks/:id/checkin', checkInTask);
   app.post('/api/tasks/:id/timer/start', startTaskTimer);
   app.post('/api/tasks/:id/timer/stop', stopTaskTimer);
+  app.post('/api/tasks/:id/restore', restoreTask);
+  app.delete('/api/tasks/:id/permanent', purgeTask);
+  app.post('/api/tasks/:id/mark-not-completed', markNotCompleted);
+  app.post('/api/tasks/:id/extend', extendTaskDeadline);
+
+  app.get('/api/notifications', listNotifications);
+  app.post('/api/notifications/read-all', markAllNotificationsRead);
+  app.post('/api/notifications/regenerate', regenerateNotifications);
+  app.post('/api/notifications/:id/read', markNotificationRead);
 
   app.post('/api/habits/:id/complete', completeHabit);
   app.post('/api/habits/:id/fail', failHabitToday);
