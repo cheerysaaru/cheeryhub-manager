@@ -1,6 +1,8 @@
 
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import fs from 'fs';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -336,6 +338,28 @@ export function createApp(options?: { rateLimit?: boolean }) {
   transactionRouter.get('/report/monthly', getMonthlyReport);
 
   app.use('/api/transactions', transactionRouter);
+
+  // Serve the built client in production so refreshing a deep link
+  // (e.g. /goals) does not fall through to a 404.
+  const candidateClientDirs = [
+    path.resolve(__dirname, '../../frontend/dist'),
+    path.resolve(process.cwd(), 'frontend/dist'),
+    path.resolve(process.cwd(), '../frontend/dist'),
+  ];
+  const clientDist = candidateClientDirs.find((dir) =>
+    fs.existsSync(path.join(dir, 'index.html'))
+  );
+
+  if (clientDist) {
+    app.use(express.static(clientDist, { index: false }));
+    app.use((request: Request, response: Response, next: NextFunction) => {
+      if (request.method !== 'GET') return next();
+      if (request.path.startsWith('/api')) return next();
+      if (request.path.startsWith('/assets/')) return next();
+      if (!request.accepts('html')) return next();
+      response.sendFile(path.join(clientDist, 'index.html'));
+    });
+  }
 
   app.use(
     (
