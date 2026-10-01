@@ -1961,3 +1961,18 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   margin-top: 2px;
 }
 .achievement-date { display: inline-flex; align-items: center; gap: 4px; }
+
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--bg-active);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+}
+.streak-badge svg { color: var(--warning, #f59e0b); }
+.streak-badge strong { color: var(--text); }
+.streak-badge.is-active { border-color: var(--warning, #f59e0b); }

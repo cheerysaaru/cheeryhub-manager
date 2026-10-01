@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
 import { POINTS, awardPoints } from '../lib/points';
+import { timezoneOf, todayKey, dayKeyInTz, shiftDayKey } from '../lib/time';
 
 export async function startFocus(request: AuthRequest, response: Response) { const parsed = z.object({ durationMinutes: z.number().int().positive().max(480), taskId: z.string().optional() }).safeParse(request.body); if (!parsed.success) return fail(response, 'A valid focus duration is required'); if (parsed.data.taskId) { const task = await prisma.task.findFirst({ where: { id: parsed.data.taskId, userId: request.userId!, deletedAt: null } }); if (!task) return fail(response, 'Task not found', 404); } const session = await prisma.focusSession.create({ data: { ...parsed.data, userId: request.userId! } }); emitToUser(request.userId!, 'focus:created', session); return ok(response, session, 201); }
 export async function completeFocus(request: AuthRequest, response: Response) { const session = await prisma.focusSession.findFirst({ where: { id: String(request.params.id), userId: request.userId! } }); if (!session) return fail(response, 'Focus session not found', 404); const updated = await prisma.focusSession.update({ where: { id: session.id }, data: { status: 'COMPLETED', completedAt: new Date() } }); emitToUser(request.userId!, 'focus:completed', updated); return ok(response, updated); }
@@ -26,4 +27,38 @@ export async function unlockAchievement(request: AuthRequest, response: Response
   });
   if (applied) emitToUser(request.userId!, 'xp:updated', { reason: 'Achievement unlocked', amount: POINTS.ACHIEVEMENT });
   return ok(response, { awarded: applied ? POINTS.ACHIEVEMENT : 0 });
+}
+
+export async function streaks(request: AuthRequest, response: Response) {
+  const user = await prisma.user.findUnique({ where: { id: request.userId! }, select: { timezone: true } });
+  const timezone = timezoneOf(user?.timezone);
+  const today = todayKey(timezone);
+  const [completions, tasks] = await Promise.all([
+    prisma.habitCompletion.findMany({ where: { userId: request.userId!, status: 'COMPLETED' }, select: { date: true } }),
+    prisma.task.findMany({ where: { userId: request.userId!, status: 'COMPLETED', completedAt: { not: null } }, select: { completedAt: true } }),
+  ]);
+  const activeDays = new Set<string>();
+  for (const completion of completions) activeDays.add(dayKeyInTz(completion.date, 'UTC'));
+  for (const task of tasks) if (task.completedAt) activeDays.add(dayKeyInTz(task.completedAt, timezone));
+
+  const sorted = [...activeDays].sort();
+  let best = 0;
+  let run = 0;
+  let previous: string | null = null;
+  for (const day of sorted) {
+    run = previous && shiftDayKey(previous, 1) === day ? run + 1 : 1;
+    if (run > best) best = run;
+    previous = day;
+  }
+
+  // The streak survives until the end of today: if today has no activity yet,
+  // the run may still be alive from yesterday.
+  let cursor = activeDays.has(today) ? today : shiftDayKey(today, -1);
+  let current = 0;
+  while (activeDays.has(cursor)) {
+    current += 1;
+    cursor = shiftDayKey(cursor, -1);
+  }
+
+  return ok(response, { current, best, todayActive: activeDays.has(today) });
 }

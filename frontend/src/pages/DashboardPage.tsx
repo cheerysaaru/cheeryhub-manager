@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff } from 'lucide-react';
+import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff, Flame } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
@@ -80,7 +80,7 @@ export default function DashboardPage() {
   } = useTasks(user?.id ?? null);
   const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday, failToday, skipToday, remove: removeHabit } = useHabits(user?.id ?? null);
   const { goals } = useGoals(user?.id ?? null);
-  const { xp } = useAnalytics(user?.id ?? null);
+  const { xp, streak } = useAnalytics(user?.id ?? null);
 
   const [taskForm, setTaskForm] = useState({ title: '' });
   const [dueAt, setDueAt] = useState<string | null>(null);
@@ -214,6 +214,17 @@ export default function DashboardPage() {
           <p className="header-date">{formatDate()}</p>
         </div>
         <div className="header-stats">
+          {streak && (
+            <div
+              className={`streak-badge${streak.todayActive ? ' is-active' : ''}`}
+              title={`Best streak: ${streak.best} day${streak.best === 1 ? '' : 's'}`}
+            >
+              <Flame size={16} aria-hidden="true" />
+              <span>
+                <strong>{streak.current}</strong> day{streak.current === 1 ? '' : 's'}
+              </span>
+            </div>
+          )}
           <div
             className="rank-circle"
             style={{ '--rank-progress': `${xpInLevel}%` } as React.CSSProperties}

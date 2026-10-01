@@ -65,6 +65,7 @@ import {
   xp,
   importBackup,
   unlockAchievement,
+  streaks,
 } from './controllers/misc';
 import {
   listTransactions,
@@ -350,6 +351,7 @@ export function createApp(options?: { rateLimit?: boolean }) {
 
   app.get('/api/xp', xp);
   app.get('/api/xp/history', xp);
+  app.get('/api/streaks', streaks);
   app.post('/api/achievements/unlock', unlockAchievement);
   app.post('/api/backup/import', importBackup);
 
