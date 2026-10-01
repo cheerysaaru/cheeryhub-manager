@@ -110,7 +110,27 @@ export async function list(request: AuthRequest, response: Response) {
     }
   }
   if (key === 'tasks') {
-    return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; dueAt: Date | null; startAt: Date | null; extendedAt: Date | null; checkIns: Array<{ checked: boolean }> }) => {
+    // One grouped query for the whole page instead of one query per task
+    // (the old per-row groupBy made /api/tasks scale with the list size).
+    const taskIds = records.map((task: { id: string }) => task.id);
+    const historyRows = taskIds.length
+      ? await prisma.taskCheckIn.groupBy({
+          by: ['taskId', 'checked'],
+          where: { taskId: { in: taskIds }, userId: request.userId },
+          _count: { _all: true },
+        })
+      : [];
+    const historyByTask = new Map<string, { checked: number; missed: number }>();
+    for (const row of historyRows) {
+      let entry = historyByTask.get(row.taskId);
+      if (!entry) {
+        entry = { checked: 0, missed: 0 };
+        historyByTask.set(row.taskId, entry);
+      }
+      if (row.checked) entry.checked = row._count._all;
+      else entry.missed = row._count._all;
+    }
+    return ok(response, records.map((task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; dueAt: Date | null; startAt: Date | null; extendedAt: Date | null; checkIns: Array<{ checked: boolean }> }) => {
       let normalized = task;
       if (task.recurrence !== 'NONE' && task.completedAt) {
         const completed = new Date(task.completedAt); completed.setUTCHours(0, 0, 0, 0);
@@ -128,9 +148,9 @@ export async function list(request: AuthRequest, response: Response) {
           overdueStatus = today.getTime() > scheduled.getTime();
         }
       }
-      const history = await prisma.taskCheckIn.groupBy({ by: ['checked'], where: { taskId: task.id, userId: request.userId }, _count: { _all: true } });
-      return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.find((item) => item.checked)?._count._all ?? 0, missedDays: history.find((item) => !item.checked)?._count._all ?? 0, isOverdue: overdueStatus };
-    })));
+      const history = historyByTask.get(task.id) ?? { checked: 0, missed: 0 };
+      return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.checked, missedDays: history.missed, isOverdue: overdueStatus };
+    }));
   }
   if (key === 'habits') {
     return ok(response, await Promise.all(records.map((habit: { id: string }) => habitDayPayload(habit, request.userId!, today))));
