@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff, Flame } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -20,6 +20,8 @@ import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
 import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
 import type { Task, Habit } from '../types';
+
+const DASHBOARD_TASK_LIMIT = 6;
 
 function WeekChecklist({ habit, onCheck, pending }: { habit: Habit; onCheck: (id: string, date?: string) => void; pending?: boolean }) {
   const today = todayISO();
@@ -109,11 +111,22 @@ export default function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'task' | 'habit'; id: string; label: string } | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<Task | null>(null);
 
-  const activeTasks = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ARCHIVED' && !t.deletedAt);
-  const completedToday = tasks.filter((t) => t.checkedToday).length;
-  const completedHabits = habits.filter((h) => h.completedToday).length;
-  const overdueTasks = tasks.filter((t) => t.isOverdue && t.status !== 'COMPLETED').length;
-  const activeGoals = goals.filter((g) => g.status === 'ACTIVE').length;
+  const activeTasks = useMemo(
+    () => tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ARCHIVED' && !t.deletedAt),
+    [tasks]
+  );
+  const completedToday = useMemo(() => tasks.filter((t) => t.checkedToday).length, [tasks]);
+  const completedHabits = useMemo(() => habits.filter((h) => h.completedToday).length, [habits]);
+  const overdueTasks = useMemo(
+    () => tasks.filter((t) => t.isOverdue && t.status !== 'COMPLETED').length,
+    [tasks]
+  );
+  const activeGoals = useMemo(() => goals.filter((g) => g.status === 'ACTIVE').length, [goals]);
+  const visibleTasks = useMemo(() => activeTasks.slice(0, DASHBOARD_TASK_LIMIT), [activeTasks]);
+  const hiddenTaskCount = activeTasks.length - visibleTasks.length;
+
+  const onToggleTask = useCallback((task: Task) => { void checkIn(task.id, !task.checkedToday); }, [checkIn]);
+  const onDoneTask = useCallback((task: Task) => { void completeTask(task.id); }, [completeTask]);
   const totalXP = xp?.total ?? 0;
   const level = levelFor(totalXP);
   const xpInLevel = pointsIntoLevel(totalXP);
@@ -379,18 +392,24 @@ export default function DashboardPage() {
             </div>
           ) : (
             <ul className="task-list" role="list">
-              {activeTasks.map((task) => (
+              {visibleTasks.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
                   bind={taskMenu.bind}
                   pending={isTaskPending(task.id)}
-                  onToggle={(t) => void checkIn(t.id, !t.checkedToday)}
-                  onDone={(t) => void completeTask(t.id)}
+                  onToggle={onToggleTask}
+                  onDone={onDoneTask}
                   onOverdueMenu={setOverdueTask}
                 />
               ))}
             </ul>
+          )}
+          {hiddenTaskCount > 0 && (
+            <Link to="/tasks" className="panel-link task-more-link">
+              <span>{hiddenTaskCount} more {hiddenTaskCount === 1 ? 'task' : 'tasks'}</span>
+              <ArrowRight size={16} />
+            </Link>
           )}
         </section>
 

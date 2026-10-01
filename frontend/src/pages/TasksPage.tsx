@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ArrowLeft, CalendarClock, Circle, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +15,8 @@ import { formatDeadline } from '../utils/deadline';
 import type { Task } from '../types';
 
 type Tab = 'active' | 'trash';
+
+const PAGE_SIZE = 50;
 
 export default function TasksPage() {
   const { user } = useAuth();
@@ -44,13 +46,22 @@ export default function TasksPage() {
   const [extendOpen, setExtendOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<Task | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const taskMenu = useContextMenu();
 
   const activeTasks = useMemo(
     () => tasks.filter((t) => t.status !== 'ARCHIVED' && !t.deletedAt),
     [tasks]
   );
-  const overdueCount = activeTasks.filter((t) => t.isOverdue && t.status !== 'COMPLETED').length;
+  const overdueCount = useMemo(
+    () => activeTasks.filter((t) => t.isOverdue && t.status !== 'COMPLETED').length,
+    [activeTasks]
+  );
+  const visibleTasks = useMemo(() => activeTasks.slice(0, visibleCount), [activeTasks, visibleCount]);
+  const hiddenTaskCount = activeTasks.length - visibleTasks.length;
+
+  const onToggleTask = useCallback((task: Task) => { void checkIn(task.id, !task.checkedToday); }, [checkIn]);
+  const onDoneTask = useCallback((task: Task) => { void completeTask(task.id); }, [completeTask]);
 
   const handleAddTask = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -216,18 +227,25 @@ export default function TasksPage() {
             </div>
           ) : (
             <ul className="task-list" role="list">
-              {activeTasks.map((task) => (
+              {visibleTasks.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
                   bind={taskMenu.bind}
                   pending={isPending(task.id)}
-                  onToggle={(t) => void checkIn(t.id, !t.checkedToday)}
-                  onDone={(t) => void completeTask(t.id)}
+                  onToggle={onToggleTask}
+                  onDone={onDoneTask}
                   onOverdueMenu={setOverdueTask}
                 />
               ))}
             </ul>
+          )}
+          {hiddenTaskCount > 0 && (
+            <div className="list-more">
+              <Button variant="secondary" size="sm" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>
+                Show {Math.min(PAGE_SIZE, hiddenTaskCount)} more
+              </Button>
+            </div>
           )}
         </section>
       )}

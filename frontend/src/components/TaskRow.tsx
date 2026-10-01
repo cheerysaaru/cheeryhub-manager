@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Clock } from 'lucide-react';
 import { Badge } from './Badge';
 import { Button } from './Button';
@@ -16,7 +17,7 @@ interface TaskRowProps {
   pending?: boolean;
 }
 
-export function TaskRow({ task, onToggle, onDone, onOverdueMenu, bind, pending }: TaskRowProps) {
+export const TaskRow = memo(function TaskRow({ task, onToggle, onDone, onOverdueMenu, bind, pending }: TaskRowProps) {
   const overdue = task.isOverdue && task.status !== 'COMPLETED';
   const longPress = useLongPress(() => onOverdueMenu?.(task));
 
@@ -76,4 +77,4 @@ export function TaskRow({ task, onToggle, onDone, onOverdueMenu, bind, pending }
       {overdue && <span className="long-press-progress" aria-hidden="true" />}
     </li>
   );
-}
+});
