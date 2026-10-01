@@ -29,7 +29,7 @@ function writeAll(items: Archivedment[]): void {
   }
 }
 
-export function addArchivedment(item: Omit<Archivedment, 'id' | 'date' | 'source'> & { date?: string }): boolean {
+export function addArchivedment(item: Omit<Archivedment, 'id' | 'date' | 'source'> & { date?: string }): Archivedment {
   const items = readArchivedments();
   const entry: Archivedment = {
     id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -41,7 +41,7 @@ export function addArchivedment(item: Omit<Archivedment, 'id' | 'date' | 'source
   };
   items.unshift(entry);
   writeAll(items);
-  return true;
+  return entry;
 }
 
 export function archiveGoal(goal: { id: string; title: string; description?: string }): boolean {

@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Home, Target, Trophy, Award, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield } from 'lucide-react';
+import { Home, Target, Trophy, Award, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield, ListTodo, CalendarCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Avatar } from './Avatar';
 import { GreetingPopup } from './GreetingPopup';
+import { NotificationCenter } from './NotificationCenter';
 import { getDisplayName, getProfilePic, PROFILE_EVENT, initAvatar } from '../utils/profile';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Home },
+  { path: '/tasks', label: 'Tasks', icon: ListTodo },
+  { path: '/commitments', label: 'Commitments', icon: CalendarCheck },
   { path: '/goals', label: 'Goals', icon: Target },
   { path: '/skills', label: 'Skills', icon: Trophy },
-  { path: '/archivedments', label: 'Archivedments', icon: Award },
+  { path: '/achievements', label: 'Achievements', icon: Award },
   { path: '/focus', label: 'Focus', icon: Brain },
   { path: '/journal', label: 'Journal', icon: BookOpen },
   { path: '/reminders', label: 'Reminders', icon: Bell },
@@ -91,6 +94,7 @@ export function Layout() {
           </ul>
         </nav>
         <div className="header-right">
+          <NotificationCenter userId={user.id} />
           <Avatar size="md" className="nav-avatar" name={profileName || user?.name || '?'} src={profilePic} alt={profileName} />
         </div>
       </header>

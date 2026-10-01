@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { Plus, Award, Archive } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Plus, Award, Archive, Trophy } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { useGoals } from '../hooks/useGoals';
+import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import { readArchivedments, addArchivedment, type Archivedment } from '../utils/archivedments';
+import { api } from '../services/api';
 import { todayISO, parseLocalDate } from '../utils/date';
 
 function formatAchievedDate(dateStr: string): string {
@@ -17,9 +21,34 @@ function formatAchievedDate(dateStr: string): string {
 }
 
 export default function ArchivedmentsPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { goals } = useGoals(user?.id ?? null);
   const [items, setItems] = useState<Archivedment[]>(() => readArchivedments());
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ emoji: '', title: '', description: '', date: todayISO() });
+
+  // Completed goals double as achievements even if they were never archived locally.
+  const derivedFromGoals = useMemo<Archivedment[]>(
+    () =>
+      goals
+        .filter((goal) => goal.progress >= 100 || goal.status === 'COMPLETED')
+        .filter((goal) => !items.some((item) => item.id === goal.id))
+        .map((goal) => ({
+          id: goal.id,
+          emoji: '🏆',
+          title: goal.title,
+          description: goal.description ?? undefined,
+          date: (goal.updatedAt ?? todayISO()).slice(0, 10),
+          source: 'goal' as const,
+        })),
+    [goals, items]
+  );
+
+  const visible = useMemo(
+    () => [...items, ...derivedFromGoals].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
+    [items, derivedFromGoals]
+  );
 
   function openForm() {
     setForm({ emoji: '', title: '', description: '', date: todayISO() });
@@ -29,7 +58,7 @@ export default function ArchivedmentsPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
-    addArchivedment({
+    const entry = addArchivedment({
       emoji: form.emoji.trim(),
       title: form.title.trim(),
       description: form.description.trim(),
@@ -37,21 +66,27 @@ export default function ArchivedmentsPage() {
     });
     setItems(readArchivedments());
     setShowForm(false);
+    // Award +5 points for the achievement (idempotent on the server).
+    void api('/achievements/unlock', {
+      method: 'POST',
+      body: JSON.stringify({ id: entry.id, title: entry.title }),
+    }).catch(() => undefined);
+    toast({ type: 'success', title: 'Achievement added', message: `${entry.title} · +5 points` });
   }
 
   return (
     <div className="page">
       <header className="page-header">
         <div>
-          <p className="eyebrow">OVERVIEW / Archivedments</p>
-          <h1>Archivedments</h1>
+          <p className="eyebrow">OVERVIEW / Achievements</p>
+          <h1>Achievements</h1>
         </div>
         <Button size="lg" onClick={openForm}>
           <Plus size={20} /> Add Achievement
         </Button>
       </header>
 
-      {items.length === 0 ? (
+      {visible.length === 0 ? (
         <div className="empty-state">
           <Archive size={40} />
           <strong>No achievements yet</strong>
@@ -60,7 +95,7 @@ export default function ArchivedmentsPage() {
         </div>
       ) : (
         <div className="skills-grid">
-          {items.map((item) => (
+          {visible.map((item) => (
             <Card key={item.id} className="skill-card" padding="md">
               <div className="skill-header">
                 <div className="skill-info">
@@ -68,7 +103,10 @@ export default function ArchivedmentsPage() {
                     {item.emoji ? `${item.emoji} ` : ''}
                     {item.title}
                   </strong>
-                  <span className="achievement-date">{formatAchievedDate(item.date)}</span>
+                  <span className="achievement-date">
+                    {formatAchievedDate(item.date)}
+                    {item.source === 'goal' && <Trophy size={12} aria-label="From a completed goal" />}
+                  </span>
                 </div>
                 <Award size={18} className="achievement-icon" aria-hidden="true" />
               </div>

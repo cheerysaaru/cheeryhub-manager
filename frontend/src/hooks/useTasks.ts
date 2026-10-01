@@ -19,6 +19,7 @@ function prependUnique(list: Task[], task: Task): Task[] {
 
 export function useTasks(userId: string | null) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [trash, setTrash] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const { on } = useSocket(userId);
 
@@ -33,8 +34,18 @@ export function useTasks(userId: string | null) {
     }
   }, []);
 
+  const fetchTrash = useCallback(async () => {
+    try {
+      const data = await api<Task[]>('/tasks/trash');
+      setTrash(data);
+    } catch {
+      setTrash([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTasks();
+    void fetchTrash();
     const cleanup = on<Task>('task:created', (task) => {
       setTasks((prev) => prependUnique(prev, normalizeTask(task)));
     });
@@ -43,13 +54,19 @@ export function useTasks(userId: string | null) {
     });
     const cleanup3 = on<{ id: string }>('task:deleted', ({ id }) => {
       setTasks((prev) => prev.filter((t) => t.id !== id));
+      setTrash((prev) => prev.filter((t) => t.id !== id));
+    });
+    const cleanup4 = on<Task>('task:restored', (task) => {
+      setTrash((prev) => prev.filter((t) => t.id !== task.id));
+      setTasks((prev) => prependUnique(prev, normalizeTask(task)));
     });
     return () => {
       cleanup();
       cleanup2();
       cleanup3();
+      cleanup4();
     };
-  }, [fetchTasks, on]);
+  }, [fetchTasks, fetchTrash, on]);
 
   const create = useCallback(async (data: Partial<Task>) => {
     const task = await api<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
@@ -67,6 +84,38 @@ export function useTasks(userId: string | null) {
   const remove = useCallback(async (id: string) => {
     await api(`/tasks/${id}`, { method: 'DELETE' });
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    void fetchTrash();
+  }, [fetchTrash]);
+
+  const restore = useCallback(async (id: string) => {
+    const task = await api<Task>(`/tasks/${id}/restore`, { method: 'POST' });
+    const normalized = normalizeTask(task);
+    setTrash((prev) => prev.filter((t) => t.id !== id));
+    setTasks((prev) => prependUnique(prev, normalized));
+    return normalized;
+  }, []);
+
+  const purge = useCallback(async (id: string) => {
+    await api(`/tasks/${id}/permanent`, { method: 'DELETE' });
+    setTrash((prev) => prev.filter((t) => t.id !== id));
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const markNotCompleted = useCallback(async (id: string) => {
+    const task = await api<Task>(`/tasks/${id}/mark-not-completed`, { method: 'POST' });
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    void fetchTrash();
+    return task;
+  }, [fetchTrash]);
+
+  const extend = useCallback(async (id: string, dueAt: string) => {
+    const task = await api<Task>(`/tasks/${id}/extend`, {
+      method: 'POST',
+      body: JSON.stringify({ dueAt }),
+    });
+    const normalized = normalizeTask(task);
+    setTasks((prev) => prev.map((t) => (t.id === id ? normalized : t)));
+    return normalized;
   }, []);
 
   const complete = useCallback(async (id: string) => {
@@ -96,5 +145,22 @@ export function useTasks(userId: string | null) {
     return task;
   }, []);
 
-  return { tasks, loading, fetchTasks, create, update, remove, complete, checkIn, startTimer, stopTimer };
+  return {
+    tasks,
+    trash,
+    loading,
+    fetchTasks,
+    fetchTrash,
+    create,
+    update,
+    remove,
+    restore,
+    purge,
+    markNotCompleted,
+    extend,
+    complete,
+    checkIn,
+    startTimer,
+    stopTimer,
+  };
 }

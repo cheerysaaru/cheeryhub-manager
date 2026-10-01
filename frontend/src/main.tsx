@@ -12,6 +12,8 @@ import AuthPage from './pages/AuthPage';
 import ResetPage from './pages/ResetPage';
 import DashboardPage from './pages/DashboardPage';
 
+const TasksPage = lazy(() => import('./pages/TasksPage'));
+const CommitmentsPage = lazy(() => import('./pages/CommitmentsPage'));
 const GoalsPage = lazy(() => import('./pages/GoalsPage'));
 const SkillsPage = lazy(() => import('./pages/SkillsPage'));
 const ArchivedmentsPage = lazy(() => import('./pages/ArchivedmentsPage'));
@@ -31,6 +33,14 @@ function PageLoading() {
       <p>Loading…</p>
     </div>
   );
+}
+
+function AdminRoute() {
+  const { user } = useAuth();
+  if (user?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
+  return <AdminPage />;
 }
 
 applyTheme(getTheme());
@@ -82,9 +92,12 @@ function App() {
         <Route path="/reset" element={<ResetPage />} />
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/commitments" element={<CommitmentsPage />} />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/skills" element={<SkillsPage />} />
-          <Route path="/archivedments" element={<ArchivedmentsPage />} />
+          <Route path="/achievements" element={<ArchivedmentsPage />} />
+          <Route path="/archivedments" element={<Navigate to="/achievements" replace />} />
           <Route path="/focus" element={<FocusPage />} />
           <Route path="/journal" element={<JournalPage />} />
           <Route path="/reminders" element={<RemindersPage />} />
@@ -92,7 +105,7 @@ function App() {
           <Route path="/brand" element={<BrandPage />} />
           <Route path="/finance" element={<FinancePage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin" element={<AdminRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

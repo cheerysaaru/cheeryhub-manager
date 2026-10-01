@@ -1,25 +1,28 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, AlertTriangle, Clock, ArrowRight, X } from 'lucide-react';
+import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff, Flame } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
 import { useGoals } from '../hooks/useGoals';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { Button } from '../components/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
-import { Badge } from '../components/Badge';
+import { Card } from '../components/Card';
 import { Progress } from '../components/Progress';
-import { Avatar } from '../components/Avatar';
 import { useToast } from '../components/Toast';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
-import { ConfirmDialog } from '../components/Modal';
-import { formatDate, greeting, parseLocalDate, todayISO } from '../utils/date';
+import { ConfirmDialog, Modal } from '../components/Modal';
+import { TaskRow } from '../components/TaskRow';
+import { DeadlinePicker } from '../components/DeadlinePicker';
+import { formatDate, formatShortDate, greeting, parseLocalDate, shiftDate, todayISO } from '../utils/date';
+import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
+import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
 import type { Task, Habit } from '../types';
 
-function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string) => void }) {
+function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string, date?: string) => void }) {
   const today = todayISO();
+  const backFillUntil = shiftDate(today, -2);
   return (
     <div className="week-panel">
       <div className="week-heading">
@@ -32,16 +35,19 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
           const failed = habit.failedDates.includes(date);
           const skipped = habit.skippedDates.includes(date);
           const future = date > today;
+          const beforeWindow = date < backFillUntil;
+          const editable = !future && !beforeWindow;
           const label = parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short' });
           const number = parseLocalDate(date).getDate();
+          const statusText = checked ? ', checked in' : failed ? ', failed' : skipped ? ', left' : future ? ', not started' : beforeWindow ? ', outside back-fill window' : ', nothing recorded';
           return (
             <button
               key={date}
-              disabled={future}
-              className={`day-check ${checked ? 'checked' : ''} ${failed ? 'failed' : ''} ${skipped ? 'skipped' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''}`}
-              onClick={() => !future && !checked && !failed && !skipped && onCheck(habit.id)}
-              aria-label={`${label} ${number}${future ? ', not started' : failed ? ', failed' : skipped ? ', left' : ''}`}
-              title={future ? 'This day has not started yet' : failed ? 'Failed that day' : skipped ? 'Left today' : date}
+              disabled={!editable}
+              className={`day-check ${checked ? 'checked' : ''} ${failed ? 'failed' : ''} ${skipped ? 'skipped' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''} ${beforeWindow ? 'outside-window' : ''} ${editable && !checked && !failed && !skipped ? 'backfill' : ''}`}
+              onClick={() => editable && !checked && onCheck(habit.id, date)}
+              aria-label={`${label} ${number}${statusText}${editable && !checked ? ', tap to check in' : ''}`}
+              title={future ? 'This day has not started yet' : beforeWindow ? 'Too old to edit' : failed ? 'Failed that day' : skipped ? 'Left this day' : checked ? 'Checked in' : editable ? 'Check in for this day' : date}
             >
               {checked ? <CheckCircle2 size={18} /> : failed ? <CircleX size={18} /> : skipped ? <Coffee size={18} /> : <Circle size={18} />}
               <small>{label}</small>
@@ -50,6 +56,7 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
           );
         })}
       </div>
+      <p className="week-backfill-note">Yesterday and the day before stay editable — tap an empty day to back-fill.</p>
     </div>
   );
 }
@@ -57,16 +64,35 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string)
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { tasks, loading: tasksLoading, create: createTask, checkIn, complete: completeTask, remove: removeTask } = useTasks(user?.id ?? null);
+  const {
+    tasks,
+    trash,
+    loading: tasksLoading,
+    create: createTask,
+    checkIn,
+    complete: completeTask,
+    remove: removeTask,
+    fetchTrash,
+    restore: restoreTask,
+    purge: purgeTask,
+    markNotCompleted,
+    extend: extendTask,
+  } = useTasks(user?.id ?? null);
   const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday, failToday, skipToday, remove: removeHabit } = useHabits(user?.id ?? null);
   const { goals } = useGoals(user?.id ?? null);
-  const { xp } = useAnalytics(user?.id ?? null);
+  const { xp, streak } = useAnalytics(user?.id ?? null);
 
-  const [taskForm, setTaskForm] = useState({ title: '', date: todayISO() });
+  const [taskForm, setTaskForm] = useState({ title: '' });
+  const [dueAt, setDueAt] = useState<string | null>(null);
+  const [deadlineOpen, setDeadlineOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [overdueTask, setOverdueTask] = useState<Task | null>(null);
+  const [extendOpen, setExtendOpen] = useState(false);
   const [habitForm, setHabitForm] = useState({ name: '' });
   const taskMenu = useContextMenu();
   const habitMenu = useContextMenu();
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'task' | 'habit'; id: string; label: string } | null>(null);
+  const [purgeTarget, setPurgeTarget] = useState<Task | null>(null);
 
   const activeTasks = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ARCHIVED' && !t.deletedAt);
   const completedToday = tasks.filter((t) => t.checkedToday).length;
@@ -74,19 +100,78 @@ export default function DashboardPage() {
   const overdueTasks = tasks.filter((t) => t.isOverdue && t.status !== 'COMPLETED').length;
   const activeGoals = goals.filter((g) => g.status === 'ACTIVE').length;
   const totalXP = xp?.total ?? 0;
-  const level = Math.floor(totalXP / 100) + 1;
-  const xpInLevel = totalXP % 100;
+  const level = levelFor(totalXP);
+  const xpInLevel = pointsIntoLevel(totalXP);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     const title = taskForm.title.trim();
     if (!title) return;
     try {
-      await createTask({ title, scheduledDate: taskForm.date || undefined, priority: 'MEDIUM' });
-      setTaskForm({ title: '', date: todayISO() });
-      toast({ type: 'success', title: 'Task added', message: title });
+      const created = await createTask({
+        title,
+        scheduledDate: todayISO(),
+        priority: 'MEDIUM',
+        dueAt: dueAt ?? undefined,
+      });
+      setTaskForm({ title: '' });
+      setDueAt(null);
+      toast({
+        type: 'success',
+        title: 'Task added',
+        message: created.dueAt ? `${title} · due ${formatDeadline(created.dueAt)}` : title,
+      });
     } catch (error) {
       toast({ type: 'error', title: 'Could not add task', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
+  };
+
+  const handleExtend = async (iso: string) => {
+    if (!overdueTask) return;
+    try {
+      await extendTask(overdueTask.id, iso);
+      toast({ type: 'success', title: 'Deadline extended', message: `New deadline: ${formatDeadline(iso)}` });
+      setExtendOpen(false);
+      setOverdueTask(null);
+    } catch (error) {
+      toast({ type: 'error', title: 'Could not extend deadline', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
+  };
+
+  const handleMarkNotCompleted = async () => {
+    if (!overdueTask) return;
+    try {
+      await markNotCompleted(overdueTask.id);
+      toast({ type: 'info', title: 'Marked as not completed', message: overdueTask.title });
+      setOverdueTask(null);
+    } catch (error) {
+      toast({ type: 'error', title: 'Could not update task', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
+  };
+
+  const openTrash = () => {
+    setTrashOpen(true);
+    void fetchTrash();
+  };
+
+  const handleRestore = async (task: Task) => {
+    try {
+      await restoreTask(task.id);
+      toast({ type: 'success', title: 'Task restored', message: task.title });
+    } catch (error) {
+      toast({ type: 'error', title: 'Could not restore task', message: error instanceof Error ? error.message : 'Please try again.' });
+    }
+  };
+
+  const handlePurge = async () => {
+    if (!purgeTarget) return;
+    try {
+      await purgeTask(purgeTarget.id);
+      toast({ type: 'success', title: 'Task deleted', message: purgeTarget.title });
+    } catch (error) {
+      toast({ type: 'error', title: 'Could not delete task', message: error instanceof Error ? error.message : 'Please try again.' });
+    } finally {
+      setPurgeTarget(null);
     }
   };
 
@@ -129,9 +214,30 @@ export default function DashboardPage() {
           <p className="header-date">{formatDate()}</p>
         </div>
         <div className="header-stats">
+          {streak && (
+            <div
+              className={`streak-badge${streak.todayActive ? ' is-active' : ''}`}
+              title={`Best streak: ${streak.best} day${streak.best === 1 ? '' : 's'}`}
+            >
+              <Flame size={16} aria-hidden="true" />
+              <span>
+                <strong>{streak.current}</strong> day{streak.current === 1 ? '' : 's'}
+              </span>
+            </div>
+          )}
+          <div
+            className="rank-circle"
+            style={{ '--rank-progress': `${xpInLevel}%` } as React.CSSProperties}
+            role="img"
+            aria-label={`Level ${level}, ${totalXP} points, ${xpInLevel} of 100 to the next level`}
+            title={`${totalXP} points · ${pointsToNextLevel(totalXP)} to level ${level + 1}`}
+          >
+            <span className="rank-level">{level}</span>
+            <span className="rank-label">LVL</span>
+          </div>
           <div className="xp-badge">
             <span className="xp-flame" aria-hidden="true">🔥</span>
-            <span>Level {level} · {xpInLevel}/100 XP</span>
+            <span>{totalXP} pts · {xpInLevel}/100</span>
           </div>
         </div>
       </header>
@@ -185,26 +291,54 @@ export default function DashboardPage() {
               <h2 id="tasks-heading">Today's Tasks</h2>
               <p className="panel-subtitle">{activeTasks.length} active {activeTasks.length === 1 ? 'task' : 'tasks'}</p>
             </div>
-            <Link to="/goals" className="panel-link">
-              <ArrowRight size={16} />
-              <span>View Goals</span>
-            </Link>
+            <div className="panel-header-actions">
+              <Link to="/tasks" className="panel-link">
+                <span>View all</span>
+                <ArrowRight size={16} />
+              </Link>
+              <button
+                type="button"
+                className="panel-icon-btn"
+                onClick={openTrash}
+                aria-label={`Trash Bin, ${trash.length} deleted ${trash.length === 1 ? 'task' : 'tasks'}`}
+                title="Trash Bin"
+              >
+                <Trash2 size={18} />
+                {trash.length > 0 && <span className="panel-icon-badge">{trash.length > 9 ? '9+' : trash.length}</span>}
+              </button>
+            </div>
           </div>
 
           <form className="task-form" onSubmit={handleAddTask}>
             <div className="task-form-row">
-              <input
-                value={taskForm.title}
-                onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                placeholder="What needs your attention?"
-                aria-label="Task title"
-                required
-              />
+              <div className="task-input-wrap">
+                <input
+                  value={taskForm.title}
+                  onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                  placeholder="What needs your attention?"
+                  aria-label="Task title"
+                  required
+                />
+                <button
+                  type="button"
+                  className={`deadline-btn ${dueAt ? 'has-deadline' : ''}`}
+                  onClick={() => setDeadlineOpen(true)}
+                  aria-label={dueAt ? `Deadline ${formatDeadline(dueAt)}. Change deadline` : 'Choose a deadline'}
+                  title={dueAt ? formatDeadline(dueAt) : 'Choose a deadline'}
+                >
+                  <CalendarClock size={18} />
+                </button>
+              </div>
               <Button type="submit" size="md"><Plus size={18} /> Add Task</Button>
             </div>
-            <div className="task-form-options">
-              <input type="date" value={taskForm.date} onChange={(e) => setTaskForm({ ...taskForm, date: e.target.value })} aria-label="Task date" className="date-input" />
-            </div>
+            {dueAt && (
+              <p className="deadline-summary">
+                <Clock size={14} /> Due {formatDeadline(dueAt)}
+                <button type="button" onClick={() => setDueAt(null)} aria-label="Clear deadline">
+                  <X size={12} />
+                </button>
+              </p>
+            )}
           </form>
 
           {activeTasks.length === 0 ? (
@@ -216,52 +350,14 @@ export default function DashboardPage() {
           ) : (
             <ul className="task-list" role="list">
               {activeTasks.map((task) => (
-                <li
+                <TaskRow
                   key={task.id}
-                  className={`task-row ${task.isOverdue ? 'overdue' : ''} ${task.checkedToday ? 'completed' : ''}`}
-                  {...taskMenu.bind(task.title)}
-                >
-                  <button
-                    className="task-check"
-                    onClick={() => checkIn(task.id, !task.checkedToday)}
-                    aria-label={task.checkedToday ? 'Uncheck task' : 'Check in task'}
-                    aria-pressed={task.checkedToday}
-                  >
-                    {task.checkedToday ? <CheckCircle2 size={22} /> : <Circle size={22} />}
-                  </button>
-                  <div className="task-content">
-                    <input
-                      className="task-title"
-                      value={task.title}
-                      readOnly
-                      aria-label="Task title"
-                    />
-                    <div className="task-meta">
-                      {task.scheduledTime && (
-                        <span className="task-time">
-                          <Clock size={14} />
-                          {task.scheduledTime}
-                        </span>
-                      )}
-                      {task.isOverdue && (
-                        <Badge variant="danger" className="overdue-badge">
-                          <AlertTriangle size={10} />
-                          Overdue
-                        </Badge>
-                      )}
-                      {task.recurrence !== 'NONE' && (
-                        <Badge variant="outline" className="recurrence-badge">
-                          {task.recurrence.toLowerCase()}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="task-actions">
-                    <Button variant="ghost" size="sm" onClick={() => completeTask(task.id)}>
-                      <CheckCircle2 size={16} /> Done
-                    </Button>
-                  </div>
-                </li>
+                  task={task}
+                  bind={taskMenu.bind}
+                  onToggle={(t) => void checkIn(t.id, !t.checkedToday)}
+                  onDone={(t) => void completeTask(t.id)}
+                  onOverdueMenu={setOverdueTask}
+                />
               ))}
             </ul>
           )}
@@ -384,8 +480,92 @@ export default function DashboardPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
         title={`Delete ${deleteTarget?.kind === 'habit' ? 'commitment' : 'task'}?`}
-        message={`"${deleteTarget?.label}" will be permanently deleted.`}
-        confirmText="Delete"
+        message={
+          deleteTarget?.kind === 'habit'
+            ? `"${deleteTarget?.label}" will be permanently deleted.`
+            : `"${deleteTarget?.label}" will be moved to the Trash Bin.`
+        }
+        confirmText={deleteTarget?.kind === 'habit' ? 'Delete' : 'Move to trash'}
+        variant="danger"
+      />
+
+      <DeadlinePicker
+        isOpen={deadlineOpen}
+        onConfirm={(iso) => {
+          setDueAt(iso);
+          setDeadlineOpen(false);
+        }}
+        onClose={() => setDeadlineOpen(false)}
+      />
+
+      <Modal
+        isOpen={!!overdueTask && !extendOpen}
+        onClose={() => setOverdueTask(null)}
+        title={overdueTask?.title ?? ''}
+        description="This task is past its deadline. What would you like to do?"
+        size="sm"
+      >
+        <div className="overdue-menu">
+          <Button type="button" variant="primary" onClick={() => setExtendOpen(true)}>
+            <Clock size={16} /> Give more time
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => void handleMarkNotCompleted()}>
+            <AlarmClockOff size={16} /> Mark as not completed
+          </Button>
+        </div>
+      </Modal>
+
+      <DeadlinePicker
+        isOpen={extendOpen}
+        title="Give more time"
+        confirmLabel="Extend deadline"
+        initial={overdueTask?.dueAt ?? null}
+        onConfirm={(iso) => void handleExtend(iso)}
+        onClose={() => setExtendOpen(false)}
+      />
+
+      <Modal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        title="Trash Bin"
+        description={trash.length === 0 ? undefined : `${trash.length} deleted ${trash.length === 1 ? 'task' : 'tasks'}`}
+        size="md"
+      >
+        {trash.length === 0 ? (
+          <div className="empty-state">
+            <Trash2 size={32} />
+            <strong>Trash is empty</strong>
+            <p>Deleted tasks land here for 30 days</p>
+          </div>
+        ) : (
+          <ul className="trash-list" role="list">
+            {trash.map((task) => (
+              <li key={task.id} className="trash-row">
+                <div className="trash-info">
+                  <strong>{task.title}</strong>
+                  <span>{task.scheduledDate ? formatShortDate(task.scheduledDate) : ''}</span>
+                </div>
+                <div className="trash-actions">
+                  <Button variant="ghost" size="sm" onClick={() => void handleRestore(task)}>
+                    <RotateCcw size={14} /> Restore
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => setPurgeTarget(task)}>
+                    <Trash2 size={14} /> Delete forever
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!purgeTarget}
+        onClose={() => setPurgeTarget(null)}
+        onConfirm={handlePurge}
+        title="Delete forever?"
+        message={`"${purgeTarget?.title}" will be permanently deleted. This cannot be undone.`}
+        confirmText="Delete forever"
         variant="danger"
       />
     </div>

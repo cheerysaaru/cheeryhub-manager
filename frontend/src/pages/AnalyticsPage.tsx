@@ -1,62 +1,54 @@
-import { useEffect, useState } from 'react';
-import { BarChart2, Download, Flame, CheckCircle2, Target, Brain } from 'lucide-react';
+import { useMemo } from 'react';
+import { BarChart2, Flame, CheckCircle2, Target, Brain, Trophy, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
 import { useFocus } from '../hooks/useFocus';
-import { Button } from '../components/Button';
-import { Card, CardTitle, CardDescription } from '../components/Card';
+import { Card } from '../components/Card';
 import { Progress } from '../components/Progress';
 import { Badge } from '../components/Badge';
-import { downloadJson } from '../utils/misc';
-import { parseLocalDate, todayISO } from '../utils/date';
+import { parseLocalDate } from '../utils/date';
+import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
+
+const REASON_LABELS: Record<string, string> = {
+  task: 'Tasks',
+  habit: 'Commitments',
+  goal: 'Goals',
+  achievement: 'Achievements',
+  focus: 'Focus',
+};
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const { stats, xp, loading, fetchAnalytics, exportBackup, importBackup } = useAnalytics(user?.id ?? null);
+  const { stats, xp, streak, loading } = useAnalytics(user?.id ?? null);
   const { tasks } = useTasks(user?.id ?? null);
   const { habits } = useHabits(user?.id ?? null);
   const { sessions } = useFocus(user?.id ?? null);
 
-  const [importing, setImporting] = useState(false);
-  const [importMsg, setImportMsg] = useState('');
-
   const totalXP = xp?.total ?? 0;
-  const level = Math.floor(totalXP / 100) + 1;
-  const xpInLevel = totalXP % 100;
+  const level = levelFor(totalXP);
+  const xpInLevel = pointsIntoLevel(totalXP);
   const totalTasks = tasks.filter((t) => t.status === 'COMPLETED').length;
   const totalHabits = habits.reduce((s, h) => s + h.completedDays, 0);
   const totalFocus = sessions.filter((s) => s.status === 'COMPLETED').reduce((s, x) => s + x.durationMinutes, 0);
   const recentXp = (xp?.history ?? []).slice(0, 10);
 
-  async function handleExport() {
-    try {
-      const data = await exportBackup();
-      downloadJson(`productivity-backup-${todayISO()}.json`, data);
-    } catch {
-      alert('Export failed. Please try again.');
+  const breakdown = useMemo(() => {
+    const map = new Map<string, { label: string; amount: number; count: number }>();
+    for (const item of xp?.history ?? []) {
+      const kind = item.reason.split(':')[0];
+      const label = REASON_LABELS[kind] ?? 'Other';
+      const entry = map.get(label) ?? { label, amount: 0, count: 0 };
+      entry.amount += item.amount;
+      entry.count += 1;
+      map.set(label, entry);
     }
-  }
+    return [...map.values()].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  }, [xp]);
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    setImportMsg('');
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      await importBackup(data);
-      setImportMsg('Backup imported successfully.');
-      fetchAnalytics();
-    } catch (err) {
-      setImportMsg(`Import failed: ${err instanceof Error ? err.message : 'invalid file'}`);
-    } finally {
-      setImporting(false);
-      e.target.value = '';
-    }
-  }
+  const earned = breakdown.filter((b) => b.amount > 0).reduce((s, b) => s + b.amount, 0);
+  const spent = breakdown.filter((b) => b.amount < 0).reduce((s, b) => s + b.amount, 0);
 
   const last14 = stats.slice(-14);
 
@@ -67,39 +59,35 @@ export default function AnalyticsPage() {
           <p className="eyebrow">Analytics</p>
           <h1>Your progress at a glance</h1>
         </div>
-        <div className="header-actions-row">
-          <Button variant="secondary" onClick={handleExport}>
-            <Download size={18} /> Export Backup
-          </Button>
-          <label className="import-label" style={{ cursor: 'pointer' }}>
-            <span className="sr-only">Import backup file</span>
-            <input type="file" accept="application/json" onChange={handleImport} disabled={importing} />
-          </label>
-        </div>
       </header>
-
-      {importMsg && <p className="save-indicator show" role="status">{importMsg}</p>}
 
       <div className="stats-grid analytics-stats">
         <Card padding="md">
           <div className="stat-card">
             <span className="stat-label"><Flame size={16} /> Level</span>
             <div className="stat-value-row"><strong>{level}</strong></div>
-            <Progress value={xpInLevel} max={100} showLabel label={`${xpInLevel} / 100 XP`} />
+            <Progress value={xpInLevel} max={100} showLabel label={`${xpInLevel} / 100 to level ${level + 1}`} />
           </div>
         </Card>
         <Card padding="md">
           <div className="stat-card">
-            <span className="stat-label"><Target size={16} /> Total XP</span>
+            <span className="stat-label"><Target size={16} /> Total Points</span>
             <div className="stat-value-row"><strong>{totalXP}</strong></div>
-            <p className="stat-desc">{recentXp.length} recent transactions</p>
+            <p className="stat-desc">{pointsToNextLevel(totalXP)} to next level</p>
+          </div>
+        </Card>
+        <Card padding="md">
+          <div className="stat-card">
+            <span className="stat-label"><Trophy size={16} /> Streak</span>
+            <div className="stat-value-row"><strong>{streak?.current ?? 0}</strong></div>
+            <p className="stat-desc">Best: {streak?.best ?? 0} day{streak?.best === 1 ? '' : 's'}</p>
           </div>
         </Card>
         <Card padding="md">
           <div className="stat-card">
             <span className="stat-label"><CheckCircle2 size={16} /> Tasks Completed</span>
             <div className="stat-value-row"><strong>{totalTasks}</strong></div>
-            <p className="stat-desc">All time</p>
+            <p className="stat-desc">All time · {totalHabits} habit days</p>
           </div>
         </Card>
         <Card padding="md">
@@ -140,6 +128,41 @@ export default function AnalyticsPage() {
         )}
       </section>
 
+      <section className="panel" aria-labelledby="points-heading">
+        <div className="panel-header">
+          <div>
+            <h2 id="points-heading">Level & Points</h2>
+            <p className="panel-subtitle">How your points break down</p>
+          </div>
+        </div>
+        {breakdown.length === 0 ? (
+          <div className="empty-state">
+            <Flame size={32} />
+            <strong>No points yet</strong>
+            <p>Complete tasks and commitments to earn points.</p>
+          </div>
+        ) : (
+          <>
+            <div className="points-summary">
+              <span className="points-summary-item earned"><TrendingUp size={15} /> {earned} earned</span>
+              <span className="points-summary-item spent"><TrendingDown size={15} /> {Math.abs(spent)} lost</span>
+              <span className="points-summary-item net"><strong>{totalXP}</strong> net</span>
+            </div>
+            <ul className="xp-list">
+              {breakdown.map((entry) => (
+                <li key={entry.label} className="xp-item">
+                  <Badge variant={entry.amount > 0 ? 'success' : 'danger'}>
+                    {entry.amount > 0 ? '+' : ''}{entry.amount}
+                  </Badge>
+                  <span className="xp-reason">{entry.label}</span>
+                  <span className="xp-date">{entry.count} event{entry.count === 1 ? '' : 's'}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
       <section className="panel" aria-labelledby="xp-heading">
         <div className="panel-header">
           <div>
@@ -157,30 +180,13 @@ export default function AnalyticsPage() {
           <ul className="xp-list">
             {recentXp.map((item) => (
               <li key={item.id} className="xp-item">
-                <Badge variant={item.amount > 0 ? 'success' : 'danger'}>{item.amount > 0 ? '+' : ''}{item.amount} XP</Badge>
+                <Badge variant={item.amount > 0 ? 'success' : 'danger'}>{item.amount > 0 ? '+' : ''}{item.amount}</Badge>
                 <span className="xp-reason">{item.reason}</span>
                 <span className="xp-date">{new Date(item.createdAt).toLocaleDateString()}</span>
               </li>
             ))}
           </ul>
         )}
-      </section>
-
-      <section className="panel" aria-labelledby="backup-heading">
-        <div className="panel-header">
-          <div>
-            <h2 id="backup-heading">Backup & Export</h2>
-            <p className="panel-subtitle">Export all your data or restore from a backup file</p>
-          </div>
-        </div>
-        <p className="muted">Export creates a JSON file with tasks, habits, goals, skills, journal entries, focus sessions, reminders, XP, and stats. Import merges tasks and habits from a previously exported file.</p>
-        <div className="header-actions-row" style={{ marginTop: '16px' }}>
-          <Button variant="primary" onClick={handleExport}><Download size={18} /> Export Backup</Button>
-          <label className="import-label">
-            <span className="sr-only">Import backup file</span>
-            <input type="file" accept="application/json" onChange={handleImport} disabled={importing} />
-          </label>
-        </div>
       </section>
     </div>
   );

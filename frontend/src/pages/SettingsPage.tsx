@@ -36,6 +36,8 @@ export default function SettingsPage() {
     }
   });
   const [usernameSaved, setUsernameSaved] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
 
   function handleThemeChange(value: string) {
     const next = value === 'dark' ? 'dark' : 'light';
@@ -115,6 +117,24 @@ export default function SettingsPage() {
       downloadJson(`productivity-backup-${todayISO()}.json`, data);
     } catch {
       alert('Export failed. Please try again.');
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportMsg('');
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await api('/backup/import', { method: 'POST', body: JSON.stringify(data) });
+      setImportMsg('Backup imported successfully.');
+    } catch (err) {
+      setImportMsg(`Import failed: ${err instanceof Error ? err.message : 'invalid file'}`);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
     }
   }
 
@@ -309,14 +329,19 @@ export default function SettingsPage() {
             <Download size={20} />
             <div>
               <CardTitle>Data & Backup</CardTitle>
-              <CardDescription>Export all your data as JSON</CardDescription>
+              <CardDescription>Export your data as JSON or restore from a backup file</CardDescription>
             </div>
           </div>
           <div className="settings-actions">
             <Button variant="secondary" onClick={handleExport}>
               <Download size={18} /> Export All Data
             </Button>
+            <label className="import-label">
+              <span className="sr-only">Import backup file</span>
+              <input type="file" accept="application/json" onChange={handleImport} disabled={importing} />
+            </label>
           </div>
+          {importMsg && <p className="save-indicator show" role="status">{importMsg}</p>}
         </div>
       </Card>
 

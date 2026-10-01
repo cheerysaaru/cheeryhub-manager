@@ -13,12 +13,14 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "test": "npm run typecheck --workspace backend && npm run typecheck --workspace frontend"
+    "test": "npm run test:unit && npm run typecheck --workspace backend && npm run typecheck --workspace frontend",
+    "test:unit": "vitest run"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260923.1",
     "concurrently": "^9.1.2",
     "prisma": "^6.16.2",
+    "vitest": "^5.0.3",
     "wrangler": "^4.137.0"
   },
   "prisma": {
