@@ -96,7 +96,8 @@ function App() {
           <Route path="/commitments" element={<CommitmentsPage />} />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/skills" element={<SkillsPage />} />
-          <Route path="/archivedments" element={<ArchivedmentsPage />} />
+          <Route path="/achievements" element={<ArchivedmentsPage />} />
+          <Route path="/archivedments" element={<Navigate to="/achievements" replace />} />
           <Route path="/focus" element={<FocusPage />} />
           <Route path="/journal" element={<JournalPage />} />
           <Route path="/reminders" element={<RemindersPage />} />

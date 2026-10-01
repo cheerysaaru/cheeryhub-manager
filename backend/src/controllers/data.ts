@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
 import { generateNotifications } from '../lib/notifications';
+import { POINTS, awardPoints, revokePoints } from '../lib/points';
 import {
   timezoneOf,
   todayKey,
@@ -93,6 +94,21 @@ export async function list(request: AuthRequest, response: Response) {
   const today = getUserToday(user?.timezone || 'UTC');
   const where = { userId: request.userId, ...(key === 'tasks' || key === 'habits' ? { deletedAt: null } : {}) };
   const records = await model.findMany({ where, orderBy: { createdAt: 'desc' }, ...(key === 'tasks' ? { include: { checkIns: { where: { userId: request.userId, date: today } } } } : key === 'habits' ? { include: { completions: { where: { userId: request.userId } } } } : {}) });
+  if (key === 'goals') {
+    const now = Date.now();
+    const overdueGoals = (records as Array<{ id: string; status: string; deadline: Date | null }>).filter(
+      (goal) => goal.status === 'ACTIVE' && goal.deadline && new Date(goal.deadline).getTime() < now
+    );
+    for (const goal of overdueGoals) {
+      const applied = await awardPoints(prisma, {
+        userId: request.userId!,
+        amount: POINTS.GOAL_MISSED,
+        reason: 'Goal deadline missed',
+        dedupeKey: `goal:missed:${goal.id}`,
+      });
+      if (applied) emitToUser(request.userId!, 'xp:updated', { reason: 'Goal deadline missed', amount: POINTS.GOAL_MISSED });
+    }
+  }
   if (key === 'tasks') {
     return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; dueAt: Date | null; startAt: Date | null; extendedAt: Date | null; checkIns: Array<{ checked: boolean }> }) => {
       let normalized = task;
@@ -161,6 +177,19 @@ export async function update(request: AuthRequest, response: Response) {
   }
   const record = await model.update({ where: { id: existing.id }, data });
   emitEvent(request.userId!, key, 'updated', record);
+  if (key === 'goals') {
+    const wasDone = (existing.progress ?? 0) >= 100 || existing.status === 'COMPLETED';
+    const isDone = (record.progress ?? 0) >= 100 || record.status === 'COMPLETED';
+    if (!wasDone && isDone) {
+      const applied = await awardPoints(prisma, {
+        userId: request.userId!,
+        amount: POINTS.GOAL_DONE,
+        reason: 'Goal completed',
+        dedupeKey: `goal:done:${record.id}`,
+      });
+      if (applied) emitToUser(request.userId!, 'xp:updated', { reason: 'Goal completed', amount: POINTS.GOAL_DONE });
+    }
+  }
   if (key === 'tasks') void generateNotifications(request.userId!).catch(() => undefined);
   return ok(response, record);
 }
@@ -178,9 +207,31 @@ export async function remove(request: AuthRequest, response: Response) {
 }
 export async function completeTask(request: AuthRequest, response: Response) {
   const taskId = String(request.params.id); const task = await prisma.task.findFirst({ where: { id: taskId, userId: request.userId!, deletedAt: null } }); if (!task) return fail(response, 'Task not found', 404);
-  const updated = await prisma.$transaction(async (tx) => { const result = await tx.task.update({ where: { id: task.id }, data: { status: 'COMPLETED', completedAt: new Date() } }); await tx.xPTransaction.create({ data: { userId: request.userId!, taskId: task.id, amount: 10, reason: 'Task completed' } }); return result; });
+  const user = await prisma.user.findUnique({ where: { id: request.userId! }, select: { timezone: true } });
+  const day = todayKey(timezoneOf(user?.timezone));
+  const now = Date.now();
+  const dueAt = task.dueAt ? new Date(task.dueAt).getTime() : null;
+  let amount: number = POINTS.TASK_ON_TIME;
+  let reason = 'Task completed on time';
+  let dedupeKey = `task:ontime:${task.id}:${day}`;
+  if (dueAt !== null && now > dueAt) {
+    if (task.extendedAt) {
+      amount = POINTS.TASK_OVERDUE_EXTENDED;
+      reason = 'Overdue task finished within extension';
+      dedupeKey = `task:extended:${task.id}:${day}`;
+    } else {
+      amount = POINTS.TASK_OVERDUE_NO_EXTENSION;
+      reason = 'Overdue task completed without extension';
+      dedupeKey = `task:overdue:${task.id}:${day}`;
+    }
+  }
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.task.update({ where: { id: task.id }, data: { status: 'COMPLETED', completedAt: new Date() } });
+    await awardPoints(tx, { userId: request.userId!, amount, reason, dedupeKey, taskId: task.id });
+    return result;
+  });
   emitEvent(request.userId!, 'tasks', 'updated', updated);
-  emitToUser(request.userId!, 'xp:updated', { reason: 'Task completed', amount: 10 });
+  if (amount) emitToUser(request.userId!, 'xp:updated', { reason, amount });
   return ok(response, updated);
 }
 async function getUserTodayFor(userId: string): Promise<Date> {
@@ -257,18 +308,33 @@ async function setHabitDayStatus(request: AuthRequest, response: Response, statu
   if (!target.ok) return fail(response, target.error, 400);
   const date = target.date;
   const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
-  const existing = await prisma.habitCompletion.findUnique({ where: { habitId_date: { habitId: habit.id, date } } });
-  const previouslyCompleted = existing != null && completionStatus(existing.status) === 'COMPLETED';
-  const completion = await prisma.habitCompletion.upsert({
-    where: { habitId_date: { habitId: habit.id, date } },
-    update: { status, completedAt: new Date() },
-    create: { habitId: habit.id, userId: request.userId!, date, status },
+  const checkKey = `habit:checkin:${habit.id}:${dayKey(date)}`;
+  const missKey = `habit:missed:${habit.id}:${dayKey(date)}`;
+  let xpDelta = 0;
+  let xpReason = '';
+  const completion = await prisma.$transaction(async (tx) => {
+    const row = await tx.habitCompletion.upsert({
+      where: { habitId_date: { habitId: habit.id, date } },
+      update: { status, completedAt: new Date() },
+      create: { habitId: habit.id, userId: request.userId!, date, status },
+    });
+    if (status === 'COMPLETED') {
+      await revokePoints(tx, request.userId!, missKey);
+      xpDelta = await awardPoints(tx, { userId: request.userId!, amount: POINTS.COMMITMENT_CHECK_IN, reason: 'Daily commitment checked in', dedupeKey: checkKey, habitId: habit.id });
+      xpReason = 'Daily commitment checked in';
+    } else if (status === 'FAILED') {
+      await revokePoints(tx, request.userId!, checkKey);
+      xpDelta = await awardPoints(tx, { userId: request.userId!, amount: POINTS.COMMITMENT_MISSED, reason: 'Daily commitment missed', dedupeKey: missKey, habitId: habit.id });
+      xpReason = 'Daily commitment missed';
+    } else {
+      xpDelta = (await revokePoints(tx, request.userId!, checkKey)) + (await revokePoints(tx, request.userId!, missKey));
+      xpReason = xpDelta ? 'Commitment status cleared' : '';
+    }
+    return row;
   });
-  const awardXp = status === 'COMPLETED' && !previouslyCompleted;
-  if (awardXp) await prisma.xPTransaction.create({ data: { userId: request.userId!, habitId: habit.id, amount: 5, reason: 'Daily commitment completed' } });
   const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
   emitEvent(request.userId!, 'habits', 'updated', payload);
-  if (awardXp) emitToUser(request.userId!, 'xp:updated', { reason: 'Daily commitment completed', amount: 5 });
+  if (xpDelta) emitToUser(request.userId!, 'xp:updated', { reason: xpReason, amount: xpDelta });
   if (status === 'COMPLETED') {
     return ok(response, { ...payload, ...completion, dayKey: dayKey(date), weekCompletedDays: payload.weekCompletedDays, weekComplete: payload.weekCompletedDays === 7 }, 201);
   }
@@ -312,10 +378,17 @@ export async function clearHabitToday(request: AuthRequest, response: Response) 
   const target = await resolveHabitDay(request.userId!, parsed.data.date);
   if (!target.ok) return fail(response, target.error, 400);
   const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
-  await prisma.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date: target.date } });
+  const targetKey = dayKey(target.date);
+  const revoked = await prisma.$transaction(async (tx) => {
+    await tx.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date: target.date } });
+    const checkRevoked = await revokePoints(tx, request.userId!, `habit:checkin:${habitId}:${targetKey}`);
+    const missRevoked = await revokePoints(tx, request.userId!, `habit:missed:${habitId}:${targetKey}`);
+    return checkRevoked + missRevoked;
+  });
   const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
   emitEvent(request.userId!, 'habits', 'updated', payload);
-  return ok(response, { cleared: true, dayKey: dayKey(target.date) });
+  if (revoked) emitToUser(request.userId!, 'xp:updated', { reason: 'Commitment status cleared', amount: revoked });
+  return ok(response, { cleared: true, dayKey: targetKey });
 }
 
 /** Soft-deleted tasks = the Trash Bin. */
@@ -367,11 +440,22 @@ export async function purgeTask(request: AuthRequest, response: Response) {
 export async function markNotCompleted(request: AuthRequest, response: Response) {
   const task = await findOwnTask(request, response);
   if (!task) return;
-  const updated = await prisma.task.update({
-    where: { id: task.id },
-    data: { status: 'NOT_COMPLETED', completedAt: null, deletedAt: new Date() },
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.task.update({
+      where: { id: task.id },
+      data: { status: 'NOT_COMPLETED', completedAt: null, deletedAt: new Date() },
+    });
+    await awardPoints(tx, {
+      userId: request.userId!,
+      amount: POINTS.TASK_MISSED,
+      reason: 'Task marked as not completed',
+      dedupeKey: `task:missed:${task.id}`,
+      taskId: task.id,
+    });
+    return row;
   });
   emitToUser(request.userId!, 'task:deleted', { id: task.id });
+  emitToUser(request.userId!, 'xp:updated', { reason: 'Task marked as not completed', amount: POINTS.TASK_MISSED });
   void generateNotifications(request.userId!).catch(() => undefined);
   return ok(response, updated);
 }

@@ -15,6 +15,7 @@ import { ConfirmDialog, Modal } from '../components/Modal';
 import { TaskRow } from '../components/TaskRow';
 import { DeadlinePicker } from '../components/DeadlinePicker';
 import { formatDate, formatShortDate, greeting, parseLocalDate, shiftDate, todayISO } from '../utils/date';
+import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
 import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
 import type { Task, Habit } from '../types';
@@ -99,8 +100,8 @@ export default function DashboardPage() {
   const overdueTasks = tasks.filter((t) => t.isOverdue && t.status !== 'COMPLETED').length;
   const activeGoals = goals.filter((g) => g.status === 'ACTIVE').length;
   const totalXP = xp?.total ?? 0;
-  const level = Math.floor(totalXP / 100) + 1;
-  const xpInLevel = totalXP % 100;
+  const level = levelFor(totalXP);
+  const xpInLevel = pointsIntoLevel(totalXP);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,9 +214,19 @@ export default function DashboardPage() {
           <p className="header-date">{formatDate()}</p>
         </div>
         <div className="header-stats">
+          <div
+            className="rank-circle"
+            style={{ '--rank-progress': `${xpInLevel}%` } as React.CSSProperties}
+            role="img"
+            aria-label={`Level ${level}, ${totalXP} points, ${xpInLevel} of 100 to the next level`}
+            title={`${totalXP} points · ${pointsToNextLevel(totalXP)} to level ${level + 1}`}
+          >
+            <span className="rank-level">{level}</span>
+            <span className="rank-label">LVL</span>
+          </div>
           <div className="xp-badge">
             <span className="xp-flame" aria-hidden="true">🔥</span>
-            <span>Level {level} · {xpInLevel}/100 XP</span>
+            <span>{totalXP} pts · {xpInLevel}/100</span>
           </div>
         </div>
       </header>

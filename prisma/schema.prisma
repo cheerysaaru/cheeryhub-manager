@@ -301,10 +301,12 @@ model XPTransaction {
   reason String
   taskId String?
   habitId String?
+  dedupeKey String?
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
   habit Habit? @relation(fields: [habitId], references: [id], onDelete: SetNull)
+  @@unique([userId, dedupeKey])
   @@index([userId, createdAt])
 }
 

@@ -64,6 +64,7 @@ import {
   journalSave,
   xp,
   importBackup,
+  unlockAchievement,
 } from './controllers/misc';
 import {
   listTransactions,
@@ -349,6 +350,7 @@ export function createApp(options?: { rateLimit?: boolean }) {
 
   app.get('/api/xp', xp);
   app.get('/api/xp/history', xp);
+  app.post('/api/achievements/unlock', unlockAchievement);
   app.post('/api/backup/import', importBackup);
 
   const transactionRouter = express.Router();

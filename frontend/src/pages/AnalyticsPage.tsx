@@ -11,6 +11,7 @@ import { Progress } from '../components/Progress';
 import { Badge } from '../components/Badge';
 import { downloadJson } from '../utils/misc';
 import { parseLocalDate, todayISO } from '../utils/date';
+import { levelFor, pointsIntoLevel } from '../utils/points';
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
@@ -22,9 +23,9 @@ export default function AnalyticsPage() {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
 
-  const totalXP = xp?.total ?? 0;
-  const level = Math.floor(totalXP / 100) + 1;
-  const xpInLevel = totalXP % 100;
+const totalXP = xp?.total ?? 0;
+const level = levelFor(totalXP);
+const xpInLevel = pointsIntoLevel(totalXP);
   const totalTasks = tasks.filter((t) => t.status === 'COMPLETED').length;
   const totalHabits = habits.reduce((s, h) => s + h.completedDays, 0);
   const totalFocus = sessions.filter((s) => s.status === 'COMPLETED').reduce((s, x) => s + x.durationMinutes, 0);

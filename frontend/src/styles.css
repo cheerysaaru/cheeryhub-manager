@@ -1922,3 +1922,42 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   .backfill-cell { min-width: 0; flex: 1; }
   .history-grid { grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); }
 }
+
+/* Phase 3: rank circle + points */
+.header-stats { display: inline-flex; align-items: center; gap: 10px; }
+.rank-circle {
+  --rank-progress: 0%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: conic-gradient(var(--primary) var(--rank-progress), var(--bg-active) 0);
+  box-shadow: var(--shadow-sm);
+}
+.rank-circle::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--bg-card);
+}
+.rank-level {
+  position: relative;
+  z-index: 1;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+.rank-label {
+  position: relative;
+  z-index: 1;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.achievement-date { display: inline-flex; align-items: center; gap: 4px; }

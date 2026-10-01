@@ -71,7 +71,7 @@ export default function GoalsPage() {
         description: data.description,
       });
       if (archived) {
-        toast({ type: 'success', title: `"${data.title}" completed! Added to Archivedments.` });
+        toast({ type: 'success', title: `"${data.title}" completed! Added to Achievements.` });
       }
     }
   }
@@ -96,7 +96,7 @@ export default function GoalsPage() {
     if (newProgress === 100 && goal.progress < 100) {
       const archived = archiveGoal({ id: goal.id, title: goal.title, description: goal.description ?? undefined });
       if (archived) {
-        toast({ type: 'success', title: `"${goal.title}" completed! Added to Archivedments.` });
+        toast({ type: 'success', title: `"${goal.title}" completed! Added to Achievements.` });
       }
     }
   }
