@@ -1,3 +1,5 @@
+import { EnvError } from '../env';
+
 export type RuntimeConfig = {
   jwtSecret?: string;
   frontendUrl?: string;
@@ -23,16 +25,23 @@ export function getRuntimeConfig(): RuntimeConfig {
 
 export function getJwtSecret(): string {
   const secret = config.jwtSecret ?? process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET is not configured');
+  if (!secret) throw new EnvError(['JWT_SECRET: is required to sign sessions']);
   return secret;
 }
 
 export function getFrontendUrl(): string {
-  return (
-    config.frontendUrl ??
-    process.env.FRONTEND_URL ??
-    'http://localhost:5173'
-  );
+  const raw =
+    config.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:5173';
+  return raw.split(',')[0]?.trim() || 'http://localhost:5173';
+}
+
+export function getCorsOrigins(): string[] {
+  const raw =
+    config.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:5173';
+  return raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 }
 
 export function getCookieSameSite(): 'lax' | 'strict' | 'none' {

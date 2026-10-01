@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useAuth } from '../hooks/useAuth';
@@ -23,6 +24,7 @@ function strengthOf(password: string): { score: number; label: string } {
 }
 
 export default function AuthPage() {
+  const [searchParams] = useSearchParams();
   const { login, register, forgotPassword } = useAuth();
   const [mode, setMode] = useState<Mode>('signin');
   const [username, setUsername] = useState('');
@@ -31,7 +33,10 @@ export default function AuthPage() {
   const [confirm, setConfirm] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const sessionExpired = searchParams.get('session') === 'expired';
+  const [notice, setNotice] = useState(() =>
+    sessionExpired ? 'Your session has expired. Please sign in again.' : ''
+  );
   const [loading, setLoading] = useState(false);
 
   const strength = useMemo(() => strengthOf(password), [password]);
@@ -228,7 +233,11 @@ export default function AuthPage() {
           </form>
         )}
 
-        {notice && <p className="success-message" role="status">{notice}</p>}
+        {notice && (
+          <p className={sessionExpired ? 'error-message' : 'success-message'} role={sessionExpired ? 'alert' : 'status'}>
+            {notice}
+          </p>
+        )}
         {error && <p className="error-message" role="alert">{error}</p>}
       </section>
     </main>

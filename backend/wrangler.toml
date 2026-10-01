@@ -19,3 +19,9 @@ FRONTEND_URL = "https://cheeryhub.space,https://cheerysaaru.github.io"
 NODE_ENV = "production"
 EMAIL_FROM = "Productivity <onboarding@resend.dev>"
 APP_URL = "https://cheeryhub.space"
+
+# Secrets — never put these in [vars] or in this file:
+#   npx wrangler secret put JWT_SECRET      # required, 32+ chars
+#   npx wrangler secret put EMAIL_API_KEY   # optional (Resend), enables email
+# The worker refuses to start without JWT_SECRET and logs the name of every
+# missing variable (values are never printed).

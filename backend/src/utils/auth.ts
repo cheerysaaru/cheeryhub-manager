@@ -35,7 +35,10 @@ export async function requireAuth(
     request.cookies?.auth_token ??
     request.headers.authorization?.replace('Bearer ', '');
   if (!token)
-    return response.status(401).json({ error: 'Authentication required' });
+    return response.status(401).json({
+      error: 'Authentication required',
+      code: 'AUTH_REQUIRED',
+    });
   try {
     const payload = jwt.verify(token, getJwtSecret()) as { userId: string; iat?: number };
     const user = await prisma.user.findUnique({
@@ -43,20 +46,32 @@ export async function requireAuth(
       select: { id: true, role: true, status: true, passwordChangedAt: true },
     });
     if (!user)
-      return response.status(401).json({ error: 'Invalid or expired session' });
+      return response.status(401).json({
+        error: 'Your session has expired. Please sign in again.',
+        code: 'SESSION_EXPIRED',
+      });
     if (user.status !== 'ACTIVE')
-      return response.status(403).json({ error: 'Account disabled' });
+      return response.status(403).json({
+        error: 'This account has been disabled. Please contact support.',
+        code: 'ACCOUNT_DISABLED',
+      });
     // Tokens issued before the last password change are dead everywhere.
     if (
       user.passwordChangedAt &&
       (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
     )
-      return response.status(401).json({ error: 'Invalid or expired session' });
+      return response.status(401).json({
+        error: 'Your session has expired. Please sign in again.',
+        code: 'SESSION_EXPIRED',
+      });
     request.userId = user.id;
     request.userRole = user.role;
     next();
   } catch {
-    return response.status(401).json({ error: 'Invalid or expired session' });
+    return response.status(401).json({
+      error: 'Your session has expired. Please sign in again.',
+      code: 'SESSION_EXPIRED',
+    });
   }
 }
 
@@ -66,7 +81,10 @@ export function requireAdmin(
   next: NextFunction
 ) {
   if (request.userRole !== 'ADMIN')
-    return response.status(403).json({ error: 'Admin access required' });
+    return response.status(403).json({
+      error: 'Admin access required',
+      code: 'ADMIN_REQUIRED',
+    });
   next();
 }
 

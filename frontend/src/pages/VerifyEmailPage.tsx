@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '../components/Button';
+import { API_BASE } from '../services/api';
 
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
@@ -15,7 +16,7 @@ export default function VerifyEmailPage() {
       setMessage('Missing verification token.');
       return;
     }
-    const base = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+    const base = API_BASE;
     fetch(`${base}/auth/verify-email?token=${encodeURIComponent(token)}`, { credentials: 'include' })
       .then(async (r) => {
         const body = await r.json();
