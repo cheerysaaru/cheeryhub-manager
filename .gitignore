@@ -16,3 +16,5 @@ test*.ts
 .dev.vars
 .wrangler/
 
+*.pid
+frontend/index.zip
