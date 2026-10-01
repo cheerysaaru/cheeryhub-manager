@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
+import { dedupe } from '../services/inflight';
 import { useSocket } from './useSocket';
 import type { DailyStats, XPTransaction } from '../types';
 
@@ -15,47 +16,71 @@ export function useAnalytics(userId: string | null) {
   const [streak, setStreak] = useState<StreakInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const { on } = useSocket(userId);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    const payload = await dedupe('analytics:stats', () =>
+      api<{ stats?: DailyStats[] } | DailyStats[]>('/analytics')
+    );
+    const next = Array.isArray(payload) ? payload : (payload.stats ?? []);
+    if (mountedRef.current) setStats(next);
+  }, []);
+
+  const fetchXp = useCallback(async () => {
+    const data = await dedupe('analytics:xp', () =>
+      api<{ total: number; history: XPTransaction[] }>('/xp')
+    );
+    if (mountedRef.current) setXp(data);
+  }, []);
+
+  const fetchStreaks = useCallback(async () => {
+    const data = await dedupe('analytics:streaks', () => api<StreakInfo>('/streaks'));
+    if (mountedRef.current) setStreak(data);
+  }, []);
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const [statsPayload, xpData, streakData] = await Promise.all([
-        api<{ stats?: DailyStats[] } | DailyStats[]>('/analytics'),
-        api<{ total: number; history: XPTransaction[] }>('/xp'),
-        api<StreakInfo>('/streaks'),
-      ]);
-      const stats = Array.isArray(statsPayload) ? statsPayload : (statsPayload.stats ?? []);
-      setStats(stats);
-      setXp(xpData);
-      setStreak(streakData);
+      await Promise.all([fetchStats(), fetchXp(), fetchStreaks()]);
     } catch {
-      setStats([]);
-      setXp({ total: 0, history: [] });
-      setStreak(null);
+      if (mountedRef.current) {
+        setStats([]);
+        setXp({ total: 0, history: [] });
+        setStreak(null);
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [fetchStats, fetchXp, fetchStreaks]);
 
   useEffect(() => {
     void fetchAnalytics();
   }, [fetchAnalytics]);
 
+  // Targeted refreshes: one event updates only what it can affect instead of
+  // re-fetching all three endpoints (the old pattern fired 3 GETs per event).
   useEffect(() => {
-    const cleanup = on<{ total?: number }>('xp:updated', () => {
-      void fetchAnalytics();
-    });
-    const cleanupHabits = on('habit:updated', () => {
-      void fetchAnalytics();
-    });
-    const cleanupTasks = on('task:updated', () => {
-      void fetchAnalytics();
-    });
+    const cleanups = [
+      on('xp:updated', () => {
+        void fetchXp().catch(() => undefined);
+      }),
+      on('habit:updated', () => {
+        void fetchStreaks().catch(() => undefined);
+      }),
+      on('task:updated', () => {
+        void fetchStreaks().catch(() => undefined);
+      }),
+    ];
     return () => {
-      cleanup();
-      cleanupHabits();
-      cleanupTasks();
+      cleanups.forEach((cleanup) => cleanup());
     };
-  }, [fetchAnalytics, on]);
+  }, [fetchXp, fetchStreaks, on]);
 
   const exportBackup = useCallback(async () => {
     const data = await api<Blob>('/backup/export');

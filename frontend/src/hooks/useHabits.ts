@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
+import { dedupe } from '../services/inflight';
 import { todayISO } from '../utils/date';
 import type { Habit } from '../types';
 import { useSocket } from './useSocket';
@@ -106,7 +107,7 @@ export function useHabits(userId: string | null) {
 
   const fetchHabits = useCallback(async () => {
     try {
-      const data = await api<Habit[]>('/habits');
+      const data = await dedupe('habits:list', () => api<Habit[]>('/habits'));
       setHabits(data);
     } catch {
       setHabits([]);

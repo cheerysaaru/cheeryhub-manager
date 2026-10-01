@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { dedupe } from '../services/inflight';
 import type { Goal, GoalMilestone } from '../types';
 import { useSocket } from './useSocket';
 
@@ -10,7 +11,7 @@ export function useGoals(userId: string | null) {
 
   const fetchGoals = useCallback(async () => {
     try {
-      const data = await api<Goal[]>('/goals');
+      const data = await dedupe('goals:list', () => api<Goal[]>('/goals'));
       setGoals(data);
     } catch {
       setGoals([]);

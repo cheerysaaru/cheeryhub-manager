@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
+import { dedupe } from '../services/inflight';
 import type { Task } from '../types';
 import { useSocket } from './useSocket';
 
@@ -43,7 +44,7 @@ export function useTasks(userId: string | null) {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const data = await api<Task[]>('/tasks');
+      const data = await dedupe('tasks:list', () => api<Task[]>('/tasks'));
       setTasks(data);
     } catch {
       setTasks([]);
@@ -54,7 +55,7 @@ export function useTasks(userId: string | null) {
 
   const fetchTrash = useCallback(async () => {
     try {
-      const data = await api<Task[]>('/tasks/trash');
+      const data = await dedupe('tasks:trash', () => api<Task[]>('/tasks/trash'));
       setTrash(data);
     } catch {
       setTrash([]);
@@ -63,7 +64,7 @@ export function useTasks(userId: string | null) {
 
   useEffect(() => {
     fetchTasks();
-    void fetchTrash();
+    // Trash loads lazily (Trash bin / tab click) — no reason to pay for it on mount.
     const cleanup = on<Task>('task:created', (task) => {
       setTasks((prev) => prependUnique(prev, normalizeTask(task)));
     });
