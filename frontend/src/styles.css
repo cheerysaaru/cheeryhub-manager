@@ -1976,3 +1976,27 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 .streak-badge svg { color: var(--warning, #f59e0b); }
 .streak-badge strong { color: var(--text); }
 .streak-badge.is-active { border-color: var(--warning, #f59e0b); }
+
+/* Phase 5: responsive polish */
+@media (max-width: 700px) {
+  .page-tabs { width: 100%; justify-content: stretch; }
+  .page-tab { flex: 1; justify-content: center; min-width: 0; padding: 8px 10px; }
+  .header-stats { flex-wrap: wrap; justify-content: flex-start; }
+  .header-stats .rank-circle { width: 52px; height: 52px; }
+  .header-stats .rank-level { font-size: 1.05rem; }
+  .header-stats .rank-label { font-size: 0.5rem; }
+  .backfill-row { overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .backfill-cell { flex: 0 0 auto; }
+  .trash-actions .btn { flex: 1; }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions .btn { width: 100%; }
+  .skills-grid { gap: var(--space-3); }
+  .notification-panel { max-height: calc(100vh - 88px); overflow-y: auto; }
+}
+@media (max-width: 480px) {
+  .page-header .header-stats { width: 100%; }
+  .day-buttons { grid-template-columns: repeat(7, minmax(26px, 1fr)); }
+  .empty-state { padding: 24px 14px; }
+  .empty-state strong { font-size: 0.95rem; }
+  .task-panel .btn, .panel .btn { max-width: 100%; }
+}
