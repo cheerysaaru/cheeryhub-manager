@@ -2000,3 +2000,25 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   .empty-state strong { font-size: 0.95rem; }
   .task-panel .btn, .panel .btn { max-width: 100%; }
 }
+
+/* Phase 6: Level & Points breakdown */
+.points-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.points-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.points-summary-item.earned { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); }
+.points-summary-item.spent { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+.points-summary-item.net strong { color: var(--text); }
