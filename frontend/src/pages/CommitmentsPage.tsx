@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, Circle, CircleX, Coffee } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useHabits } from '../hooks/useHabits';
 import { parseLocalDate, shiftDate, todayISO } from '../utils/date';
+import { SkeletonRows } from '../components/Skeleton';
 import type { Habit } from '../types';
 
 const HISTORY_DAYS = 30;
@@ -41,10 +42,12 @@ function BackFillCell({
   date,
   status,
   onCycle,
+  pending,
 }: {
   date: string;
   status: DayStatus;
   onCycle: (date: string) => void;
+  pending?: boolean;
 }) {
   const label = parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   return (
@@ -52,6 +55,8 @@ function BackFillCell({
       type="button"
       className={`backfill-cell ${status.toLowerCase()}`}
       onClick={() => onCycle(date)}
+      disabled={pending}
+      aria-busy={pending || undefined}
       title={`${label} · ${STATUS_LABEL[status]} — tap to change`}
       aria-label={`${label}: ${STATUS_LABEL[status]}. Tap to change.`}
     >
@@ -64,7 +69,7 @@ function BackFillCell({
 
 export default function CommitmentsPage() {
   const { user } = useAuth();
-  const { habits, loading, complete, failToday, skipToday, clearToday } = useHabits(user?.id ?? null);
+  const { habits, loading, isPending, complete, failToday, skipToday, clearToday } = useHabits(user?.id ?? null);
 
   const today = todayISO();
   const windowDays = useMemo(() => [shiftDate(today, -2), shiftDate(today, -1), today], [today]);
@@ -81,12 +86,22 @@ export default function CommitmentsPage() {
       else if (next === 'FAILED') await failToday(habit.id, date);
       else await skipToday(habit.id, date);
     } catch {
-      /* the hook refetches; a failed cycle simply snaps back */
+      /* the hook rolls the optimistic state back on failure */
     }
   };
 
   if (loading) {
-    return <div className="page-loading" role="status">Loading commitments…</div>;
+    return (
+      <div className="commitments-page" role="status" aria-label="Loading commitments">
+        <div className="page-header">
+          <div style={{ width: '100%' }}>
+            <span className="skeleton" style={{ display: 'block', width: '110px', height: '12px' }} />
+            <span className="skeleton" style={{ display: 'block', width: '280px', height: '26px', marginTop: '6px' }} />
+          </div>
+        </div>
+        <SkeletonRows rows={3} height="120px" />
+      </div>
+    );
   }
 
   return (
@@ -141,6 +156,7 @@ export default function CommitmentsPage() {
                       key={date}
                       date={date}
                       status={statusOf(habit, date)}
+                      pending={isPending(habit.id)}
                       onCycle={(day) => void cycle(habit, day)}
                     />
                   ))}

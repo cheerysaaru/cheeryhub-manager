@@ -13,6 +13,7 @@ import { useToast } from '../components/Toast';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { TaskRow } from '../components/TaskRow';
+import { Skeleton, SkeletonRows } from '../components/Skeleton';
 import { DeadlinePicker } from '../components/DeadlinePicker';
 import { formatDate, formatShortDate, greeting, parseLocalDate, shiftDate, todayISO } from '../utils/date';
 import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
@@ -20,7 +21,7 @@ import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
 import type { Task, Habit } from '../types';
 
-function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string, date?: string) => void }) {
+function WeekChecklist({ habit, onCheck, pending }: { habit: Habit; onCheck: (id: string, date?: string) => void; pending?: boolean }) {
   const today = todayISO();
   const backFillUntil = shiftDate(today, -2);
   return (
@@ -43,7 +44,8 @@ function WeekChecklist({ habit, onCheck }: { habit: Habit; onCheck: (id: string,
           return (
             <button
               key={date}
-              disabled={!editable}
+              disabled={!editable || pending}
+              aria-busy={pending || undefined}
               className={`day-check ${checked ? 'checked' : ''} ${failed ? 'failed' : ''} ${skipped ? 'skipped' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''} ${beforeWindow ? 'outside-window' : ''} ${editable && !checked && !failed && !skipped ? 'backfill' : ''}`}
               onClick={() => editable && !checked && onCheck(habit.id, date)}
               aria-label={`${label} ${number}${statusText}${editable && !checked ? ', tap to check in' : ''}`}
@@ -68,6 +70,8 @@ export default function DashboardPage() {
     tasks,
     trash,
     loading: tasksLoading,
+    creating: creatingTask,
+    isPending: isTaskPending,
     create: createTask,
     checkIn,
     complete: completeTask,
@@ -78,7 +82,18 @@ export default function DashboardPage() {
     markNotCompleted,
     extend: extendTask,
   } = useTasks(user?.id ?? null);
-  const { habits, loading: habitsLoading, create: createHabit, complete: completeHabit, clearToday, failToday, skipToday, remove: removeHabit } = useHabits(user?.id ?? null);
+  const {
+    habits,
+    loading: habitsLoading,
+    creating: creatingHabit,
+    isPending: isHabitPending,
+    create: createHabit,
+    complete: completeHabit,
+    clearToday,
+    failToday,
+    skipToday,
+    remove: removeHabit,
+  } = useHabits(user?.id ?? null);
   const { goals } = useGoals(user?.id ?? null);
   const { xp, streak } = useAnalytics(user?.id ?? null);
 
@@ -202,7 +217,22 @@ export default function DashboardPage() {
   };
 
   if (tasksLoading || habitsLoading) {
-    return <div className="page-loading" role="status">Loading dashboard…</div>;
+    return (
+      <div className="dashboard-page" role="status" aria-label="Loading dashboard">
+        <div className="page-header">
+          <div style={{ width: '100%' }}>
+            <Skeleton width="90px" height="12px" />
+            <Skeleton width="260px" height="26px" />
+          </div>
+        </div>
+        <div className="stats-grid">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="skeleton-block" height="76px" />
+          ))}
+        </div>
+        <SkeletonRows rows={5} height="58px" />
+      </div>
+    );
   }
 
   return (
@@ -329,7 +359,7 @@ export default function DashboardPage() {
                   <CalendarClock size={18} />
                 </button>
               </div>
-              <Button type="submit" size="md"><Plus size={18} /> Add Task</Button>
+              <Button type="submit" size="md" loading={creatingTask}><Plus size={18} /> Add Task</Button>
             </div>
             {dueAt && (
               <p className="deadline-summary">
@@ -354,6 +384,7 @@ export default function DashboardPage() {
                   key={task.id}
                   task={task}
                   bind={taskMenu.bind}
+                  pending={isTaskPending(task.id)}
                   onToggle={(t) => void checkIn(t.id, !t.checkedToday)}
                   onDone={(t) => void completeTask(t.id)}
                   onOverdueMenu={setOverdueTask}
@@ -379,7 +410,7 @@ export default function DashboardPage() {
               aria-label="Commitment name"
               required
             />
-            <Button type="submit" size="md"><Plus size={18} /> Add</Button>
+            <Button type="submit" size="md" loading={creatingHabit}><Plus size={18} /> Add</Button>
           </form>
 
           {habits.length === 0 ? (
@@ -401,7 +432,7 @@ export default function DashboardPage() {
                       <strong>{habit.name}</strong>
                       <span>{habit.completedDays} total days · {habit.weekCompletedDays}/7 this week</span>
                     </div>
-                    <WeekChecklist habit={habit} onCheck={completeHabit} />
+                    <WeekChecklist habit={habit} onCheck={completeHabit} pending={isHabitPending(habit.id)} />
                   </div>
                   <div className="commitment-actions">
                     <Button
@@ -409,7 +440,8 @@ export default function DashboardPage() {
                       size="md"
                       className="check-in-btn"
                       onClick={() => !habit.completedToday && completeHabit(habit.id)}
-                      disabled={habit.completedToday}
+                      disabled={habit.completedToday || isHabitPending(habit.id)}
+                      loading={isHabitPending(habit.id)}
                     >
                       {habit.completedToday ? (
                         <>
@@ -425,7 +457,7 @@ export default function DashboardPage() {
                       type="button"
                       className={`day-action leave ${habit.skippedToday ? 'active' : ''}`}
                       onClick={() => !habit.skippedToday && skipToday(habit.id)}
-                      disabled={habit.skippedToday}
+                      disabled={habit.skippedToday || isHabitPending(habit.id)}
                       aria-label="Leave today"
                       title="Leave today"
                     >
@@ -435,14 +467,20 @@ export default function DashboardPage() {
                       type="button"
                       className={`day-action fail ${habit.failedToday ? 'active' : ''}`}
                       onClick={() => !habit.failedToday && failToday(habit.id)}
-                      disabled={habit.failedToday}
+                      disabled={habit.failedToday || isHabitPending(habit.id)}
                       aria-label="Failed that day"
                       title="Failed that day"
                     >
                       <CircleX size={16} />
                     </button>
                     {(habit.completedToday || habit.failedToday || habit.skippedToday) && (
-                      <Button variant="ghost" size="sm" className="undo-day" onClick={() => clearToday(habit.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="undo-day"
+                        onClick={() => clearToday(habit.id)}
+                        loading={isHabitPending(habit.id)}
+                      >
                         <X size={14} />
                         Undo
                       </Button>

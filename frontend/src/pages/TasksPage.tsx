@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { TaskRow } from '../components/TaskRow';
+import { SkeletonTaskList } from '../components/Skeleton';
 import { DeadlinePicker } from '../components/DeadlinePicker';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { formatShortDate, todayISO } from '../utils/date';
@@ -21,6 +22,9 @@ export default function TasksPage() {
   const {
     tasks,
     trash,
+    loading,
+    creating,
+    isPending,
     create: createTask,
     checkIn,
     complete: completeTask,
@@ -190,7 +194,7 @@ export default function TasksPage() {
                   <CalendarClock size={18} />
                 </button>
               </div>
-              <Button type="submit" size="md"><Plus size={18} /> Add Task</Button>
+              <Button type="submit" size="md" loading={creating}><Plus size={18} /> Add Task</Button>
             </div>
             {dueAt && (
               <p className="deadline-summary">
@@ -202,7 +206,9 @@ export default function TasksPage() {
             )}
           </form>
 
-          {activeTasks.length === 0 ? (
+          {loading ? (
+            <SkeletonTaskList />
+          ) : activeTasks.length === 0 ? (
             <div className="empty-state">
               <Circle size={36} strokeWidth={2} />
               <strong>No tasks yet</strong>
@@ -215,6 +221,7 @@ export default function TasksPage() {
                   key={task.id}
                   task={task}
                   bind={taskMenu.bind}
+                  pending={isPending(task.id)}
                   onToggle={(t) => void checkIn(t.id, !t.checkedToday)}
                   onDone={(t) => void completeTask(t.id)}
                   onOverdueMenu={setOverdueTask}

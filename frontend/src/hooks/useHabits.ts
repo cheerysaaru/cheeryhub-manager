@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { todayISO } from '../utils/date';
 import type { Habit } from '../types';
@@ -84,7 +84,25 @@ function applyDayStatus(
 export function useHabits(userId: string | null) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+  const habitsRef = useRef<Habit[]>([]);
   const { on } = useSocket(userId);
+
+  useEffect(() => {
+    habitsRef.current = habits;
+  }, [habits]);
+
+  const markPending = useCallback((id: string, busy: boolean) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const isPending = useCallback((id: string) => pendingIds.has(id), [pendingIds]);
 
   const fetchHabits = useCallback(async () => {
     try {
@@ -120,10 +138,15 @@ export function useHabits(userId: string | null) {
   }, [fetchHabits, on]);
 
   const create = useCallback(async (data: Partial<Habit>) => {
-    const habit = await api<Habit>('/habits', { method: 'POST', body: JSON.stringify(data) });
-    const normalized = normalizeHabit(habit);
-    setHabits((prev) => prependUnique(prev, normalized));
-    return normalized;
+    setCreating(true);
+    try {
+      const habit = await api<Habit>('/habits', { method: 'POST', body: JSON.stringify(data) });
+      const normalized = normalizeHabit(habit);
+      setHabits((prev) => prependUnique(prev, normalized));
+      return normalized;
+    } finally {
+      setCreating(false);
+    }
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Habit>) => {
@@ -137,48 +160,68 @@ export function useHabits(userId: string | null) {
     setHabits((prev) => prev.filter((h) => h.id !== id));
   }, []);
 
-  const complete = useCallback(async (id: string, date?: string) => {
-    const day = date ?? todayKey();
-    setHabits((prev) => prev.map((h) => (h.id === id ? applyDayStatus(h, day, 'COMPLETED') : h)));
-    try {
-      return await api<{ weekCompletedDays?: number; weekComplete?: boolean }>(`/habits/${id}/complete`, {
-        method: 'POST',
-        body: JSON.stringify(date ? { date } : {}),
-      });
-    } finally {
-      await fetchHabits();
-    }
-  }, [fetchHabits]);
+  /**
+   * Applies a day-status change optimistically, waits for the server, and rolls
+   * back to the pre-tap habit on failure. The server's authoritative state also
+   * arrives over the socket (`habit:completed` / `habit:updated`), so no full
+   * list refetch is needed after every tap.
+   */
+  const applyDayAction = useCallback(
+    async (
+      id: string,
+      date: string | undefined,
+      status: 'COMPLETED' | 'FAILED' | 'SKIPPED' | null,
+      request: () => Promise<unknown>
+    ) => {
+      const day = date ?? todayKey();
+      const before = habitsRef.current.find((habit) => habit.id === id);
+      if (!before) return undefined;
+      markPending(id, true);
+      setHabits((prev) => prev.map((habit) => (habit.id === id ? applyDayStatus(habit, day, status) : habit)));
+      try {
+        return await request();
+      } catch (error) {
+        setHabits((prev) => prev.map((habit) => (habit.id === id ? before : habit)));
+        console.warn('Optimistic habit update reverted', error);
+        return undefined;
+      } finally {
+        markPending(id, false);
+      }
+    },
+    [markPending]
+  );
 
-  const clearToday = useCallback(async (id: string, date?: string) => {
-    const day = date ?? todayKey();
-    setHabits((prev) => prev.map((h) => (h.id === id ? applyDayStatus(h, day, null) : h)));
-    try {
-      await api(`/habits/${id}/today`, { method: 'DELETE', body: JSON.stringify(date ? { date } : {}) });
-    } finally {
-      await fetchHabits();
-    }
-  }, [fetchHabits]);
+  const complete = useCallback(
+    (id: string, date?: string) =>
+      applyDayAction(id, date, 'COMPLETED', () =>
+        api(`/habits/${id}/complete`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) })
+      ),
+    [applyDayAction]
+  );
 
-  const failToday = useCallback(async (id: string, date?: string) => {
-    const day = date ?? todayKey();
-    setHabits((prev) => prev.map((h) => (h.id === id ? applyDayStatus(h, day, 'FAILED') : h)));
-    try {
-      await api(`/habits/${id}/fail`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) });
-    } finally {
-      await fetchHabits();
-    }
-  }, [fetchHabits]);
+  const clearToday = useCallback(
+    (id: string, date?: string) =>
+      applyDayAction(id, date, null, () =>
+        api(`/habits/${id}/today`, { method: 'DELETE', body: JSON.stringify(date ? { date } : {}) })
+      ),
+    [applyDayAction]
+  );
 
-  const skipToday = useCallback(async (id: string, date?: string) => {
-    const day = date ?? todayKey();
-    setHabits((prev) => prev.map((h) => (h.id === id ? applyDayStatus(h, day, 'SKIPPED') : h)));
-    try {
-      await api(`/habits/${id}/skip`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) });
-    } finally {
-      await fetchHabits();
-    }
-  }, [fetchHabits]);
+  const failToday = useCallback(
+    (id: string, date?: string) =>
+      applyDayAction(id, date, 'FAILED', () =>
+        api(`/habits/${id}/fail`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) })
+      ),
+    [applyDayAction]
+  );
 
-  return { habits, loading, fetchHabits, create, update, remove, complete, clearToday, failToday, skipToday };
+  const skipToday = useCallback(
+    (id: string, date?: string) =>
+      applyDayAction(id, date, 'SKIPPED', () =>
+        api(`/habits/${id}/skip`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) })
+      ),
+    [applyDayAction]
+  );
+
+  return { habits, loading, creating, isPending, fetchHabits, create, update, remove, complete, clearToday, failToday, skipToday };
 }
