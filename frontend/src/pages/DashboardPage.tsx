@@ -16,6 +16,7 @@ import { TaskRow } from '../components/TaskRow';
 import { Skeleton, SkeletonRows } from '../components/Skeleton';
 import { DeadlinePicker } from '../components/DeadlinePicker';
 import { formatDate, formatShortDate, greeting, parseLocalDate, shiftDate, todayISO } from '../utils/date';
+import { ROUTES } from '../routes';
 import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
 import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
@@ -335,7 +336,7 @@ export default function DashboardPage() {
               <p className="panel-subtitle">{activeTasks.length} active {activeTasks.length === 1 ? 'task' : 'tasks'}</p>
             </div>
             <div className="panel-header-actions">
-              <Link to="/tasks" className="panel-link">
+              <Link to={ROUTES.tasks} className="panel-link">
                 <span>View all</span>
                 <ArrowRight size={16} />
               </Link>
@@ -406,7 +407,7 @@ export default function DashboardPage() {
             </ul>
           )}
           {hiddenTaskCount > 0 && (
-            <Link to="/tasks" className="panel-link task-more-link">
+            <Link to={ROUTES.tasks} className="panel-link task-more-link">
               <span>{hiddenTaskCount} more {hiddenTaskCount === 1 ? 'task' : 'tasks'}</span>
               <ArrowRight size={16} />
             </Link>
@@ -418,6 +419,12 @@ export default function DashboardPage() {
             <div>
               <h2 id="habits-heading">Daily Commitments</h2>
               <p className="panel-subtitle">Build streaks, one day at a time</p>
+            </div>
+            <div className="panel-header-actions">
+              <Link to={ROUTES.commitmentsHistory} className="panel-link">
+                <span>View all</span>
+                <ArrowRight size={16} />
+              </Link>
             </div>
           </div>
 

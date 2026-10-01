@@ -1,29 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Home, Target, Trophy, Award, Brain, BookOpen, Bell, Settings, DollarSign, BarChart2, Briefcase, LogOut, Menu, X, Shield, ListTodo, CalendarCheck } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Avatar } from './Avatar';
 import { GreetingPopup } from './GreetingPopup';
 import { NotificationCenter } from './NotificationCenter';
+import { adminItems, isActiveNavPath, navItems } from './navItems';
 import { getDisplayName, getProfilePic, PROFILE_EVENT, initAvatar } from '../utils/profile';
-
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: Home },
-  { path: '/tasks', label: 'Tasks', icon: ListTodo },
-  { path: '/commitments', label: 'Commitments', icon: CalendarCheck },
-  { path: '/goals', label: 'Goals', icon: Target },
-  { path: '/skills', label: 'Skills', icon: Trophy },
-  { path: '/achievements', label: 'Achievements', icon: Award },
-  { path: '/focus', label: 'Focus', icon: Brain },
-  { path: '/journal', label: 'Journal', icon: BookOpen },
-  { path: '/reminders', label: 'Reminders', icon: Bell },
-  { path: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { path: '/brand', label: 'Brand', icon: Briefcase },
-  { path: '/finance', label: 'Finance', icon: DollarSign },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
-
-const adminItems = [{ path: '/admin', label: 'Admin', icon: Shield }];
 
 export function Layout() {
   const { user, loading, logout } = useAuth();
@@ -77,7 +60,7 @@ export function Layout() {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+                  className={`nav-link ${isActiveNavPath(location.pathname, item.path) ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <item.icon size={20} />

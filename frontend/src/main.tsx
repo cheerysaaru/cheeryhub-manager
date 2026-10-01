@@ -93,7 +93,10 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/commitments" element={<CommitmentsPage />} />
+          {/* History is the canonical commitments page; /commitments keeps old
+              notification links (and refreshes) working. */}
+          <Route path="/commitments/history" element={<CommitmentsPage />} />
+          <Route path="/commitments" element={<Navigate to="/commitments/history" replace />} />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/achievements" element={<ArchivedmentsPage />} />

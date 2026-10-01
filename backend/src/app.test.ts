@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import http from 'http';
 import type { AddressInfo } from 'net';
 import { createApp } from './app';
@@ -127,6 +129,28 @@ describe('request validation and CORS', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
   });
+});
+
+// The Tasks page and the Commitments history page are hidden from the navbar
+// but must keep working when someone refreshes or pastes their URL directly.
+const clientBuilt = fs.existsSync(
+  path.resolve(__dirname, '../../frontend/dist/index.html')
+);
+
+describe.skipIf(!clientBuilt)('SPA deep links', () => {
+  it.each(['/tasks', '/commitments/history', '/commitments'])(
+    'answers %s with the app shell so a refresh never 404s',
+    async (route) => {
+      const response = await fetch(`${base}${route}`, {
+        headers: { Accept: 'text/html' },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/html');
+      const html = await response.text();
+      expect(html).toContain('<div id="root">');
+    }
+  );
 });
 
 describe('rate limiting', () => {
