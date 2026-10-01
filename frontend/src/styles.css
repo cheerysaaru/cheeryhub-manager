@@ -2022,3 +2022,39 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 .points-summary-item.earned { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); }
 .points-summary-item.spent { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
 .points-summary-item.net strong { color: var(--text); }
+
+/* Phase 7: recurring toggle + income vs expenses trend */
+.recurring-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.recurring-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.recurring-toggle input { accent-color: var(--primary); width: 16px; height: 16px; }
+.recurring-row .input-label { min-width: 160px; }
+
+.trend-track { justify-content: center; }
+.trend-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+.trend-bar {
+  width: 38%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+}
+.trend-bar.income { background: var(--success); }
+.trend-bar.expense { background: var(--danger); }
+.finance-trend .bar-col { min-width: 14px; }

@@ -9,7 +9,7 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import type { Transaction, WeeklyReport, MonthlyReport } from '../types';
-import { formatShortDate, todayISO } from '../utils/date';
+import { formatShortDate, parseLocalDate, todayISO } from '../utils/date';
 import { downloadJson } from '../utils/misc';
 
 const INCOME_CATEGORIES = ['SALARY', 'FREELANCE', 'INVESTMENTS', 'BUSINESS', 'GIFTS', 'REFUNDS', 'OTHER_INCOME'];
@@ -35,8 +35,11 @@ function TransactionForm({ onSubmit, onCancel, initial }: {
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>(initial?.type ?? 'EXPENSE');
   const [category, setCategory] = useState(initial?.category ?? 'FOOD');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
+  const [amountError, setAmountError] = useState('');
   const [date, setDate] = useState(initial?.date?.slice(0, 10) ?? todayISO());
   const [description, setDescription] = useState(initial?.description ?? '');
+  const [isRecurring, setIsRecurring] = useState(initial?.isRecurring ?? false);
+  const [recurrencePattern, setRecurrencePattern] = useState(initial?.recurrencePattern ?? 'MONTHLY');
 
   const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
@@ -47,12 +50,31 @@ function TransactionForm({ onSubmit, onCancel, initial }: {
     }
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const value = parseFloat(amount);
+    if (!amount || Number.isNaN(value) || value <= 0) {
+      setAmountError('Enter an amount greater than 0.');
+      return;
+    }
+    if (value > 99999999.99) {
+      setAmountError('Amount must be 99,999,999.99 or less.');
+      return;
+    }
+    setAmountError('');
+    onSubmit({
+      type,
+      category,
+      amount: value,
+      date,
+      description: description || undefined,
+      isRecurring,
+      recurrencePattern: isRecurring ? recurrencePattern : undefined,
+    });
+  }
+
   return (
-    <form className="modal-form" onSubmit={(e) => {
-      e.preventDefault();
-      if (!amount || parseFloat(amount) <= 0) return;
-      onSubmit({ type, category, amount: parseFloat(amount), date, description: description || undefined });
-    }}>
+    <form className="modal-form" onSubmit={handleSubmit}>
       <div className="form-row">
         <div className="form-group">
           <label className="input-label">Type</label>
@@ -73,10 +95,27 @@ function TransactionForm({ onSubmit, onCancel, initial }: {
         </label>
       </div>
       <div className="form-row">
-        <Input label="Amount" type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required />
+        <Input label="Amount" type="number" step="0.01" min="0.01" max="99999999.99" value={amount} onChange={(e) => { setAmount(e.target.value); setAmountError(''); }} placeholder="0.00" required />
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
       </div>
+      {amountError && <p className="error-message" role="alert">{amountError}</p>}
       <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was this for?" />
+      <div className="recurring-row">
+        <label className="recurring-toggle">
+          <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+          <span>Repeats on a schedule</span>
+        </label>
+        {isRecurring && (
+          <label className="input-label">
+            Pattern
+            <select value={recurrencePattern} onChange={(e) => setRecurrencePattern(e.target.value)} className="select">
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+              <option value="YEARLY">Yearly</option>
+            </select>
+          </label>
+        )}
+      </div>
       <div className="modal-actions">
         <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
         <Button type="submit">{initial ? 'Update' : 'Add Transaction'}</Button>
@@ -126,6 +165,42 @@ function ReportCard({ title, income, expense, net, periodLabel, children }: {
       </div>
       {children}
     </Card>
+  );
+}
+
+function TrendChart({ byDay }: { byDay: MonthlyReport['byDay'] }) {
+  if (!byDay.length) return null;
+  const max = Math.max(...byDay.flatMap((d) => [d.income, d.expense]), 1);
+  return (
+    <section className="panel" aria-labelledby="trend-heading">
+      <div className="panel-header">
+        <div>
+          <h2 id="trend-heading">Income vs Expenses</h2>
+          <p className="panel-subtitle">Daily totals for the selected month</p>
+        </div>
+        <div className="history-legend">
+          <span className="legend-item completed">Income</span>
+          <span className="legend-item failed">Expenses</span>
+        </div>
+      </div>
+      <div className="bar-chart finance-trend" role="img" aria-label="Daily income and expenses for the selected month">
+        {byDay.map((day) => (
+          <div
+            key={day.date}
+            className="bar-col"
+            title={`${formatShortDate(day.date)} · +${formatCurrency(day.income)} / -${formatCurrency(day.expense)}`}
+          >
+            <div className="bar-track trend-track">
+              <div className="trend-bars">
+                <div className="trend-bar income" style={{ height: `${(day.income / max) * 100}%` }} />
+                <div className="trend-bar expense" style={{ height: `${(day.expense / max) * 100}%` }} />
+              </div>
+            </div>
+            <span className="bar-label">{parseLocalDate(day.date).getDate()}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -191,6 +266,8 @@ export default function FinancePage() {
           <CategoryBreakdown data={monthlyReport?.byCategory.expense ?? {}} type="expense" />
         </ReportCard>
       </div>
+
+      <TrendChart byDay={monthlyReport?.byDay ?? []} />
 
       <div className="finance-controls">
         <div className="month-nav">
