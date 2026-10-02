@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
+import { dedupe } from '../services/inflight';
 import type { Task } from '../types';
 import { useSocket } from './useSocket';
 
@@ -21,11 +22,29 @@ export function useTasks(userId: string | null) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [trash, setTrash] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+  const tasksRef = useRef<Task[]>([]);
   const { on } = useSocket(userId);
+
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+
+  const markPending = useCallback((id: string, busy: boolean) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const isPending = useCallback((id: string) => pendingIds.has(id), [pendingIds]);
 
   const fetchTasks = useCallback(async () => {
     try {
-      const data = await api<Task[]>('/tasks');
+      const data = await dedupe('tasks:list', () => api<Task[]>('/tasks'));
       setTasks(data);
     } catch {
       setTasks([]);
@@ -36,7 +55,7 @@ export function useTasks(userId: string | null) {
 
   const fetchTrash = useCallback(async () => {
     try {
-      const data = await api<Task[]>('/tasks/trash');
+      const data = await dedupe('tasks:trash', () => api<Task[]>('/tasks/trash'));
       setTrash(data);
     } catch {
       setTrash([]);
@@ -45,7 +64,7 @@ export function useTasks(userId: string | null) {
 
   useEffect(() => {
     fetchTasks();
-    void fetchTrash();
+    // Trash loads lazily (Trash bin / tab click) — no reason to pay for it on mount.
     const cleanup = on<Task>('task:created', (task) => {
       setTasks((prev) => prependUnique(prev, normalizeTask(task)));
     });
@@ -69,10 +88,15 @@ export function useTasks(userId: string | null) {
   }, [fetchTasks, fetchTrash, on]);
 
   const create = useCallback(async (data: Partial<Task>) => {
-    const task = await api<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
-    const normalized = normalizeTask(task);
-    setTasks((prev) => prependUnique(prev, normalized));
-    return normalized;
+    setCreating(true);
+    try {
+      const task = await api<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) });
+      const normalized = normalizeTask(task);
+      setTasks((prev) => prependUnique(prev, normalized));
+      return normalized;
+    } finally {
+      setCreating(false);
+    }
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Task>) => {
@@ -118,20 +142,59 @@ export function useTasks(userId: string | null) {
     return normalized;
   }, []);
 
-  const complete = useCallback(async (id: string) => {
-    const task = await api<Task>(`/tasks/${id}/complete`, { method: 'PATCH' });
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...task } : t)));
-    return task;
-  }, []);
+  const complete = useCallback(
+    async (id: string) => {
+      const before = tasksRef.current.find((task) => task.id === id);
+      if (!before) return undefined;
+      markPending(id, true);
+      // Optimistic: the row leaves the active list immediately.
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === id ? { ...task, status: 'COMPLETED', completedAt: new Date().toISOString() } : task
+        )
+      );
+      try {
+        const task = await api<Task>(`/tasks/${id}/complete`, { method: 'PATCH' });
+        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...task } : t)));
+        return task;
+      } catch (error) {
+        setTasks((prev) => prev.map((t) => (t.id === id ? before : t)));
+        console.warn('Optimistic complete reverted', error);
+        return undefined;
+      } finally {
+        markPending(id, false);
+      }
+    },
+    [markPending]
+  );
 
-  const checkIn = useCallback(async (id: string, checked: boolean) => {
-    const result = await api<{ checkedDays: number; missedDays: number }>(`/tasks/${id}/checkin`, {
-      method: 'POST',
-      body: JSON.stringify({ checked }),
-    });
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, checkedToday: checked, checkedDays: result.checkedDays, missedDays: result.missedDays } : t)));
-    return result;
-  }, []);
+  const checkIn = useCallback(
+    async (id: string, checked: boolean) => {
+      const before = tasksRef.current.find((task) => task.id === id);
+      if (!before) return undefined;
+      markPending(id, true);
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, checkedToday: checked } : t)));
+      try {
+        const result = await api<{ checkedDays: number; missedDays: number }>(`/tasks/${id}/checkin`, {
+          method: 'POST',
+          body: JSON.stringify({ checked }),
+        });
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === id ? { ...t, checkedToday: checked, checkedDays: result.checkedDays, missedDays: result.missedDays } : t
+          )
+        );
+        return result;
+      } catch (error) {
+        setTasks((prev) => prev.map((t) => (t.id === id ? before : t)));
+        console.warn('Optimistic check-in reverted', error);
+        return undefined;
+      } finally {
+        markPending(id, false);
+      }
+    },
+    [markPending]
+  );
 
   const startTimer = useCallback(async (id: string) => {
     const task = await api<Task>(`/tasks/${id}/timer/start`, { method: 'POST' });
@@ -149,6 +212,8 @@ export function useTasks(userId: string | null) {
     tasks,
     trash,
     loading,
+    creating,
+    isPending,
     fetchTasks,
     fetchTrash,
     create,

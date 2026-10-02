@@ -1,92 +1,178 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Circle, CircleX, Coffee } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, CircleX, Coffee, Lock, ChevronUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useHabits } from '../hooks/useHabits';
+import { useToast } from '../components/Toast';
+import { useDayActions } from '../hooks/useDayActions';
+import { DayContextMenu, type DayMenuTarget } from '../components/DayContextMenu';
+import { SkeletonRows } from '../components/Skeleton';
+import {
+  STATUS_LABEL,
+  LOCKED_TOOLTIP,
+  bestStreak,
+  buildMonthGrid,
+  currentStreak,
+  dayStatus,
+  formatShortFullDate,
+  habitStartKey,
+  isEditableDay,
+  monthsThrough,
+  monthLabel,
+  monthSummary,
+  weekdayHeaders,
+  type DayStatus,
+} from '../utils/commitmentCalendar';
 import { parseLocalDate, shiftDate, todayISO } from '../utils/date';
 import type { Habit } from '../types';
 
-const HISTORY_DAYS = 30;
-type DayStatus = 'COMPLETED' | 'FAILED' | 'SKIPPED' | 'EMPTY';
+const MONTHS_PER_STEP = 6;
 
-function statusOf(habit: Habit, date: string): DayStatus {
-  if (habit.completedDates.includes(date)) return 'COMPLETED';
-  if (habit.failedDates.includes(date)) return 'FAILED';
-  if (habit.skippedDates.includes(date)) return 'SKIPPED';
-  return 'EMPTY';
+function statusIcon(status: DayStatus, size = 13) {
+  if (status === 'COMPLETED') return <CheckCircle2 size={size} />;
+  if (status === 'FAILED') return <CircleX size={size} />;
+  if (status === 'SKIPPED') return <Coffee size={size} />;
+  return null;
 }
 
-const CYCLE: Record<DayStatus, DayStatus> = {
-  EMPTY: 'COMPLETED',
-  COMPLETED: 'FAILED',
-  FAILED: 'SKIPPED',
-  SKIPPED: 'EMPTY',
-};
-
-const STATUS_LABEL: Record<DayStatus, string> = {
-  EMPTY: 'nothing recorded',
-  COMPLETED: 'checked in',
-  FAILED: 'failed',
-  SKIPPED: 'left',
-};
-
-function statusIcon(status: DayStatus) {
-  if (status === 'COMPLETED') return <CheckCircle2 size={13} />;
-  if (status === 'FAILED') return <CircleX size={13} />;
-  if (status === 'SKIPPED') return <Coffee size={13} />;
-  return <Circle size={13} />;
-}
-
-function BackFillCell({
+/** The always-editable 3-day strip: day name + date + status, tap for actions. */
+function WindowCell({
+  habit,
   date,
-  status,
-  onCycle,
+  today,
+  pending,
+  onOpen,
 }: {
+  habit: Habit;
   date: string;
-  status: DayStatus;
-  onCycle: (date: string) => void;
+  today: string;
+  pending: boolean;
+  onOpen: (target: { habitId: string; date: string; status: DayStatus; x: number; y: number }) => void;
 }) {
-  const label = parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const status = dayStatus(habit, date, today);
+  const editable = isEditableDay(date, today);
+  const parsed = parseLocalDate(date);
   return (
     <button
       type="button"
-      className={`backfill-cell ${status.toLowerCase()}`}
-      onClick={() => onCycle(date)}
-      title={`${label} · ${STATUS_LABEL[status]} — tap to change`}
-      aria-label={`${label}: ${STATUS_LABEL[status]}. Tap to change.`}
+      className={`backfill-cell status-${status.toLowerCase()} ${date === today ? 'is-today' : ''}`}
+      disabled={!editable || pending}
+      aria-busy={pending || undefined}
+      onClick={(event) => {
+        if (!editable) return;
+        onOpen({ habitId: habit.id, date, status, x: event.clientX, y: event.clientY });
+      }}
+      title={`${formatShortFullDate(date)} · ${STATUS_LABEL[status]}`}
+      aria-label={`${formatShortFullDate(date)}: ${STATUS_LABEL[status]}. Tap to change.`}
     >
-      <span className="backfill-day">{parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short' })}</span>
-      <span className="backfill-date">{parseLocalDate(date).getDate()}</span>
-      {statusIcon(status)}
+      <span className="backfill-day">{parsed.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+      <span className="backfill-date">{parsed.getDate()}</span>
+      {statusIcon(status) ?? <Circle size={13} />}
     </button>
+  );
+}
+
+function MonthSection({
+  habit,
+  year,
+  month,
+  today,
+  pending,
+  onOpen,
+}: {
+  habit: Habit;
+  year: number;
+  month: number;
+  today: string;
+  pending: boolean;
+  onOpen: (target: { habitId: string; date: string; status: DayStatus; x: number; y: number }) => void;
+}) {
+  const grid = useMemo(() => buildMonthGrid(year, month), [year, month]);
+  const summary = useMemo(() => monthSummary(habit, year, month, today), [habit, year, month, today]);
+  const weekdays = useMemo(() => weekdayHeaders(), []);
+
+  return (
+    <div className="month-section">
+      <div className="month-header">
+        <h3>{monthLabel(year, month)}</h3>
+        <span className="month-summary">
+          {summary.checked} checked · {summary.failed} failed · {summary.leave} left · {summary.completionPct}%
+        </span>
+      </div>
+      <div className="month-weekdays" aria-hidden="true">
+        {weekdays.map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="month-grid" role="grid" aria-label={`${monthLabel(year, month)} calendar`}>
+        {grid.map((cell) => {
+          if (!cell.inMonth) {
+            return <span key={cell.date} className="month-cell is-outside" aria-hidden="true" />;
+          }
+          const status = dayStatus(habit, cell.date, today);
+          const editable = isEditableDay(cell.date, today);
+          const title = !editable && cell.date <= today && status !== 'NOT_STARTED' && status !== 'FUTURE'
+            ? `${formatShortFullDate(cell.date)} · ${STATUS_LABEL[status]} — ${LOCKED_TOOLTIP}`
+            : `${formatShortFullDate(cell.date)} · ${STATUS_LABEL[status]}`;
+          return (
+            <button
+              key={cell.date}
+              type="button"
+              className={[
+                'month-cell',
+                `status-${status.toLowerCase()}`,
+                cell.date === today ? 'is-today' : '',
+                editable ? 'is-editable' : status === 'NOT_STARTED' || status === 'FUTURE' ? 'is-inactive' : 'is-locked',
+              ].join(' ')}
+              disabled={!editable || pending}
+              aria-busy={pending || undefined}
+              title={title}
+              aria-label={`${formatShortFullDate(cell.date)}: ${STATUS_LABEL[status]}${editable ? '. Tap to change.' : ''}`}
+              onClick={(event) => {
+                if (!editable) return;
+                onOpen({ habitId: habit.id, date: cell.date, status, x: event.clientX, y: event.clientY });
+              }}
+            >
+              <span className="month-day-number">{cell.day}</span>
+              <span className="month-cell-icon">
+                {statusIcon(status, 14) ?? (!editable && status !== 'NOT_STARTED' && status !== 'FUTURE' ? <Lock size={12} /> : null)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 export default function CommitmentsPage() {
   const { user } = useAuth();
-  const { habits, loading, complete, failToday, skipToday, clearToday } = useHabits(user?.id ?? null);
+  const { toast } = useToast();
+  const { habits, loading, isPending, complete, failToday, skipToday, clearToday } = useHabits(user?.id ?? null);
+  const runDayAction = useDayActions({ complete, failToday, skipToday, clearToday }, toast);
+  const [dayMenu, setDayMenu] = useState<DayMenuTarget | null>(null);
+  const [visibleMonths, setVisibleMonths] = useState<Record<string, number>>({});
 
   const today = todayISO();
   const windowDays = useMemo(() => [shiftDate(today, -2), shiftDate(today, -1), today], [today]);
-  const historyDays = useMemo(
-    () => Array.from({ length: HISTORY_DAYS }, (_, index) => shiftDate(today, -(HISTORY_DAYS - 1 - index))),
-    [today]
-  );
 
-  const cycle = async (habit: Habit, date: string) => {
-    const next = CYCLE[statusOf(habit, date)];
-    try {
-      if (next === 'EMPTY') await clearToday(habit.id, date);
-      else if (next === 'COMPLETED') await complete(habit.id, date);
-      else if (next === 'FAILED') await failToday(habit.id, date);
-      else await skipToday(habit.id, date);
-    } catch {
-      /* the hook refetches; a failed cycle simply snaps back */
-    }
-  };
+  const openMenu = (target: { habitId: string; date: string; status: DayStatus; x: number; y: number }) =>
+    setDayMenu({ ...target, label: formatShortFullDate(target.date) });
+
+  const showCountFor = (habit: Habit) => visibleMonths[habit.id] ?? 1;
 
   if (loading) {
-    return <div className="page-loading" role="status">Loading commitments…</div>;
+    return (
+      <div className="commitments-page" role="status" aria-label="Loading commitments">
+        <div className="page-header">
+          <div style={{ width: '100%' }}>
+            <span className="skeleton" style={{ display: 'block', width: '110px', height: '12px' }} />
+            <span className="skeleton" style={{ display: 'block', width: '280px', height: '26px', marginTop: '6px' }} />
+          </div>
+        </div>
+        <SkeletonRows rows={3} height="120px" />
+      </div>
+    );
   }
 
   return (
@@ -106,8 +192,16 @@ export default function CommitmentsPage() {
       </header>
 
       <div className="backfill-banner">
-        <strong>Back-fill window:</strong> the last 3 days stay editable. Tap a cell to cycle{' '}
-        <em>check in → failed → left → clear</em>.
+        <strong>Back-fill window:</strong> the last 3 days stay editable — tap a cell to open its actions
+        (undo, check in, failed, leave). Older days are locked.
+      </div>
+
+      <div className="history-legend" aria-label="Legend">
+        <span className="legend-item completed"><CheckCircle2 size={12} /> checked in</span>
+        <span className="legend-item failed"><CircleX size={12} /> failed</span>
+        <span className="legend-item skipped"><Coffee size={12} /> left</span>
+        <span className="legend-item empty"><Circle size={12} /> nothing</span>
+        <span className="legend-item locked"><Lock size={12} /> locked</span>
       </div>
 
       {habits.length === 0 ? (
@@ -124,57 +218,81 @@ export default function CommitmentsPage() {
           {habits.map((habit) => {
             const failedCount = habit.failedDates.length;
             const skippedCount = habit.skippedDates.length;
+            const startKey = habitStartKey(habit);
+            const allMonths = startKey ? monthsThrough(startKey, today) : [];
+            const visible = showCountFor(habit);
+            const hiddenMonths = allMonths.length - visible;
+            const months = allMonths.slice(0, visible);
             return (
               <section key={habit.id} className="panel commitment-history" aria-label={`${habit.name} history`}>
                 <div className="panel-header">
                   <div>
                     <h2>{habit.name}</h2>
                     <p className="panel-subtitle">
-                      {habit.completedDays} checked in · {failedCount} failed · {skippedCount} left · {habit.weekCompletedDays}/7 this week
+                      {habit.completedDays} checked in · {failedCount} failed · {skippedCount} left ·
+                      current streak {currentStreak(habit.completedDates, today)} · best {bestStreak(habit.completedDates)} ·
+                      {' '}{habit.weekCompletedDays}/7 this week
                     </p>
                   </div>
                 </div>
 
-                <div className="backfill-row" role="group" aria-label="Back-fill window">
+                <div className="backfill-row" role="group" aria-label="Editable window">
                   {windowDays.map((date) => (
-                    <BackFillCell
+                    <WindowCell
                       key={date}
+                      habit={habit}
                       date={date}
-                      status={statusOf(habit, date)}
-                      onCycle={(day) => void cycle(habit, day)}
+                      today={today}
+                      pending={isPending(habit.id)}
+                      onOpen={openMenu}
                     />
                   ))}
                 </div>
 
-                <div className="history-grid" role="list" aria-label={`Last ${HISTORY_DAYS} days`}>
-                  {historyDays.map((date) => {
-                    const status = statusOf(habit, date);
-                    const label = parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-                    return (
-                      <span
-                        key={date}
-                        role="listitem"
-                        className={`history-cell ${status.toLowerCase()} ${date === today ? 'is-today' : ''}`}
-                        title={`${label} · ${STATUS_LABEL[status]}`}
-                        aria-label={`${label}: ${STATUS_LABEL[status]}`}
+                {allMonths.length === 0 ? (
+                  <p className="month-empty">Nothing recorded yet.</p>
+                ) : (
+                  <>
+                    {months.map(({ year, month }) => (
+                      <MonthSection
+                        key={`${year}-${month}`}
+                        habit={habit}
+                        year={year}
+                        month={month}
+                        today={today}
+                        pending={isPending(habit.id)}
+                        onOpen={openMenu}
+                      />
+                    ))}
+                    {hiddenMonths > 0 && (
+                      <button
+                        type="button"
+                        className="show-earlier-months"
+                        onClick={() =>
+                          setVisibleMonths((prev) => ({
+                            ...prev,
+                            [habit.id]: Math.min(allMonths.length, visible + MONTHS_PER_STEP),
+                          }))
+                        }
                       >
-                        {status !== 'EMPTY' && statusIcon(status)}
-                      </span>
-                    );
-                  })}
-                </div>
-
-                <div className="history-legend">
-                  <span className="legend-item completed"><CheckCircle2 size={12} /> checked in</span>
-                  <span className="legend-item failed"><CircleX size={12} /> failed</span>
-                  <span className="legend-item skipped"><Coffee size={12} /> left</span>
-                  <span className="legend-item empty"><Circle size={12} /> nothing</span>
-                </div>
+                        <ChevronUp size={15} />
+                        Show earlier months ({hiddenMonths} more)
+                      </button>
+                    )}
+                  </>
+                )}
               </section>
             );
           })}
         </div>
       )}
+
+      <DayContextMenu
+        target={dayMenu}
+        pending={dayMenu ? isPending(dayMenu.habitId) : false}
+        onClose={() => setDayMenu(null)}
+        onAction={runDayAction}
+      />
     </div>
   );
 }

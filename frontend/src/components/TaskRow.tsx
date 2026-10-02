@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { AlertTriangle, CheckCircle2, Circle, Clock } from 'lucide-react';
 import { Badge } from './Badge';
 import { Button } from './Button';
@@ -12,9 +13,11 @@ interface TaskRowProps {
   /** Opens the long-press menu; only supplied for overdue tasks. */
   onOverdueMenu?: (task: Task) => void;
   bind?: (label: string) => Record<string, unknown>;
+  /** True while this task's mutation is in flight — disables its buttons. */
+  pending?: boolean;
 }
 
-export function TaskRow({ task, onToggle, onDone, onOverdueMenu, bind }: TaskRowProps) {
+export const TaskRow = memo(function TaskRow({ task, onToggle, onDone, onOverdueMenu, bind, pending }: TaskRowProps) {
   const overdue = task.isOverdue && task.status !== 'COMPLETED';
   const longPress = useLongPress(() => onOverdueMenu?.(task));
 
@@ -23,13 +26,15 @@ export function TaskRow({ task, onToggle, onDone, onOverdueMenu, bind }: TaskRow
 
   return (
     <li
-      className={`task-row ${overdue ? 'overdue' : ''} ${task.checkedToday ? 'completed' : ''} ${overdue ? 'long-press-target' : ''} ${overdue && longPress.pressing ? 'pressing' : ''}`}
+      className={`task-row ${overdue ? 'overdue' : ''} ${task.checkedToday ? 'completed' : ''} ${overdue ? 'long-press-target' : ''} ${overdue && longPress.pressing ? 'pressing' : ''} ${pending ? 'is-pending' : ''}`}
+      aria-busy={pending || undefined}
       {...contextBindings}
       {...pressBindings}
     >
       <button
         className="task-check"
         onClick={() => onToggle(task)}
+        disabled={pending}
         aria-label={task.checkedToday ? 'Uncheck task' : 'Check in task'}
         aria-pressed={task.checkedToday}
       >
@@ -65,11 +70,11 @@ export function TaskRow({ task, onToggle, onDone, onOverdueMenu, bind }: TaskRow
         </div>
       </div>
       <div className="task-actions">
-        <Button variant="ghost" size="sm" onClick={() => onDone(task)}>
+        <Button variant="ghost" size="sm" onClick={() => onDone(task)} disabled={pending}>
           <CheckCircle2 size={16} /> Done
         </Button>
       </div>
       {overdue && <span className="long-press-progress" aria-hidden="true" />}
     </li>
   );
-}
+});

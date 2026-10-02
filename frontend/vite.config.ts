@@ -28,6 +28,33 @@ function spaFallback404(): Plugin {
 export default defineConfig({
   plugins: [react(), tailwindcss(), spaFallback404()],
   base: process.env.VITE_BASE ?? '/',
+  build: {
+    rollupOptions: {
+      output: {
+        // Split heavy dependencies out of the entry chunk so the shell can be
+        // cached and re-downloaded independently of app code.
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('lucide-react')) return 'vendor-lucide';
+          if (
+            id.includes('recharts') ||
+            id.includes('victory') ||
+            id.includes('d3-') ||
+            id.includes('internmap') ||
+            id.includes('delaunator') ||
+            id.includes('robust-predicates')
+          ) {
+            return 'vendor-charts';
+          }
+          if (id.includes('socket.io') || id.includes('engine.io')) return 'vendor-socket';
+          if (/node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
+            return 'vendor-react';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

@@ -1,15 +1,24 @@
-import 'dotenv/config';
+import { bootstrapEnv } from './loadEnv';
 import http from 'http';
 import { createApp } from './app';
 import { initSocket } from './lib/socket';
+import { logError } from './lib/logger';
 
-const port = Number(process.env.PORT ?? 4000);
+// Fails fast with a readable message if JWT_SECRET / DATABASE_URL are missing
+// or malformed — before a single request can be served.
+const env = bootstrapEnv();
 
 const app = createApp();
 const server = http.createServer(app);
 
 initSocket(server);
 
-server.listen(port, () => {
-  console.log(`API listening on port ${port}`);
+server.on('error', (error) => {
+  logError(undefined, error, { stage: 'listen', port: env.PORT });
+  console.error(`API failed to start on port ${env.PORT}: ${error.message}`);
+  process.exit(1);
+});
+
+server.listen(env.PORT, () => {
+  console.log(`API listening on port ${env.PORT} (${env.NODE_ENV})`);
 });

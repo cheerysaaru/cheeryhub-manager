@@ -5,9 +5,13 @@ import fs from 'fs';
 import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import rateLimit, { type MemoryStore } from 'express-rate-limit';
-import { getFrontendUrl } from './lib/config';
+import rateLimit, { type MemoryStore, ipKeyGenerator } from 'express-rate-limit';
+import { getCorsOrigins } from './lib/config';
+import { envStatus, getEnv } from './env';
+import { newRequestId } from './lib/logger';
+import { apiErrorHandler } from './utils/errors';
 import { prisma } from './lib/prisma';
 
 import { requireAuth, requireAdmin } from './utils/auth';
@@ -18,6 +22,7 @@ import {
   register,
   forgotPassword,
   resetPasswordWithToken,
+  refreshSession,
 } from './controllers/auth';
 import {
   listUsers,
@@ -89,6 +94,23 @@ import {
 
 type LimitEntry = { totalHits: number; resetTime: Date };
 
+type RequestWithId = Request & { requestId?: string };
+
+/**
+ * Rate-limit key: the real client IP behind Cloudflare (CF-Connecting-IP),
+ * otherwise the last X-Forwarded-For entry (the one appended by the proxy),
+ * otherwise the socket address. Client-supplied left-most entries are ignored
+ * so the limit cannot be bypassed by spoofing headers.
+ */
+function clientKey(request: Request): string {
+  const header =
+    request.headers['cf-connecting-ip'] ?? request.headers['x-forwarded-for'];
+  const raw = Array.isArray(header) ? header[0] : header;
+  const forwarded = raw?.split(',').pop()?.trim();
+  const address = forwarded || request.socket.remoteAddress || 'unknown';
+  return ipKeyGenerator(address);
+}
+
 class TimerFreeStore {
   private hits = new Map<string, LimitEntry>();
   constructor(private windowMs: number) {}
@@ -137,19 +159,65 @@ function createLimit(
     windowMs,
     limit,
     standardHeaders: true,
+    keyGenerator: options?.keyGenerator ?? clientKey,
+    // The IP is derived from proxy headers above, and request.ip is unreliable
+    // behind Cloudflare / inside the Worker runtime.
+    validate: { ip: false, xForwardedForHeader: false },
+    handler: (request, response, next, optionsUsed) => {
+      response.setHeader('Retry-After', Math.ceil(optionsUsed.windowMs / 1000).toString());
+      response.status(optionsUsed.statusCode ?? 429).json({
+        error: 'Too many requests. Please wait a moment and try again.',
+        code: 'RATE_LIMITED',
+        requestId: (request as RequestWithId).requestId,
+        retryAfterSeconds: Math.ceil(optionsUsed.windowMs / 1000),
+      });
+      next();
+    },
     store: new TimerFreeStore(windowMs) as unknown as MemoryStore,
-    ...options,
+    ...(options?.skipSuccessfulRequests !== undefined
+      ? { skipSuccessfulRequests: options.skipSuccessfulRequests }
+      : {}),
   });
+}
+
+/** Env-tuned limiter settings, falling back to safe defaults. */
+function limitConfig() {
+  try {
+    const env = getEnv();
+    return {
+      window: env.RATE_LIMIT_WINDOW_MS,
+      api: env.RATE_LIMIT_MAX,
+      auth: env.AUTH_RATE_LIMIT_MAX,
+      login: env.LOGIN_RATE_LIMIT_MAX,
+      register: env.REGISTER_RATE_LIMIT_MAX,
+    };
+  } catch {
+    return {
+      window: 15 * 60 * 1000,
+      api: 600,
+      auth: 30,
+      login: 5,
+      register: 3,
+    };
+  }
 }
 
 export function createApp(options?: { rateLimit?: boolean }) {
   const app = express();
   const enableRateLimit = options?.rateLimit ?? true;
 
-  const allowedOrigins = getFrontendUrl()
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  // Identifies every response for support/debugging: clients may echo it back
+  // in X-Request-Id and it appears in error payloads and server logs.
+  app.use((request: Request, response: Response, next: NextFunction) => {
+    const incoming = request.headers['x-request-id'];
+    const provided =
+      typeof incoming === 'string' && incoming.trim() ? incoming.trim().slice(0, 64) : null;
+    (request as RequestWithId).requestId = provided ?? newRequestId();
+    response.setHeader('x-request-id', (request as RequestWithId).requestId!);
+    next();
+  });
+
+  const allowedOrigins = getCorsOrigins();
 
   const isAllowedOrigin = (origin: string | undefined): boolean => {
     if (!origin) return true;
@@ -180,6 +248,25 @@ export function createApp(options?: { rateLimit?: boolean }) {
     })
   );
 
+  // Same-origin requests (the SPA and its crossorigin assets served by this
+  // very server) carry an Origin header that is not listed in FRONTEND_URL.
+  // They need no CORS headers at all — drop the header so the origin callback
+  // below does not reject them, while cross-origin requests keep the existing
+  // allow-list behaviour untouched.
+  app.use((request: Request, _response: Response, next: NextFunction) => {
+    const origin = request.headers.origin;
+    if (origin && request.headers.host) {
+      try {
+        if (new URL(origin).host === request.headers.host) {
+          delete request.headers.origin;
+        }
+      } catch {
+        // Malformed Origin — leave it for the CORS callback to judge.
+      }
+    }
+    next();
+  });
+
   app.use(
     cors({
       origin: (origin, callback) => {
@@ -190,8 +277,13 @@ export function createApp(options?: { rateLimit?: boolean }) {
         }
       },
       credentials: true,
+      exposedHeaders: ['x-request-id', 'ratelimit-limit', 'ratelimit-remaining', 'ratelimit-reset', 'retry-after'],
     })
   );
+
+  // Shrink JSON/API/SPA payloads on the wire (skips tiny responses and any
+  // already-compressed content-type).
+  app.use(compression());
 
   app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
@@ -202,28 +294,35 @@ export function createApp(options?: { rateLimit?: boolean }) {
     next();
   });
 
+  const limits = limitConfig();
+  const passthrough = (
+    _request: Request,
+    _response: Response,
+    next: NextFunction
+  ) => next();
+
   const apiLimiter = enableRateLimit
-    ? createLimit(15 * 60 * 1000, 300)
-    : ((_request: Request, _response: Response, next: NextFunction) => next());
+    ? createLimit(limits.window, limits.api)
+    : passthrough;
 
   const authLimiter = enableRateLimit
-    ? createLimit(15 * 60 * 1000, 30)
-    : ((_request: Request, _response: Response, next: NextFunction) => next());
+    ? createLimit(limits.window, limits.auth)
+    : passthrough;
 
   // Max 5 login attempts per IP per 15 minutes (only failed attempts count).
   const loginLimiter = enableRateLimit
-    ? createLimit(15 * 60 * 1000, 5, { skipSuccessfulRequests: true })
-    : ((_request: Request, _response: Response, next: NextFunction) => next());
+    ? createLimit(limits.window, limits.login, { skipSuccessfulRequests: true })
+    : passthrough;
 
   // Max 3 register attempts per IP per hour.
   const registerLimiter = enableRateLimit
-    ? createLimit(60 * 60 * 1000, 3)
-    : ((_request: Request, _response: Response, next: NextFunction) => next());
+    ? createLimit(60 * 60 * 1000, limits.register)
+    : passthrough;
 
   // Forgot-password: max 3 requests per IP per hour.
   const forgotPasswordLimiter = enableRateLimit
-    ? createLimit(60 * 60 * 1000, 3)
-    : ((_request: Request, _response: Response, next: NextFunction) => next());
+    ? createLimit(60 * 60 * 1000, limits.register)
+    : passthrough;
 
   // Forgot-password: max 3 requests per target account per hour, so
   // distributed IPs cannot probe one account's email address.
@@ -234,20 +333,41 @@ export function createApp(options?: { rateLimit?: boolean }) {
           return `forgot:${String(body.email ?? '').toLowerCase()}`;
         },
       })
-    : ((_request: Request, _response: Response, next: NextFunction) => next());
+    : passthrough;
 
   // Token reset attempts: max 10 per IP per hour.
   const resetTokenLimiter = enableRateLimit
     ? createLimit(60 * 60 * 1000, 10)
-    : ((_request: Request, _response: Response, next: NextFunction) => next());
+    : passthrough;
 
+  // Liveness + configuration report. Reports only booleans — whether each
+  // variable is present — never the values themselves.
   app.get('/api/health', async (_request, response) => {
+    let database: 'connected' | 'disconnected' = 'disconnected';
     try {
       await prisma.$queryRaw`SELECT 1`;
-      response.json({ status: 'ok', database: 'connected' });
+      database = 'connected';
     } catch {
-      response.status(503).json({ status: 'error', database: 'disconnected' });
+      database = 'disconnected';
     }
+
+    let config: Record<string, boolean> = {};
+    let configError: string | undefined;
+    try {
+      config = envStatus();
+    } catch (error) {
+      configError = error instanceof Error ? error.name : 'EnvError';
+    }
+
+    const healthy = database === 'connected' && !configError && config.jwtSecret !== false;
+    response.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'error',
+      database,
+      config,
+      ...(configError ? { configError } : {}),
+      uptimeSeconds: Math.round(process.uptime()),
+      time: new Date().toISOString(),
+    });
   });
 
   app.post('/api/auth/register', registerLimiter, register);
@@ -259,6 +379,10 @@ export function createApp(options?: { rateLimit?: boolean }) {
     response.status(410).json({ error: 'This endpoint has been removed' })
   );
   app.post('/api/auth/logout', authLimiter, logout);
+  // Silent session renewal for the frontend: re-issues the cookie from a
+  // still-signed but expired token (never for tokens from before a password
+  // change) so users are not logged out the moment the 7-day cookie lapses.
+  app.post('/api/auth/refresh', authLimiter, refreshSession);
   app.get('/api/auth/me', requireAuth, me);
 
   app.use('/api', apiLimiter, requireAuth);
@@ -388,34 +512,7 @@ export function createApp(options?: { rateLimit?: boolean }) {
     });
   }
 
-  app.use(
-    (
-      error: Error,
-      _request: express.Request,
-      response: express.Response,
-      _next: express.NextFunction
-    ) => {
-      console.error(error);
-
-      if ((error as { name?: string }).name === 'PrismaClientValidationError') {
-        return response.status(400).json({ error: 'Invalid request data' });
-      }
-
-      if (error.message === 'Not allowed by CORS') {
-        return response
-          .status(403)
-          .json({ error: 'CORS: Origin not allowed' });
-      }
-
-      if (process.env.NODE_ENV !== 'production') {
-        return response
-          .status(500)
-          .json({ error: error.message || 'Internal server error' });
-      }
-
-      response.status(500).json({ error: 'Internal server error' });
-    }
-  );
+  app.use(apiErrorHandler);
 
   return app;
 }

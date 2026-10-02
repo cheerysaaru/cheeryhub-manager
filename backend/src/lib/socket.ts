@@ -2,12 +2,13 @@ import type { Server } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { verifyToken } from '../utils/auth';
+import { getCorsOrigins } from './config';
 import { prisma } from './prisma';
 
 let io: SocketIOServer | null = null;
 
 export function initSocket(server: Server): SocketIOServer {
-  const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173').split(',').map((o) => o.trim());
+  const allowedOrigins = getCorsOrigins();
 
   io = new SocketIOServer(server, {
     cors: {
@@ -23,17 +24,17 @@ export function initSocket(server: Server): SocketIOServer {
       (socket.handshake.headers.cookie as string | undefined)?.match(/auth_token=([^;]+)/)?.[1];
     if (!token) return next(new Error('Authentication required'));
     const payload = verifyToken(token);
-    if (!payload) return next(new Error('Invalid or expired session'));
+    if (!payload) return next(new Error('Your session has expired. Please sign in again.'));
     try {
       const user = await prisma.user.findUnique({
         where: { id: payload.userId },
         select: { status: true },
       });
       if (!user || user.status !== 'ACTIVE') {
-        return next(new Error('Invalid or expired session'));
+        return next(new Error('Your session has expired. Please sign in again.'));
       }
     } catch {
-      return next(new Error('Invalid or expired session'));
+      return next(new Error('Your session has expired. Please sign in again.'));
     }
     (socket.data as { userId: string }).userId = payload.userId;
     next();

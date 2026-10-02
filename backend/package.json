@@ -12,6 +12,7 @@
     "@prisma/adapter-d1": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.2",
+    "compression": "^1.8.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",

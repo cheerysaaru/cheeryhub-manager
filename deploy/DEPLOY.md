@@ -1,3 +1,10 @@
+> **LEGACY / DEPRECATED.** Production no longer runs this path. The live API
+> (`api.cheeryhub.space`) is a **Cloudflare Worker with D1** — see
+> `backend/wrangler.toml` and the README "Production" section; CI deploys it
+> with `npx wrangler deploy`. Running this Node/CyberPanel backend *at the same
+> time as the Worker is what caused "Invalid or expired session": two backends,
+> two different `JWT_SECRET`s. Keep this document only for historical reference
+> or for a deliberate single-backend Node deployment (never both).
 # Deploying the backend to the CyberPanel server
 
 Your GitHub Pages frontend is already correct — it builds with

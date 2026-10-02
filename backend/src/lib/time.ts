@@ -14,15 +14,29 @@ const DAY_KEY_FORMAT = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 });
 
+// Intl.DateTimeFormat construction is expensive (locale data lookup). Hot paths
+// such as the streak endpoint call these helpers once per row, so formatters
+// are cached per timezone.
+const dayKeyFormatters = new Map<string, Intl.DateTimeFormat>();
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function dayKeyFormatterFor(timezone: string): Intl.DateTimeFormat {
+  let formatter = dayKeyFormatters.get(timezone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    dayKeyFormatters.set(timezone, formatter);
+  }
+  return formatter;
+}
+
 /** 'YYYY-MM-DD' for a moment, expressed in the given timezone. */
 export function dayKeyInTz(date: Date, timezone: string): string {
-  const format = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  return format.format(date);
+  return dayKeyFormatterFor(timezone).format(date);
 }
 
 export function todayKey(timezone: string, now: Date = new Date()): string {
@@ -39,16 +53,21 @@ export function shiftDayKey(dayKey: string, days: number): string {
 
 /** Offset (ms) of `timeZone` relative to UTC at a given instant. */
 function tzOffsetMs(instant: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(instant);
+  let formatter = offsetFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    offsetFormatters.set(timeZone, formatter);
+  }
+  const parts = formatter.formatToParts(instant);
   const get = (type: Intl.DateTimeFormatPartTypes) =>
     Number(parts.find((part) => part.type === type)?.value ?? '0');
   const asUtc = Date.UTC(

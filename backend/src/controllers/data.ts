@@ -5,13 +5,14 @@ import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
 import { generateNotifications } from '../lib/notifications';
-import { POINTS, awardPoints, revokePoints } from '../lib/points';
+import { POINTS, awardPoints } from '../lib/points';
+import { applyHabitDayPoints, revokeHabitDayPoints } from '../lib/habitPoints';
+import { resolveHabitDayKey } from '../lib/habitDay';
 import {
   timezoneOf,
   todayKey,
   dayKeyInTz,
   resolveDeadline,
-  shiftDayKey,
 } from '../lib/time';
 
 const bodySchema = z.object({ title: z.string().trim().min(1).max(200).optional(), name: z.string().trim().min(1).max(200).optional(), description: z.string().max(5000).optional(), category: z.string().max(100).optional(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(), status: z.string().max(30).optional(), scheduledDate: z.coerce.date().optional(), scheduledTime: z.string().max(20).optional(), deadlineTime: z.string().max(20).optional(), dueAt: z.union([z.string().max(40), z.date()]).optional(), recurrence: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), isMandatory: z.boolean().optional(), reminderEnabled: z.boolean().optional(), estimatedMinutes: z.number().int().positive().max(1440).optional(), progress: z.number().int().min(0).max(100).optional(), deadline: z.coerce.date().optional(), currentLevel: z.number().int().min(1).max(100).optional(), targetLevel: z.number().int().min(1).max(100).optional(), reminderDate: z.coerce.date().optional(), reminderTime: z.string().max(20).optional(), repeatType: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY']).optional(), enabled: z.boolean().optional() }).passthrough();
@@ -110,7 +111,27 @@ export async function list(request: AuthRequest, response: Response) {
     }
   }
   if (key === 'tasks') {
-    return ok(response, await Promise.all(records.map(async (task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; dueAt: Date | null; startAt: Date | null; extendedAt: Date | null; checkIns: Array<{ checked: boolean }> }) => {
+    // One grouped query for the whole page instead of one query per task
+    // (the old per-row groupBy made /api/tasks scale with the list size).
+    const taskIds = records.map((task: { id: string }) => task.id);
+    const historyRows = taskIds.length
+      ? await prisma.taskCheckIn.groupBy({
+          by: ['taskId', 'checked'],
+          where: { taskId: { in: taskIds }, userId: request.userId },
+          _count: { _all: true },
+        })
+      : [];
+    const historyByTask = new Map<string, { checked: number; missed: number }>();
+    for (const row of historyRows) {
+      let entry = historyByTask.get(row.taskId);
+      if (!entry) {
+        entry = { checked: 0, missed: 0 };
+        historyByTask.set(row.taskId, entry);
+      }
+      if (row.checked) entry.checked = row._count._all;
+      else entry.missed = row._count._all;
+    }
+    return ok(response, records.map((task: { id: string; recurrence: string; completedAt: Date | null; status: string; scheduledDate: Date | null; dueAt: Date | null; startAt: Date | null; extendedAt: Date | null; checkIns: Array<{ checked: boolean }> }) => {
       let normalized = task;
       if (task.recurrence !== 'NONE' && task.completedAt) {
         const completed = new Date(task.completedAt); completed.setUTCHours(0, 0, 0, 0);
@@ -128,9 +149,9 @@ export async function list(request: AuthRequest, response: Response) {
           overdueStatus = today.getTime() > scheduled.getTime();
         }
       }
-      const history = await prisma.taskCheckIn.groupBy({ by: ['checked'], where: { taskId: task.id, userId: request.userId }, _count: { _all: true } });
-      return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.find((item) => item.checked)?._count._all ?? 0, missedDays: history.find((item) => !item.checked)?._count._all ?? 0, isOverdue: overdueStatus };
-    })));
+      const history = historyByTask.get(task.id) ?? { checked: 0, missed: 0 };
+      return { ...normalized, checkedToday: task.checkIns[0]?.checked ?? false, checkedDays: history.checked, missedDays: history.missed, isOverdue: overdueStatus };
+    }));
   }
   if (key === 'habits') {
     return ok(response, await Promise.all(records.map((habit: { id: string }) => habitDayPayload(habit, request.userId!, today))));
@@ -241,8 +262,8 @@ async function getUserTodayFor(userId: string): Promise<Date> {
 
 type HabitDayStatus = 'COMPLETED' | 'FAILED' | 'SKIPPED';
 
-/** Users may fix yesterday and the day before; nothing older, nothing future. */
-const BACK_FILL_DAYS = 2;
+/** Audit rows record the terminal state of a cleared day too. */
+const CLEARED_STATUS = 'NONE';
 
 const habitDaySchema = z.object({ date: z.string().max(10).optional() });
 
@@ -254,17 +275,10 @@ type HabitDayResult = { ok: true; date: Date } | { ok: false; error: string };
  */
 async function resolveHabitDay(userId: string, raw: unknown): Promise<HabitDayResult> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
-  const timezone = timezoneOf(user?.timezone);
-  const today = todayKey(timezone);
-  if (raw === undefined || raw === null || raw === '') {
-    return { ok: true, date: new Date(`${today}T00:00:00.000Z`) };
-  }
-  const key = String(raw).trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return { ok: false, error: 'Invalid date' };
-  if (key > today) return { ok: false, error: 'Cannot update a future day' };
-  const earliest = shiftDayKey(today, -BACK_FILL_DAYS);
-  if (key < earliest) return { ok: false, error: `Only today and the last ${BACK_FILL_DAYS} days can be updated` };
-  return { ok: true, date: new Date(`${key}T00:00:00.000Z`) };
+  const today = todayKey(timezoneOf(user?.timezone));
+  const resolved = resolveHabitDayKey(raw, today);
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+  return { ok: true, date: new Date(`${resolved.key}T00:00:00.000Z`) };
 }
 
 function completionStatus(status: string | null | undefined): HabitDayStatus {
@@ -308,28 +322,37 @@ async function setHabitDayStatus(request: AuthRequest, response: Response, statu
   if (!target.ok) return fail(response, target.error, 400);
   const date = target.date;
   const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
-  const checkKey = `habit:checkin:${habit.id}:${dayKey(date)}`;
-  const missKey = `habit:missed:${habit.id}:${dayKey(date)}`;
   let xpDelta = 0;
   let xpReason = '';
   const completion = await prisma.$transaction(async (tx) => {
+    const previous = await tx.habitCompletion.findUnique({
+      where: { habitId_date: { habitId: habit.id, date } },
+      select: { status: true },
+    });
     const row = await tx.habitCompletion.upsert({
       where: { habitId_date: { habitId: habit.id, date } },
       update: { status, completedAt: new Date() },
       create: { habitId: habit.id, userId: request.userId!, date, status },
     });
-    if (status === 'COMPLETED') {
-      await revokePoints(tx, request.userId!, missKey);
-      xpDelta = await awardPoints(tx, { userId: request.userId!, amount: POINTS.COMMITMENT_CHECK_IN, reason: 'Daily commitment checked in', dedupeKey: checkKey, habitId: habit.id });
-      xpReason = 'Daily commitment checked in';
-    } else if (status === 'FAILED') {
-      await revokePoints(tx, request.userId!, checkKey);
-      xpDelta = await awardPoints(tx, { userId: request.userId!, amount: POINTS.COMMITMENT_MISSED, reason: 'Daily commitment missed', dedupeKey: missKey, habitId: habit.id });
-      xpReason = 'Daily commitment missed';
-    } else {
-      xpDelta = (await revokePoints(tx, request.userId!, checkKey)) + (await revokePoints(tx, request.userId!, missKey));
-      xpReason = xpDelta ? 'Commitment status cleared' : '';
-    }
+    const points = await applyHabitDayPoints(tx, {
+      userId: request.userId!,
+      habitId: habit.id,
+      dayKey: dayKey(date),
+      status,
+    });
+    xpDelta = points.delta;
+    xpReason = points.reason;
+    // Append-only audit trail: never rewrites an earlier event.
+    await tx.habitDayEvent.create({
+      data: {
+        userId: request.userId!,
+        habitId: habit.id,
+        date,
+        fromStatus: previous?.status ?? null,
+        toStatus: status,
+        pointsDelta: xpDelta,
+      },
+    });
     return row;
   });
   const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
@@ -380,10 +403,28 @@ export async function clearHabitToday(request: AuthRequest, response: Response) 
   const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
   const targetKey = dayKey(target.date);
   const revoked = await prisma.$transaction(async (tx) => {
+    const previous = await tx.habitCompletion.findUnique({
+      where: { habitId_date: { habitId, date: target.date } },
+      select: { status: true },
+    });
     await tx.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date: target.date } });
-    const checkRevoked = await revokePoints(tx, request.userId!, `habit:checkin:${habitId}:${targetKey}`);
-    const missRevoked = await revokePoints(tx, request.userId!, `habit:missed:${habitId}:${targetKey}`);
-    return checkRevoked + missRevoked;
+    const points = await revokeHabitDayPoints(tx, {
+      userId: request.userId!,
+      habitId,
+      dayKey: targetKey,
+    });
+    // Append-only audit trail for the undo; the commitment itself is untouched.
+    await tx.habitDayEvent.create({
+      data: {
+        userId: request.userId!,
+        habitId,
+        date: target.date,
+        fromStatus: previous?.status ?? null,
+        toStatus: CLEARED_STATUS,
+        pointsDelta: points.delta,
+      },
+    });
+    return points.delta;
   });
   const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
   emitEvent(request.userId!, 'habits', 'updated', payload);

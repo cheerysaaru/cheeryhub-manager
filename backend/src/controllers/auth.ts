@@ -1,11 +1,12 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { Request, Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { setAuthCookie } from '../utils/auth';
 import { prisma } from '../lib/prisma';
-import { getAppUrl } from '../lib/config';
+import { getAppUrl, getJwtSecret } from '../lib/config';
 import { sendPasswordChangedEmail, sendPasswordResetEmail } from '../lib/email';
 import { fail, ok } from '../utils/response';
 import {
@@ -67,6 +68,9 @@ const publicUser = (user: {
   role: user.role,
   status: user.status,
 });
+
+const requestIdOf = (request: Request): string | undefined =>
+  (request as Request & { requestId?: string }).requestId;
 
 function passwordIssue(body: unknown): string {
   const password =
@@ -166,7 +170,7 @@ export async function forgotPassword(request: Request, response: Response) {
           expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
         },
       });
-      await sendPasswordResetEmail(user.email, token, getAppUrl());
+      await sendPasswordResetEmail(user.email, token, getAppUrl(), requestIdOf(request));
     }
   }
   return ok(response, { message: FORGOT_MESSAGE });
@@ -215,13 +219,63 @@ export async function resetPasswordWithToken(request: Request, response: Respons
     where: { id: user.id },
     data: { passwordHash, passwordChangedAt: new Date() },
   });
-  await sendPasswordChangedEmail(user.email);
+  await sendPasswordChangedEmail(user.email, requestIdOf(request));
   return ok(response, { message: 'Password updated successfully' });
 }
 
 export function logout(_request: Request, response: Response) {
   response.clearCookie('auth_token');
   return ok(response, { loggedOut: true });
+}
+
+/**
+ * Re-issues the auth cookie from a token that is still correctly signed but
+ * has passed its 7-day expiry, so the frontend can recover silently instead
+ * of forcing a sign-in. Never accepts tokens that predate a password change
+ * or belong to a disabled/deleted account.
+ */
+export async function refreshSession(request: AuthRequest, response: Response) {
+  const token =
+    request.cookies?.auth_token ??
+    request.headers.authorization?.replace('Bearer ', '');
+  if (!token)
+    return response.status(401).json({
+      error: 'Authentication required',
+      code: 'AUTH_REQUIRED',
+    });
+
+  let payload: { userId: string; iat?: number };
+  try {
+    payload = jwt.verify(token, getJwtSecret(), {
+      ignoreExpiration: true,
+    }) as { userId: string; iat?: number };
+  } catch {
+    return response.status(401).json({
+      error: 'Your session has expired. Please sign in again.',
+      code: 'SESSION_EXPIRED',
+    });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { id: true, status: true, passwordChangedAt: true },
+  });
+  if (!user || user.status !== 'ACTIVE')
+    return response.status(401).json({
+      error: 'Your session has expired. Please sign in again.',
+      code: 'SESSION_EXPIRED',
+    });
+  if (
+    user.passwordChangedAt &&
+    (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
+  )
+    return response.status(401).json({
+      error: 'Your session has expired. Please sign in again.',
+      code: 'SESSION_EXPIRED',
+    });
+
+  setAuthCookie(response, user.id);
+  return ok(response, { refreshed: true, userId: user.id });
 }
 
 export async function me(request: AuthRequest, response: Response) {

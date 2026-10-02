@@ -7,8 +7,9 @@ import { emitToUser } from '../lib/socket';
 import { generateNotifications } from '../lib/notifications';
 
 export async function listNotifications(request: AuthRequest, response: Response) {
-  // Refresh standing reminders first so the bell is never stale.
-  await generateNotifications(request.userId!).catch(() => undefined);
+  // Refresh standing reminders in the background so the bell is never stale
+  // for long, while the current state streams back immediately.
+  void generateNotifications(request.userId!).catch(() => undefined);
   const [items, unreadCount] = await Promise.all([
     prisma.notification.findMany({
       where: { userId: request.userId },

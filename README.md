@@ -27,7 +27,31 @@ Default seed login (development only): `you@example.com` / password from `SEED_P
 
 ## Environment
 
-See `.env.example` for `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `FRONTEND_URL`, `BASE_PATH`, cookie settings, and optional `EMAIL_API_KEY` / `EMAIL_FROM` (Resend). The frontend uses `VITE_API_URL` when the API is deployed separately.
+Variables are validated with Zod at startup — the server **exits with a readable message** (variable names only, never values) if `JWT_SECRET` or `DATABASE_URL` is missing/invalid, and `GET /api/health` reports which variables are set as booleans. Templates: [`.env.example`](.env.example) (local) and [`backend/.env.example`](backend/.env.example) (full inventory).
+
+| Variable | Required | Where it is read | Default |
+| --- | --- | --- | --- |
+| `JWT_SECRET` | yes (32+ chars, not the template placeholder) | Node server + Worker (secret) | — |
+| `DATABASE_URL` | Node server only (Worker uses the D1 binding) | `prisma/schema.prisma`, boot check | — |
+| `NODE_ENV` | no | both | `development` |
+| `PORT` | no | Node server | `4000` |
+| `FRONTEND_URL` | no | CORS + Socket.IO (comma-separated origins) | `http://localhost:5173` |
+| `APP_URL` | no | links in outgoing email | first `FRONTEND_URL` origin |
+| `EMAIL_API_KEY` | optional | Resend; email silently skipped when unset | — |
+| `EMAIL_FROM` | no | Resend sender | `Productivity <onboarding@resend.dev>` |
+| `COOKIE_SECURE` / `COOKIE_SAME_SITE` / `COOKIE_DOMAIN` | no | auth cookie | `production→secure`, `lax` |
+| `RATE_LIMIT_*`, `AUTH_RATE_LIMIT_MAX`, `LOGIN_RATE_LIMIT_MAX`, `REGISTER_RATE_LIMIT_MAX` | no | rate limiter | see `backend/.env.example` |
+| `VITE_API_URL` | frontend build | browser → API base URL | `http://localhost:4000/api` (fail-fast if unset in a production build) |
+| `VITE_BASE` | frontend build | GitHub Pages base path | `/` |
+
+How each platform supplies them:
+
+- **Cloudflare Worker (production API):** `npx wrangler secret put JWT_SECRET` and `npx wrangler secret put EMAIL_API_KEY` for secrets; non-secret values live in `backend/wrangler.toml` `[vars]`. The worker validates its environment on cold start and fails loudly if `JWT_SECRET` is missing.
+- **Local / systemd (Node):** `backend/.env` (root `.env` is also read). systemd uses `EnvironmentFile=backend/.env` ([deploy/cheeryhub-api.service](deploy/cheeryhub-api.service)).
+- **Vercel (frontend):** project env var `VITE_API_URL=https://api.cheeryhub.space/api`.
+- **GitHub Pages (frontend):** `frontend/.env.production` + `VITE_BASE=/cheeryhub-manager/` in CI.
+
+Errors returned by the API always carry `{ error, code, requestId }`; the same `requestId` appears in server logs and in the `X-Request-Id` response header.
 
 ## Features
 
@@ -41,20 +65,30 @@ See `.env.example` for `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `FRONTE
 
 Authentication uses bcrypt password hashes and an HTTP-only JWT cookie. Protected routes require a session; all resource queries are scoped to the session user. `DELETE` for tasks and habits is a soft delete.
 
-Main routes: `/api/health`, `/api/auth/*` (register, login, logout, me, verify-email, resend-verification), CRUD for `tasks`, `habits`, `goals`, `skills`, `reminders`, `brand`, `transactions`, plus completion/check-in/timer, goal/brand milestones, focus, journal, XP, settings, analytics, and backup export/import. Responses use `{ data: ... }` on success and `{ error: ... }` on failure.
+Main routes: `/api/health` (status + config presence), `/api/auth/*` (register, login, logout, refresh, me, forgot, reset, verify-email, resend-verification), CRUD for `tasks`, `habits`, `goals`, `skills`, `reminders`, `brand`, `transactions`, plus completion/check-in/timer, goal/brand milestones, focus, journal, XP, settings, analytics, and backup export/import. Responses use `{ data: ... }` on success and `{ error, code?, requestId? }` on failure.
+
+Sessions: the auth cookie lasts 7 days; `POST /api/auth/refresh` re-issues it from an expired-but-validly-signed token (and refuses tokens from before a password change). The frontend calls it automatically once after a `401` before asking the user to sign in again.
+
+Reliability: outbound calls (email provider) use a timeout + exponential backoff + circuit breaker; clients retry `429`/network failures with `Retry-After` awareness; rate-limited responses are JSON (`{ error, code: "RATE_LIMITED", retryAfterSeconds }`) and are keyed by the real client IP (`CF-Connecting-IP` / last `X-Forwarded-For` entry), so one client cannot exhaust another's quota.
 
 ## Testing
 
 ```bash
-npm test   # typecheck backend + frontend
+npm test           # unit tests (vitest) + typecheck backend & frontend
+npm run test:unit  # unit tests only
 npm run build
+```
+
+Secret scan (CI/local):
+
+```bash
+npx gitleaks git --redact --verbose .   # whole history; never prints found secrets
 ```
 
 ## Production
 
-- Architecture: **GitHub Pages (frontend) → CyberPanel backend (`https://api.cheeryhub.space`) → SQLite (`prisma/dev.db`)**.
-- Step-by-step server setup: **[deploy/DEPLOY.md](deploy/DEPLOY.md)** — `sudo bash deploy/setup-server.sh` on the server, then attach the CyberPanel reverse proxy, then `bash deploy/verify.sh`.
-- Backend on CyberPanel: upload `package.json`, `package-lock.json`, `backend/`, `prisma/` (not `frontend/`, not `node_modules/`). Then run `npm ci`, `npx prisma generate --schema=prisma/schema.prisma`, `npm run build --workspace backend`, `npx prisma migrate deploy --schema=prisma/schema.prisma` (skip if uploading an existing `prisma/dev.db`), and start with `npm start --workspace backend` (listens on `0.0.0.0:4000`).
-- Backend env (server `.env`): `DATABASE_URL="file:./dev.db"`, `JWT_SECRET`, `NODE_ENV=production`, `FRONTEND_URL="https://cheerysaaru.github.io"`, `COOKIE_SAME_SITE=none`, `COOKIE_SECURE=true`, optional `PORT` (default 4000), `COOKIE_DOMAIN`.
-- Frontend: `frontend/.env.production` sets `VITE_API_URL=https://api.cheeryhub.space/api`; GitHub Actions (`.github/workflows/deploy.yml`) builds with `VITE_BASE=/cheeryhub-manager/` and deploys `frontend/dist` to GitHub Pages on push to `main`.
-- Backups (SQLite): copy `prisma/dev.db` on a schedule; test restores regularly.
+- **API (source of truth): Cloudflare Worker + D1** — `https://api.cheeryhub.space` is served by the Worker (`backend/wrangler.toml`, custom domain route). CI deploys it with `npx wrangler deploy` (`.github/workflows/deploy-backend.yml`). Secrets live in Wrangler: `npx wrangler secret put JWT_SECRET`, `npx wrangler secret put EMAIL_API_KEY`. Data lives in the D1 database (`personal-productivity-db`); migrations are in `backend/migrations`.
+- **Frontend:** GitHub Pages (built with `VITE_BASE=/cheeryhub-manager/`, `frontend/.env.production` sets `VITE_API_URL=https://api.cheeryhub.space/api`) and/or Vercel (`vercel.json`, same `VITE_API_URL` via CI). `.github/workflows/deploy-both.yml` deploys both.
+- Health/status: `GET https://api.cheeryhub.space/api/health` → `{ status, database, config: { jwtSecret: true, ... } }` (booleans only; `503` when degraded).
+- **Legacy: CyberPanel/systemd Node backend** (`deploy/`) is kept for reference only — it ran the same Express app behind LiteSpeed with SQLite and its own `JWT_SECRET`, which is why a token issued there was rejected by the Cloudflare backend (`Invalid or expired session`). See [deploy/DEPLOY.md](deploy/DEPLOY.md); do not re-enable it alongside the Worker (two backends = two secrets = intermittent 401s).
+- Rotating secrets: `npx wrangler secret put JWT_SECRET` (Worker) invalidates all sessions; update `backend/.env` too if a Node deploy is ever revived.
