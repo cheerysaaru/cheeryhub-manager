@@ -6,15 +6,20 @@ vi.mock('./prisma', () => ({ prisma: {} }));
 function makeDb() {
   return {
     xPTransaction: {
+      count: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
-      deleteMany: vi.fn(),
     },
   };
 }
 
 function asDb(db: ReturnType<typeof makeDb>): Db {
   return db as unknown as Db;
+}
+
+/** chainState runs two counts: [awards, reversals]. */
+function chain(db: ReturnType<typeof makeDb>, awards: number, reversals: number) {
+  db.xPTransaction.count.mockResolvedValueOnce(awards).mockResolvedValueOnce(reversals);
 }
 
 beforeEach(() => {
@@ -41,7 +46,7 @@ describe('POINTS', () => {
 describe('awardPoints', () => {
   it('applies the amount and returns it', async () => {
     const db = makeDb();
-    db.xPTransaction.findUnique.mockResolvedValue(null);
+    chain(db, 0, 0);
     db.xPTransaction.create.mockResolvedValue({});
 
     const applied = await awardPoints(asDb(db), {
@@ -74,13 +79,13 @@ describe('awardPoints', () => {
       dedupeKey: 'task:overdue:t2',
     });
     expect(applied).toBe(0);
-    expect(db.xPTransaction.findUnique).not.toHaveBeenCalled();
+    expect(db.xPTransaction.count).not.toHaveBeenCalled();
     expect(db.xPTransaction.create).not.toHaveBeenCalled();
   });
 
-  it('skips when the dedupe key was already recorded', async () => {
+  it('skips when the award is still active for the chain', async () => {
     const db = makeDb();
-    db.xPTransaction.findUnique.mockResolvedValue({ id: 'xp1' });
+    chain(db, 1, 0);
 
     const applied = await awardPoints(asDb(db), {
       userId: 'u1',
@@ -93,9 +98,29 @@ describe('awardPoints', () => {
     expect(db.xPTransaction.create).not.toHaveBeenCalled();
   });
 
+  it('appends a fresh award under a new key after a reversal (never reuses a row)', async () => {
+    const db = makeDb();
+    chain(db, 1, 1);
+    db.xPTransaction.create.mockResolvedValue({});
+
+    const applied = await awardPoints(asDb(db), {
+      userId: 'u1',
+      amount: 4,
+      reason: 'habit:checkin:h1:2026-10-01',
+      dedupeKey: 'habit:checkin:h1:2026-10-01',
+    });
+
+    expect(applied).toBe(4);
+    expect(db.xPTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ dedupeKey: 'habit:checkin:h1:2026-10-01#g2' }),
+      })
+    );
+  });
+
   it('treats a unique-constraint race as already applied', async () => {
     const db = makeDb();
-    db.xPTransaction.findUnique.mockResolvedValue(null);
+    chain(db, 0, 0);
     db.xPTransaction.create.mockRejectedValue({ code: 'P2002' });
 
     const applied = await awardPoints(asDb(db), {
@@ -110,7 +135,7 @@ describe('awardPoints', () => {
 
   it('rethrows unexpected database errors', async () => {
     const db = makeDb();
-    db.xPTransaction.findUnique.mockResolvedValue(null);
+    chain(db, 0, 0);
     db.xPTransaction.create.mockRejectedValue(new Error('connection lost'));
 
     await expect(
@@ -125,7 +150,7 @@ describe('awardPoints', () => {
     const applied = await awardPoints(asDb(db), { userId: 'u1', amount: -3, reason: 'goal:missed:g2' });
 
     expect(applied).toBe(-3);
-    expect(db.xPTransaction.findUnique).not.toHaveBeenCalled();
+    expect(db.xPTransaction.count).not.toHaveBeenCalled();
     expect(db.xPTransaction.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ dedupeKey: null }) })
     );
@@ -133,26 +158,80 @@ describe('awardPoints', () => {
 });
 
 describe('revokePoints', () => {
-  it('returns the amount that was removed', async () => {
+  it('appends a reversing row instead of deleting anything', async () => {
     const db = makeDb();
-    db.xPTransaction.findUnique.mockResolvedValue({ amount: -5 });
-    db.xPTransaction.deleteMany.mockResolvedValue({ count: 1 });
+    chain(db, 1, 0);
+    db.xPTransaction.findUnique.mockResolvedValue({
+      amount: -5,
+      reason: 'Daily commitment missed',
+      taskId: null,
+      habitId: 'h9',
+    });
+    db.xPTransaction.create.mockResolvedValue({});
 
     const removed = await revokePoints(asDb(db), 'u1', 'habit:missed:h9:2026-10-01');
 
     expect(removed).toBe(5);
-    expect(db.xPTransaction.deleteMany).toHaveBeenCalledWith({
-      where: { userId: 'u1', dedupeKey: 'habit:missed:h9:2026-10-01' },
+    expect(db.xPTransaction.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'u1',
+        amount: 5,
+        reason: 'Reversed: Daily commitment missed',
+        dedupeKey: 'habit:missed:h9:2026-10-01#rev1',
+        taskId: null,
+        habitId: 'h9',
+      },
     });
+    expect(db.xPTransaction).not.toHaveProperty('deleteMany');
   });
 
-  it('returns 0 and deletes nothing when nothing was recorded', async () => {
+  it('reverses the second award in the chain by its generation key', async () => {
     const db = makeDb();
-    db.xPTransaction.findUnique.mockResolvedValue(null);
+    chain(db, 2, 1);
+    db.xPTransaction.findUnique.mockResolvedValue({
+      amount: 4,
+      reason: 'Daily commitment checked in',
+      taskId: null,
+      habitId: 'h9',
+    });
+    db.xPTransaction.create.mockResolvedValue({});
+
+    const removed = await revokePoints(asDb(db), 'u1', 'habit:checkin:h9:2026-10-01');
+
+    expect(removed).toBe(-4);
+    expect(db.xPTransaction.findUnique).toHaveBeenCalledWith({
+      where: {
+        userId_dedupeKey: { userId: 'u1', dedupeKey: 'habit:checkin:h9:2026-10-01#g2' },
+      },
+    });
+    expect(db.xPTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          amount: -4,
+          dedupeKey: 'habit:checkin:h9:2026-10-01#rev2',
+        }),
+      })
+    );
+  });
+
+  it('returns 0 and writes nothing when nothing was recorded', async () => {
+    const db = makeDb();
+    chain(db, 0, 0);
 
     const removed = await revokePoints(asDb(db), 'u1', 'habit:checkin:h9:2026-10-01');
 
     expect(removed).toBe(0);
-    expect(db.xPTransaction.deleteMany).not.toHaveBeenCalled();
+    expect(db.xPTransaction.create).not.toHaveBeenCalled();
+    expect(db.xPTransaction.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('returns 0 when the award is already reversed (idempotent undo)', async () => {
+    const db = makeDb();
+    chain(db, 1, 1);
+
+    const removed = await revokePoints(asDb(db), 'u1', 'habit:checkin:h9:2026-10-01');
+
+    expect(removed).toBe(0);
+    expect(db.xPTransaction.create).not.toHaveBeenCalled();
   });
 });
