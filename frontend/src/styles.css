@@ -1954,29 +1954,97 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 .backfill-cell:hover { border-color: var(--primary); transform: translateY(-1px); }
 .backfill-cell .backfill-day { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .backfill-cell .backfill-date { font-size: 1.05rem; font-weight: 700; color: var(--text); }
-.backfill-cell.completed { background: var(--success-bg); border-color: var(--success); color: var(--success); }
-.backfill-cell.failed { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
-.backfill-cell.skipped { background: var(--info-bg); border-color: var(--info); color: var(--info); }
+.backfill-cell.status-completed { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+.backfill-cell.status-failed { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+.backfill-cell.status-skipped { background: var(--info-bg); border-color: var(--info); color: var(--info); }
+.backfill-cell.is-today { outline: 2px solid var(--primary); outline-offset: 1px; }
 
-.history-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
-  gap: 5px;
+/* Commitments month calendar */
+.month-section { margin-top: 18px; }
+.month-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 }
-.history-cell {
+.month-header h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); }
+.month-summary { font-size: 13px; color: var(--text-muted); }
+.month-weekdays {
   display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  min-height: 30px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.month-weekdays span {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.month-cell {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 4px 2px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-hover);
-  color: var(--text-subtle);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
 }
-.history-cell.completed { background: var(--success-bg); border-color: var(--success); color: var(--success); }
-.history-cell.failed { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
-.history-cell.skipped { background: var(--info-bg); border-color: var(--info); color: var(--info); }
-.history-cell.is-today { outline: 2px solid var(--primary); outline-offset: 1px; }
+.month-cell .month-day-number { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1; }
+.month-cell .month-cell-icon { display: grid; place-items: center; height: 16px; color: var(--text-subtle); }
+.month-cell.is-outside {
+  border-color: transparent;
+  background: transparent;
+  pointer-events: none;
+}
+.month-cell.status-empty .month-day-number { color: var(--text-muted); font-weight: 500; }
+.month-cell.status-completed { background: var(--success-bg); border-color: var(--success); }
+.month-cell.status-completed .month-cell-icon { color: var(--success); }
+.month-cell.status-failed { background: var(--danger-bg); border-color: var(--danger); }
+.month-cell.status-failed .month-cell-icon { color: var(--danger); }
+.month-cell.status-skipped { background: var(--info-bg); border-color: var(--info); }
+.month-cell.status-skipped .month-cell-icon { color: var(--info); }
+.month-cell.is-today { outline: 2px solid var(--primary); outline-offset: 1px; }
+.month-cell.is-inactive { background: transparent; border-color: var(--border); opacity: 0.45; cursor: not-allowed; }
+.month-cell.is-locked { opacity: 0.6; cursor: not-allowed; }
+.month-cell.is-locked .month-day-number { color: var(--text-muted); }
+.month-cell:disabled { cursor: not-allowed; }
+.month-cell.is-editable:hover { border-color: var(--primary); background: var(--success-bg); }
+.month-cell.is-editable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.month-empty { margin: 10px 0 0; color: var(--text-subtle); font-size: 0.85rem; }
+.show-earlier-months {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.show-earlier-months:hover { border-color: var(--primary); color: var(--primary); }
+.show-earlier-months svg { transform: rotate(180deg); }
 
 .history-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
 .legend-item {
@@ -1990,10 +2058,11 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 .legend-item.failed { color: var(--danger); }
 .legend-item.skipped { color: var(--info); }
 .legend-item.empty { color: var(--text-subtle); }
+.legend-item.locked { color: var(--text-subtle); }
 
 @media (max-width: 700px) {
   .backfill-cell { min-width: 0; flex: 1; }
-  .history-grid { grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); }
+  .month-grid, .month-weekdays { gap: 2px; }
 }
 
 /* Phase 3: level badge (round button) + points modal */
