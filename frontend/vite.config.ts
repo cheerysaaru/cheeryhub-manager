@@ -27,7 +27,7 @@ function spaFallback404(): Plugin {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), spaFallback404()],
-  base: process.env.VITE_BASE ?? '/',
+  base: '/',
   build: {
     rollupOptions: {
       output: {
