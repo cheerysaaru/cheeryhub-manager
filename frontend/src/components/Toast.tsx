@@ -1,16 +1,28 @@
 import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 
-interface Toast {
-  id: string;
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+export interface ToastOptions {
   type: 'success' | 'error' | 'warning' | 'info';
   title: string;
   message?: string;
   duration?: number;
+  /** Optional inline action, e.g. an Undo button for reversible changes. */
+  action?: ToastAction;
 }
 
+interface Toast extends ToastOptions {
+  id: string;
+}
+
+export type ToastFn = (toast: ToastOptions) => string;
+
 interface ToastContextType {
-  toast: (toast: Omit<Toast, 'id'>) => string;
+  toast: ToastFn;
   dismiss: (id: string) => void;
 }
 
@@ -19,7 +31,7 @@ const ToastContext = createContext<ToastContextType | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toast = useCallback((t: Omit<Toast, 'id'>) => {
+  const toast = useCallback<ToastFn>((t) => {
     const id = Math.random().toString(36).slice(2);
     const newToast = { ...t, id };
     setToasts((prev) => [...prev, newToast]);
@@ -70,6 +82,18 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
           <div className="toast-content">
             <p className="toast-title">{toast.title}</p>
             {toast.message && <p className="toast-message">{toast.message}</p>}
+            {toast.action && (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  toast.action?.onClick();
+                  onDismiss(toast.id);
+                }}
+              >
+                {toast.action.label}
+              </button>
+            )}
           </div>
           <button className="toast-close" onClick={() => onDismiss(toast.id)} aria-label="Dismiss">
             <X size={16} />
@@ -113,6 +137,18 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
         .toast-content { flex: 1; min-width: 0; }
         .toast-title { margin: 0 0 4px; font-weight: 600; color: var(--text); }
         .toast-message { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+        .toast-action {
+          margin: 8px 0 0;
+          padding: 4px 10px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--primary, #2f855a);
+          background: rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          border-radius: 6px;
+          cursor: pointer;
+        }
+        .toast-action:hover { background: rgba(0, 0, 0, 0.09); }
         .toast-close { flex-shrink: 0; padding: 4px; color: var(--text-muted); background: none; border: none; border-radius: 4px; cursor: pointer; }
         .toast-close:hover { background: rgba(0,0,0,0.05); color: var(--text); }
         @media (max-width: 480px) {

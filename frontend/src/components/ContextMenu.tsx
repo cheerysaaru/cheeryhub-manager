@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -8,13 +8,26 @@ export interface ContextMenuState {
   label: string;
 }
 
+export interface MenuItem {
+  key: string;
+  label: string;
+  icon?: ReactNode;
+  danger?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}
+
 interface ContextMenuProps {
   state: ContextMenuState | null;
   onClose: () => void;
   onEdit?: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   editLabel?: string;
   deleteLabel?: string;
+  /** Visible menu heading; defaults to `state.label`. */
+  title?: string;
+  /** When provided, these items replace the default edit/delete pair. */
+  items?: MenuItem[];
 }
 
 let ignoreCloseUntil = 0;
@@ -65,7 +78,7 @@ export function useContextMenu() {
   return { menu, open, close, bind };
 }
 
-export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edit', deleteLabel = 'Delete' }: ContextMenuProps) {
+export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edit', deleteLabel = 'Delete', title, items }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -94,8 +107,9 @@ export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edi
 
   if (!state) return null;
 
-  const menuWidth = 180;
-  const menuHeight = onEdit ? 96 : 52;
+  const menuWidth = 200;
+  const rowCount = items ? items.length : onEdit ? 2 : 1;
+  const menuHeight = 40 + rowCount * 40;
   const x = Math.min(state.x, window.innerWidth - menuWidth - 8);
   const y = Math.min(state.y, window.innerHeight - menuHeight - 8);
 
@@ -107,17 +121,41 @@ export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edi
       aria-label={`Actions for ${state.label}`}
       style={{ left: Math.max(8, x), top: Math.max(8, y) }}
     >
-      <p className="context-menu-title" title={state.label}>{state.label}</p>
-      {onEdit && (
-        <button type="button" className="context-menu-item" role="menuitem" onClick={() => { onEdit(); onClose(); }}>
-          <Pencil size={15} />
-          {editLabel}
-        </button>
-      )}
-      <button type="button" className="context-menu-item danger" role="menuitem" onClick={() => { onDelete(); onClose(); }}>
-        <Trash2 size={15} />
-        {deleteLabel}
-      </button>
+      <p className="context-menu-title" title={title ?? state.label}>{title ?? state.label}</p>
+      {items
+        ? items.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`context-menu-item${item.danger ? ' danger' : ''}`}
+              role="menuitem"
+              disabled={item.disabled}
+              onClick={() => {
+                if (item.disabled) return;
+                item.onClick();
+                onClose();
+              }}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))
+        : (
+          <>
+            {onEdit && (
+              <button type="button" className="context-menu-item" role="menuitem" onClick={() => { onEdit(); onClose(); }}>
+                <Pencil size={15} />
+                {editLabel}
+              </button>
+            )}
+            {onDelete && (
+              <button type="button" className="context-menu-item danger" role="menuitem" onClick={() => { onDelete(); onClose(); }}>
+                <Trash2 size={15} />
+                {deleteLabel}
+              </button>
+            )}
+          </>
+        )}
     </div>,
     document.body
   );

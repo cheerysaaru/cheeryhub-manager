@@ -163,9 +163,8 @@ export function useHabits(userId: string | null) {
 
   /**
    * Applies a day-status change optimistically, waits for the server, and rolls
-   * back to the pre-tap habit on failure. The server's authoritative state also
-   * arrives over the socket (`habit:completed` / `habit:updated`), so no full
-   * list refetch is needed after every tap.
+   * back to the pre-tap habit on failure. Returns true only when the server
+   * accepted the change (so callers can e.g. offer Undo for past days).
    */
   const applyDayAction = useCallback(
     async (
@@ -173,18 +172,19 @@ export function useHabits(userId: string | null) {
       date: string | undefined,
       status: 'COMPLETED' | 'FAILED' | 'SKIPPED' | null,
       request: () => Promise<unknown>
-    ) => {
+    ): Promise<boolean> => {
       const day = date ?? todayKey();
       const before = habitsRef.current.find((habit) => habit.id === id);
-      if (!before) return undefined;
+      if (!before) return false;
       markPending(id, true);
       setHabits((prev) => prev.map((habit) => (habit.id === id ? applyDayStatus(habit, day, status) : habit)));
       try {
-        return await request();
+        await request();
+        return true;
       } catch (error) {
         setHabits((prev) => prev.map((habit) => (habit.id === id ? before : habit)));
         console.warn('Optimistic habit update reverted', error);
-        return undefined;
+        return false;
       } finally {
         markPending(id, false);
       }
