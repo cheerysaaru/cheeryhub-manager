@@ -17,11 +17,12 @@ jobs:
         env:
           VITE_API_URL: https://YOUR-WORKER-URL/api
       - name: Upload to server
-        uses: easingthemes/ssh-deploy@v5
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST }}
-          REMOTE_USER: cheer2867
-          REMOTE_PORT: 69
-          SOURCE: frontend/dist/
-          TARGET: /home/cheeryhub.space/public_html/
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          HOST: ${{ secrets.HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p 69 -H "$HOST" >> ~/.ssh/known_hosts
+          rsync -rlvz -e "ssh -i ~/.ssh/deploy_key -p 69" frontend/dist/ cheer2867@"$HOST":/home/cheeryhub.space/public_html/
