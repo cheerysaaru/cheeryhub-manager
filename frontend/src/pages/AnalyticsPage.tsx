@@ -10,14 +10,7 @@ import { Progress } from '../components/Progress';
 import { Badge } from '../components/Badge';
 import { parseLocalDate } from '../utils/date';
 import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
-
-const REASON_LABELS: Record<string, string> = {
-  task: 'Tasks',
-  habit: 'Commitments',
-  goal: 'Goals',
-  achievement: 'Achievements',
-  focus: 'Focus',
-};
+import { xpBreakdown, xpEarnedSpent } from '../utils/xpBreakdown';
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
@@ -34,21 +27,8 @@ export default function AnalyticsPage() {
   const totalFocus = sessions.filter((s) => s.status === 'COMPLETED').reduce((s, x) => s + x.durationMinutes, 0);
   const recentXp = (xp?.history ?? []).slice(0, 10);
 
-  const breakdown = useMemo(() => {
-    const map = new Map<string, { label: string; amount: number; count: number }>();
-    for (const item of xp?.history ?? []) {
-      const kind = item.reason.split(':')[0];
-      const label = REASON_LABELS[kind] ?? 'Other';
-      const entry = map.get(label) ?? { label, amount: 0, count: 0 };
-      entry.amount += item.amount;
-      entry.count += 1;
-      map.set(label, entry);
-    }
-    return [...map.values()].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-  }, [xp]);
-
-  const earned = breakdown.filter((b) => b.amount > 0).reduce((s, b) => s + b.amount, 0);
-  const spent = breakdown.filter((b) => b.amount < 0).reduce((s, b) => s + b.amount, 0);
+  const breakdown = useMemo(() => xpBreakdown(xp?.history ?? []), [xp]);
+  const { earned, spent } = useMemo(() => xpEarnedSpent(xp?.history ?? []), [xp]);
 
   const last14 = stats.slice(-14);
 

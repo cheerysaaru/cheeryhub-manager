@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff, Flame } from 'lucide-react';
+import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
@@ -12,12 +12,15 @@ import { Progress } from '../components/Progress';
 import { useToast } from '../components/Toast';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { ConfirmDialog, Modal } from '../components/Modal';
+import { HeaderStats } from '../components/HeaderStats';
+import { Badge } from '../components/Badge';
 import { TaskRow } from '../components/TaskRow';
 import { Skeleton, SkeletonRows } from '../components/Skeleton';
 import { DeadlinePicker } from '../components/DeadlinePicker';
 import { formatDate, formatShortDate, greeting, parseLocalDate, shiftDate, todayISO } from '../utils/date';
 import { ROUTES } from '../routes';
 import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
+import { xpBreakdown, xpEarnedSpent } from '../utils/xpBreakdown';
 import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
 import type { Task, Habit } from '../types';
@@ -111,6 +114,7 @@ export default function DashboardPage() {
   const habitMenu = useContextMenu();
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'task' | 'habit'; id: string; label: string } | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<Task | null>(null);
+  const [pointsOpen, setPointsOpen] = useState(false);
 
   const activeTasks = useMemo(
     () => tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ARCHIVED' && !t.deletedAt),
@@ -131,6 +135,10 @@ export default function DashboardPage() {
   const totalXP = xp?.total ?? 0;
   const level = levelFor(totalXP);
   const xpInLevel = pointsIntoLevel(totalXP);
+  const xpHistory = xp?.history ?? [];
+  const pointsBreakdown = useMemo(() => xpBreakdown(xpHistory), [xpHistory]);
+  const pointsEarnedSpent = useMemo(() => xpEarnedSpent(xpHistory), [xpHistory]);
+  const recentXp = xpHistory.slice(0, 5);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -257,33 +265,13 @@ export default function DashboardPage() {
           <h1>{greeting(getDisplayName(user?.name || 'there'))}</h1>
           <p className="header-date">{formatDate()}</p>
         </div>
-        <div className="header-stats">
-          {streak && (
-            <div
-              className={`streak-badge${streak.todayActive ? ' is-active' : ''}`}
-              title={`Best streak: ${streak.best} day${streak.best === 1 ? '' : 's'}`}
-            >
-              <Flame size={16} aria-hidden="true" />
-              <span>
-                <strong>{streak.current}</strong> day{streak.current === 1 ? '' : 's'}
-              </span>
-            </div>
-          )}
-          <div
-            className="rank-circle"
-            style={{ '--rank-progress': `${xpInLevel}%` } as React.CSSProperties}
-            role="img"
-            aria-label={`Level ${level}, ${totalXP} points, ${xpInLevel} of 100 to the next level`}
-            title={`${totalXP} points · ${pointsToNextLevel(totalXP)} to level ${level + 1}`}
-          >
-            <span className="rank-level">{level}</span>
-            <span className="rank-label">LVL</span>
-          </div>
-          <div className="xp-badge">
-            <span className="xp-flame" aria-hidden="true">🔥</span>
-            <span>{totalXP} pts · {xpInLevel}/100</span>
-          </div>
-        </div>
+        <HeaderStats
+          streak={streak}
+          totalXP={totalXP}
+          level={level}
+          xpInLevel={xpInLevel}
+          onOpenPoints={() => setPointsOpen(true)}
+        />
       </header>
 
       <section className="stats-grid" aria-label="Today's progress">
@@ -621,6 +609,58 @@ export default function DashboardPage() {
             ))}
           </ul>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={pointsOpen}
+        onClose={() => setPointsOpen(false)}
+        title="Points breakdown"
+        description={`Level ${level} · ${totalXP} total points · ${pointsToNextLevel(totalXP)} to level ${level + 1}`}
+        size="md"
+      >
+        <div className="points-modal">
+          <div className="points-summary">
+            <span className="points-summary-item earned"><TrendingUp size={15} /> {pointsEarnedSpent.earned} earned</span>
+            <span className="points-summary-item spent"><TrendingDown size={15} /> {Math.abs(pointsEarnedSpent.spent)} lost</span>
+            <span className="points-summary-item net"><strong>{totalXP}</strong> net</span>
+          </div>
+          <Progress value={xpInLevel} max={100} showLabel label={`${xpInLevel} / 100 to level ${level + 1}`} />
+          {pointsBreakdown.length === 0 ? (
+            <div className="empty-state">
+              <TrendingUp size={32} />
+              <strong>No points yet</strong>
+              <p>Complete tasks and commitments to earn points.</p>
+            </div>
+          ) : (
+            <ul className="xp-list">
+              {pointsBreakdown.map((entry) => (
+                <li key={entry.label} className="xp-item">
+                  <Badge variant={entry.amount > 0 ? 'success' : 'danger'}>
+                    {entry.amount > 0 ? '+' : ''}{entry.amount}
+                  </Badge>
+                  <span className="xp-reason">{entry.label}</span>
+                  <span className="xp-date">{entry.count} event{entry.count === 1 ? '' : 's'}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {recentXp.length > 0 && (
+            <>
+              <h3 className="points-modal-heading">Recent activity</h3>
+              <ul className="xp-list">
+                {recentXp.map((item) => (
+                  <li key={item.id} className="xp-item">
+                    <Badge variant={item.amount > 0 ? 'success' : 'danger'}>
+                      {item.amount > 0 ? '+' : ''}{item.amount}
+                    </Badge>
+                    <span className="xp-reason">{item.reason}</span>
+                    <span className="xp-date">{new Date(item.createdAt).toLocaleDateString()}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
       </Modal>
 
       <ConfirmDialog

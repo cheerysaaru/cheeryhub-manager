@@ -681,16 +681,6 @@ button:active { transform: translateY(1px); }
   margin-bottom: 6px;
 }
 .dashboard-page .header-date { font-size: 14px; color: #8a8a86; }
-.dashboard-page .xp-badge {
-  background: #fdf6e3;
-  border: 1px solid #e8d5a3;
-  color: #8b6914;
-  font-size: 13px;
-  font-weight: 600;
-  min-height: 32px;
-  padding: 0 14px;
-}
-.dashboard-page .xp-flame { font-size: 14px; line-height: 1; }
 
 /* Stat cards */
 .dashboard-page .stats-grid { gap: 16px; }
@@ -1400,22 +1390,6 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 .danger-ghost { color: var(--text-muted); }
 .danger-ghost:hover { color: var(--danger); background: var(--danger-bg) !important; filter: none; }
 
-/* XP badge */
-.xp-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  border: 1px solid #e8c87a;
-  border-radius: 999px;
-  background: #fdf3d7;
-  color: #8a6a1b;
-  padding: 0 12px;
-  font-weight: 700;
-  font-size: 12px;
-}
-.xp-badge svg { width: 14px; height: 14px; }
-
 /* Modal (portal-rendered) */
 .modal-overlay {
   position: fixed;
@@ -2022,68 +1996,111 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   .history-grid { grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); }
 }
 
-/* Phase 3: rank circle + points */
+/* Phase 3: level badge (round button) + points modal */
 .header-stats { display: inline-flex; align-items: center; gap: 10px; }
-.rank-circle {
-  --rank-progress: 0%;
+.level-badge {
   position: relative;
   display: grid;
   place-items: center;
   width: 64px;
   height: 64px;
-  border-radius: 50%;
-  background: conic-gradient(var(--primary) var(--rank-progress), var(--bg-active) 0);
-  box-shadow: var(--shadow-sm);
-}
-.rank-circle::after {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  border-radius: 50%;
+  padding: 0;
+  border: none;
+  border-radius: 9999px;
   background: var(--bg-card);
+  box-shadow: 0 4px 12px rgba(32, 37, 31, 0.14);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.rank-level {
+.level-badge:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(32, 37, 31, 0.18); }
+.level-badge:active { transform: translateY(0); }
+.level-badge:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.level-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.level-ring circle {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.level-ring-track { stroke: var(--bg-active); }
+.level-ring-progress {
+  stroke: var(--primary);
+  transition: stroke-dashoffset 0.6s ease;
+}
+.level-inner {
   position: relative;
   z-index: 1;
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: var(--primary);
+  display: grid;
+  place-items: center;
+  gap: 1px;
   line-height: 1;
 }
-.rank-label {
-  position: relative;
-  z-index: 1;
+.level-caption {
   font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--text-muted);
-  margin-top: 2px;
+}
+.level-number {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--primary);
+  animation: level-pop 0.45s ease;
+}
+@keyframes level-pop {
+  0% { transform: scale(0.7); opacity: 0.4; }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-badge,
+  .level-ring-progress { transition: none; }
+  .level-number { animation: none; }
+}
+.points-modal { display: grid; gap: 14px; }
+.points-modal-heading {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 4px 0 0;
 }
 .achievement-date { display: inline-flex; align-items: center; gap: 4px; }
 
-.streak-badge {
+.streak-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 7px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
   background: var(--bg-active);
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 700;
   border: 1px solid var(--border);
 }
-.streak-badge svg { color: var(--warning, #f59e0b); }
-.streak-badge strong { color: var(--text); }
-.streak-badge.is-active { border-color: var(--warning, #f59e0b); }
+.streak-pill svg { color: var(--warning, #f59e0b); }
+.streak-pill-count { color: var(--text); font-weight: 800; }
+.streak-pill.is-active { border-color: var(--warning, #f59e0b); }
 
 /* Phase 5: responsive polish */
 @media (max-width: 700px) {
   .page-tabs { width: 100%; justify-content: stretch; }
   .page-tab { flex: 1; justify-content: center; min-width: 0; padding: 8px 10px; }
   .header-stats { flex-wrap: wrap; justify-content: flex-start; }
-  .header-stats .rank-circle { width: 52px; height: 52px; }
-  .header-stats .rank-level { font-size: 1.05rem; }
-  .header-stats .rank-label { font-size: 0.5rem; }
+  .level-badge { width: 56px; height: 56px; }
+  .level-number { font-size: 1.15rem; }
+  .level-caption { font-size: 0.5rem; }
   .backfill-row { overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
   .backfill-cell { flex: 0 0 auto; }
   .trash-actions .btn { flex: 1; }
