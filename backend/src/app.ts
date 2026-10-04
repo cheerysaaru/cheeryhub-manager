@@ -493,7 +493,6 @@ export function createApp(options?: { rateLimit?: boolean }) {
   // Serve the built client in production so refreshing a deep link
   // (e.g. /goals) does not fall through to a 404.
   const candidateClientDirs = [
-    path.resolve(__dirname, '../../frontend/dist'),
     path.resolve(process.cwd(), 'frontend/dist'),
     path.resolve(process.cwd(), '../frontend/dist'),
   ];
