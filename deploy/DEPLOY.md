@@ -1,118 +1,131 @@
-> **LEGACY / DEPRECATED.** Production no longer runs this path. The live API
-> (`api.cheeryhub.space`) is a **Cloudflare Worker with D1** — see
-> `backend/wrangler.toml` and the README "Production" section; CI deploys it
-> with `npx wrangler deploy`. Running this Node/CyberPanel backend *at the same
-> time as the Worker is what caused "Invalid or expired session": two backends,
-> two different `JWT_SECRET`s. Keep this document only for historical reference
-> or for a deliberate single-backend Node deployment (never both).
-# Deploying the backend to the CyberPanel server
+# CyberPanel deployment
 
-Your GitHub Pages frontend is already correct — it builds with
-`VITE_API_URL=https://api.cheeryhub.space/api` (see `frontend/.env.production`).
-The only missing piece is a **running backend** on `api.cheeryhub.space`
-(46.250.227.248). Right now that server still shows the default
-"CyberPanel Installed" placeholder and answers `404` for every `/api/*` call,
-which is why the site reports "Cannot reach the server / VITE_API_URL".
+The GitHub Actions workflow deploys the compiled SPA to
+`/home/cheeryhub.space/public_html/`. It deploys the Node backend, Prisma
+schema, package manifests, and systemd unit to
+`/home/cheeryhub.space/app/`, outside the document root. The frontend build
+copies `frontend/public/.htaccess` into `frontend/dist/` for SPA route fallback.
 
+## GitHub Actions configuration
+
+Configure these repository secrets:
+
+- `HOST`: CyberPanel SSH host.
+- `SSH_KEY`: private deployment key.
+- `SSH_KNOWN_HOSTS`: the verified known-hosts line for the server on SSH port
+  `69` (for example, `[host.example]:69 ssh-ed25519 AAAA...`). Obtain the host
+  key and verify its fingerprint through the hosting provider or another
+  trusted channel before saving it. The workflow requires strict host-key
+  checking and does not use `ssh-keyscan`.
+
+The workflows default `VITE_API_URL` to
+`https://api.cheeryhub.space/api`. To change it without editing workflow
+files, configure `VITE_API_URL` as a GitHub Actions **variable** (recommended)
+or secret. The CyberPanel deploy workflow fails before building if the value
+is not HTTPS, does not end in `/api`, or is a placeholder.
+`CYBERPANEL_SITE_URL` is an optional Actions variable; it defaults to
+`https://cheeryhub.space` and is used by the post-deploy checks.
+
+Deploy runs for pushes to `main` and can also be started manually. Review the
+branch and configured secrets before using manual dispatch.
+
+## Backend runtime and HTTPS proxy
+
+Run one backend instance under systemd. Create the application environment file
+on the server at
+`/home/cheeryhub.space/app/backend/.env`; it is intentionally excluded from
+every sync. Keep `JWT_SECRET` and the existing production `DATABASE_URL` there,
+with at least:
+
+```dotenv
+NODE_ENV=production
+PORT=4000
+FRONTEND_URL=https://cheeryhub.space
+APP_URL=https://cheeryhub.space
+COOKIE_SECURE=true
+COOKIE_SAME_SITE=none
 ```
-GitHub Pages (frontend)  ──HTTPS──▶  api.cheeryhub.space  ──proxy──▶  127.0.0.1:4000 (Express)
-cheerysaaru.github.io                                   (LiteSpeed)      SQLite prisma/dev.db
-```
 
-## 0. Prerequisites
+Add any other required application settings to that file. `FRONTEND_URL` is
+also the CORS allow-list and the source for Helmet's `connect-src` directive;
+use a comma-separated list of exact HTTPS frontend origins if there is more
+than one. Do not use `*` for credentialed CORS. The Node server binds only to
+`127.0.0.1`, so it is not directly reachable from the public network.
 
-- SSH as `root` on the server (`api.cheeryhub.space` → 46.250.227.248)
-- DNS already correct: `A api.cheeryhub.space → 46.250.227.248` ✅
-
-## 1. Get the code on the server
-
-Either clone (repo must be reachable by the server):
+Install Node.js 22+, then install/build the application as the service user
+without running migrations:
 
 ```bash
-git clone https://github.com/cheerysaaru/cheeryhub-manager.git /opt/cheeryhub
+cd /home/cheeryhub.space/app
+npm ci
+npx prisma generate --schema=prisma/schema.prisma
+npm run build --workspace backend
 ```
 
-or upload this repo (without `node_modules/`) via SFTP to `/opt/cheeryhub`.
-
-## 2. Run the bootstrap script
+The workflow's current SSH account is `cheer2867`; it can also be used as the
+systemd service user so it can read the deployed files and the server-only
+environment file. Install the deployed systemd unit:
 
 ```bash
-cd /opt/cheeryhub
-sudo bash deploy/setup-server.sh
+sudo install -d /home/cheeryhub.space/app
+sudo chmod 600 /home/cheeryhub.space/app/backend/.env
+sudo sed \
+  -e 's|__APP_DIR__|/home/cheeryhub.space/app|g' \
+  -e 's|__SERVICE_USER__|cheer2867|g' \
+  /home/cheeryhub.space/app/deploy/cheeryhub-api.service \
+  | sudo tee /etc/systemd/system/cheeryhub-api.service >/dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable --now cheeryhub-api
 ```
 
-It will: install Node 22 if missing → `npm ci` → `prisma generate` →
-build the backend → create `backend/.env` (auto-generated `JWT_SECRET`,
-`FRONTEND_URL=https://cheerysaaru.github.io`, `COOKIE_SAME_SITE=none`,
-`COOKIE_SECURE=true`) → apply migrations → install + start the
-`cheeryhub-api` systemd service → smoke-test `http://127.0.0.1:4000/api/health`.
-
-Already have an existing `prisma/dev.db` with tables? Run with
-`SKIP_MIGRATE=1 sudo -E bash deploy/setup-server.sh`.
-
-## 3. Attach the reverse proxy in CyberPanel
-
-1. **Websites → Create Website** → domain `api.cheeryhub.space`, package
-   "Default", PHP (any). This replaces the placeholder page.
-2. **Websites → (click the site) → Reverse Proxy → Add Reverse Proxy**
-   - Source: `https://api.cheeryhub.space` (or `/`)
-   - Target: `http://127.0.0.1:4000`
-3. **Websites → SSL → Issue SSL** (Let's Encrypt) for `api.cheeryhub.space`,
-   then enable **Force HTTPS**.
-4. Restart the web server:
-
-   ```bash
-   systemctl restart lsws
-   ```
-
-If your CyberPanel build has no Reverse Proxy UI, edit the vhost config
-(`/usr/local/lsws/conf/vhosts/api.cheeryhub.space/vhconf.conf`) and add a
-proxy context, then `systemctl restart lsws`:
-
-```
-context / {
-  type            proxy
-  location        http://127.0.0.1:4000
-  host            127.0.0.1
-  port            4000
-}
-```
-
-> Socket.IO uses WebSocket first and automatically falls back to HTTP
-> long-polling, so realtime sync keeps working even if the proxy does not
-> forward the WebSocket upgrade.
-
-## 4. Verify
+For subsequent backend releases, build as the service user and restart the unit
+after the workflow has synced the files:
 
 ```bash
-bash deploy/verify.sh
+cd /home/cheeryhub.space/app
+npm ci
+npx prisma generate --schema=prisma/schema.prisma
+npm run build --workspace backend
+sudo systemctl restart cheeryhub-api
 ```
 
-Expected: health `200 {"status":"ok"}`, CORS preflight echoing
-`access-control-allow-origin: https://cheerysaaru.github.io`, `/api/tasks`
-→ `401`, and `/` → `404` (placeholder gone).
+Expose the API over HTTPS using either an `api` subdomain or an OpenLiteSpeed
+proxy context. In CyberPanel, point the API virtual host at
+`http://127.0.0.1:4000`, issue/enable a valid TLS certificate, and force HTTPS.
+If configuring the proxy directly, preserve HTTP/1.1 `Upgrade` and `Connection`
+headers for Socket.IO WebSockets. Never expose port 4000 publicly.
 
-## 5. Done
+The existing `api.cheeryhub.space` is also configured as a Cloudflare Worker
+custom domain in `backend/wrangler.toml`. Before routing that hostname to this
+Node service, deliberately move the hostname off the Worker; do not run two
+production backends with separate session secrets behind the same API URL.
 
-Open <https://cheerysaaru.github.io/cheeryhub-manager/> — no frontend rebuild
-is needed, the API URL is already baked into the Pages build.
+## Database and deployment safety
 
-## Troubleshooting
+The workflow only transfers built frontend files and application source. It
+does not execute Prisma migrations, seed data, create/replace a database,
+restart services, or use `rsync --delete`. Both rsync transfers of app code
+exclude `.env`, database files, `node_modules`, and `uploads`; the web root
+receives only `frontend/dist/` (including `.htaccess`). The `.htaccess` rules
+also deny requests for repository metadata, source directories, environment
+files, uploads, and database files that may have been left by an earlier
+deployment. Keep production database files outside `public_html` and preserve
+the existing database URL.
 
-| Symptom | Fix |
-|---|---|
-| `/` still shows "CyberPanel Installed" | Reverse proxy not attached, or website not created (step 3) |
-| `502`/`504` from the domain | `systemctl status cheeryhub-api` and `journalctl -u cheeryhub-api -n 50 --no-pager` |
-| `{"error":"CORS: Origin not allowed"}` | `FRONTEND_URL` in `backend/.env` must be exactly `https://cheerysaaru.github.io` (no trailing slash), then `systemctl restart cheeryhub-api` |
-| Login works locally but not on Pages | Cookies need `COOKIE_SAME_SITE=none` + `COOKIE_SECURE=true` (cross-site), already set by the script |
-| DB errors | `cd /opt/cheeryhub && sudo -u cheeryhub npx prisma migrate deploy --schema=prisma/schema.prisma` |
-| Socket never connects | Check proxy passes `Upgrade`/`Connection` headers; polling fallback still keeps the app usable |
+Do not run `prisma migrate deploy` as part of routine code deployment. Review
+and back up the live database before any separately approved schema migration.
+The deployment does not synchronize or replace user data.
 
-## Local smoke test (no server needed)
+## Post-deploy smoke checks
+
+The workflow calls `deploy/verify.sh` after syncing. It checks that:
+
+1. `GET $CYBERPANEL_SITE_URL/` returns `200` and an HTML document.
+2. `GET $VITE_API_URL/health` returns `200`.
+3. `GET $CYBERPANEL_SITE_URL/.git/config` returns `404` or `403`.
+
+Run the same checks manually with:
 
 ```bash
-# terminal 1
-npm run dev --workspace backend
-# terminal 2
-bash deploy/verify.sh http://127.0.0.1:4000
+bash deploy/verify.sh https://cheeryhub.space https://api.cheeryhub.space/api
 ```

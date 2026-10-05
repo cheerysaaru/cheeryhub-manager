@@ -19,6 +19,6 @@ server.on('error', (error) => {
   process.exit(1);
 });
 
-server.listen(env.PORT, () => {
-  console.log(`API listening on port ${env.PORT} (${env.NODE_ENV})`);
+server.listen(env.PORT, '127.0.0.1', () => {
+  console.log(`API listening on 127.0.0.1:${env.PORT} (${env.NODE_ENV})`);
 });

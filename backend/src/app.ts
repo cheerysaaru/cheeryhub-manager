@@ -243,6 +243,11 @@ export function createApp(options?: { rateLimit?: boolean }) {
 
   app.use(
     helmet({
+      contentSecurityPolicy: {
+        directives: {
+          connectSrc: ["'self'", ...allowedOrigins],
+        },
+      },
       crossOriginResourcePolicy: { policy: 'cross-origin' },
       crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     })

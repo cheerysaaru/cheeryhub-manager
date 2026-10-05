@@ -5,6 +5,13 @@
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
+
+  # Deny access to repository metadata and server-side files even if older
+  # deployments left them behind in the document root.
+  RewriteRule ^(?:\.git|\.github|backend|prisma|node_modules|uploads)(?:/|$) - [F,L,NC]
+  RewriteRule (^|/)\.env[^/]*(?:/|$) - [F,L,NC]
+  RewriteRule \.(?:db(?:-(?:wal|shm|journal))?|sqlite3?(?:-(?:wal|shm|journal))?)(?:$|/) - [F,L,NC]
+
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d

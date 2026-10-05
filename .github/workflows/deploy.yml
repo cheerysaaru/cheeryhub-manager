@@ -1,28 +1,94 @@
-name: Deploy to server
+name: Deploy to CyberPanel
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      HOST: ${{ secrets.HOST }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+      VITE_API_URL: ${{ vars.VITE_API_URL || secrets.VITE_API_URL || 'https://api.cheeryhub.space/api' }}
+      SITE_URL: ${{ vars.CYBERPANEL_SITE_URL || 'https://cheeryhub.space' }}
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build --workspace frontend
-        env:
-          VITE_API_URL: https://YOUR-WORKER-URL/api
-      - name: Upload to server
-        env:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          HOST: ${{ secrets.HOST }}
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
         run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "Set the GitHub Actions variable or secret VITE_API_URL to the HTTPS API base URL."
+            exit 1
+          fi
+          node -e "const u = new URL(process.env.VITE_API_URL); if (u.protocol !== 'https:' || u.pathname.replace(/\\/+$/, '') !== '/api' || /(your|placeholder|example\\.(com|org|net)|change[-_ ]?me)/i.test(u.href)) process.exit(1)" || {
+            echo "VITE_API_URL must be a real HTTPS API base URL ending in /api, not a placeholder."
+            exit 1
+          }
+          npm run build --workspace frontend
+          test -s frontend/dist/index.html
+          test -s frontend/dist/.htaccess
+
+      - name: Deploy static site and private application files
+        env:
+          DEPLOY_USER: cheer2867
+        run: |
+          if [ -z "$HOST" ] || [ -z "$SSH_KEY" ] || [ -z "$SSH_KNOWN_HOSTS" ]; then
+            echo "Set HOST, SSH_KEY, and SSH_KNOWN_HOSTS GitHub Actions secrets."
+            exit 1
+          fi
+          case "$SITE_URL" in
+            https://*) ;;
+            *) echo "CYBERPANEL_SITE_URL must use HTTPS."; exit 1 ;;
+          esac
+
           mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p 69 -H "$HOST" >> ~/.ssh/known_hosts
-          rsync -rlvz -e "ssh -i ~/.ssh/deploy_key -p 69" frontend/dist/ cheer2867@"$HOST":/home/cheeryhub.space/public_html/
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+          SSH="ssh -i $HOME/.ssh/deploy_key -p 69 -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          RSYNC_RSH="$SSH"
+
+          $SSH "$DEPLOY_USER@$HOST" \
+            'mkdir -p /home/cheeryhub.space/public_html /home/cheeryhub.space/app/backend /home/cheeryhub.space/app/prisma /home/cheeryhub.space/app/deploy'
+
+          # Only built frontend output is web-accessible. No --delete: preserve
+          # any server-managed content in public_html.
+          rsync -avz \
+            --exclude='.git/' --exclude='.github/' --exclude='.env' --exclude='.env.*' \
+            --exclude='*.db' --exclude='*.db-*' --exclude='*.sqlite*' --exclude='node_modules/' --exclude='uploads/' \
+            -e "$RSYNC_RSH" \
+            frontend/dist/ "$DEPLOY_USER@$HOST:/home/cheeryhub.space/public_html/"
+
+          # Keep the Node app and Prisma schema outside public_html. Exclusions
+          # preserve server-side secrets, databases, uploads, and dependencies.
+          rsync -avz \
+            --exclude='.git/' --exclude='.github/' --exclude='.env' --exclude='.env.*' \
+            --exclude='*.db' --exclude='*.db-*' --exclude='*.sqlite*' --exclude='node_modules/' --exclude='uploads/' \
+            -e "$RSYNC_RSH" \
+            backend/ "$DEPLOY_USER@$HOST:/home/cheeryhub.space/app/backend/"
+          rsync -avz \
+            --exclude='.git/' --exclude='.github/' --exclude='.env' --exclude='.env.*' \
+            --exclude='*.db' --exclude='*.db-*' --exclude='*.sqlite*' --exclude='node_modules/' --exclude='uploads/' \
+            -e "$RSYNC_RSH" \
+            prisma/ "$DEPLOY_USER@$HOST:/home/cheeryhub.space/app/prisma/"
+          rsync -avz -e "$RSYNC_RSH" \
+            package.json package-lock.json \
+            "$DEPLOY_USER@$HOST:/home/cheeryhub.space/app/"
+          rsync -avz -e "$RSYNC_RSH" \
+            deploy/cheeryhub-api.service \
+            "$DEPLOY_USER@$HOST:/home/cheeryhub.space/app/deploy/"
+
+      - name: Verify public site and API
+        run: bash deploy/verify.sh "$SITE_URL" "$VITE_API_URL"

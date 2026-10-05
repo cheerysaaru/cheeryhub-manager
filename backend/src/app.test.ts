@@ -128,6 +128,9 @@ describe('request validation and CORS', () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+    expect(response.headers.get('content-security-policy')).toContain(
+      "connect-src 'self' http://localhost:5173"
+    );
   });
 });
 

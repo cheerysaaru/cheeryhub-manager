@@ -25,7 +25,7 @@ jobs:
         run: npm run build
         working-directory: frontend
         env:
-          VITE_API_URL: https://api.cheeryhub.space/api
+          VITE_API_URL: ${{ vars.VITE_API_URL || secrets.VITE_API_URL || 'https://api.cheeryhub.space/api' }}
 
       - name: Deploy to CyberPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -35,4 +35,3 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./frontend/dist/
           server-dir: /home/cheeryhub.space/public_html/
-          dangerous-clean-slate: true

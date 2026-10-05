@@ -1,33 +1,35 @@
 #!/usr/bin/env bash
-# Post-deployment checks. Run from anywhere:
-#   bash deploy/verify.sh
-#   bash deploy/verify.sh http://127.0.0.1:4000     # local only
 set -euo pipefail
 
-API="${1:-https://api.cheeryhub.space}"
-ORIGIN="${ORIGIN:-https://cheerysaaru.github.io}"
+SITE_URL="${1:-https://cheeryhub.space}"
+API_BASE="${2:-https://api.cheeryhub.space/api}"
+API_HEALTH="${API_BASE%/}/health"
+page_file="$(mktemp)"
+trap 'rm -f "$page_file"' EXIT
 
-echo "== 1. Health check: $API/api/health"
-curl -fsS "$API/api/health"
-echo -e "\n"
-
-echo "== 2. CORS preflight from the GitHub Pages origin"
-curl -fsS -D - -o /dev/null -X OPTIONS "$API/api/auth/login" \
-  -H "Origin: $ORIGIN" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: content-type" | grep -Ei 'HTTP/|access-control'
-echo
-
-echo "== 3. Protected route must answer 401 (means auth middleware is alive)"
-code=$(curl -s -o /dev/null -w '%{http_code}' "$API/api/tasks")
-echo "GET /api/tasks -> $code (expected 401)"
-echo
-
-if [ "$API" != "http://127.0.0.1:4000" ]; then
-  echo "== 4. Placeholder page must be gone (404 on / means OK)"
-  code=$(curl -s -o /dev/null -w '%{http_code}' "$API/")
-  echo "GET / -> $code (200 with 'CyberPanel Installed' = reverse proxy NOT attached)"
+printf '== Frontend: GET %s/\n' "$SITE_URL"
+site_status="$(curl --silent --show-error --output "$page_file" --write-out '%{http_code}' "$SITE_URL/")"
+if [ "$site_status" != "200" ]; then
+  echo "GET / -> $site_status (expected 200)" >&2
+  exit 1
 fi
+if ! grep -Eiq '<!doctype html|<html' "$page_file"; then
+  echo "Frontend root returned 200 but did not contain an HTML document." >&2
+  exit 1
+fi
+echo "GET / -> 200 (HTML document)"
 
-echo
-echo "If all checks pass, open https://cheerysaaru.github.io/cheeryhub-manager/"
+printf '\n== API health: GET %s\n' "$API_HEALTH"
+health_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$API_HEALTH")"
+if [ "$health_status" != "200" ]; then
+  echo "GET $API_HEALTH -> $health_status (expected 200)" >&2
+  exit 1
+fi
+echo "GET /api/health -> 200"
+
+printf '\n== Repository metadata: GET %s/.git/config\n' "$SITE_URL"
+git_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$SITE_URL/.git/config")"
+case "$git_status" in
+  403|404) echo "GET /.git/config -> $git_status" ;;
+  *) echo "GET /.git/config -> $git_status (expected 403 or 404)" >&2; exit 1 ;;
+esac
