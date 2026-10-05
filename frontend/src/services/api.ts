@@ -1,14 +1,33 @@
 const configuredApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+const PRODUCTION_API_URL = 'https://api.cheeryhub.space/api';
 
-if (import.meta.env.PROD && !configuredApiUrl) {
-  // Fail loudly at startup instead of silently calling localhost forever.
-  const message =
-    'VITE_API_URL is not configured for this build. Set VITE_API_URL=https://api.cheeryhub.space/api and rebuild.';
-  console.error(`[api] ${message}`);
-  throw new Error(message);
+function normalizeApiUrl(value: string | undefined): string | null {
+  if (!value?.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) return null;
+    if (url.search || url.hash) return null;
+    return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+  } catch {
+    return null;
+  }
 }
 
-export const API_BASE: string = configuredApiUrl ?? 'http://localhost:4000/api';
+const normalizedApiUrl = normalizeApiUrl(configuredApiUrl);
+if (configuredApiUrl && !normalizedApiUrl) {
+  console.error('[api] Invalid VITE_API_URL; expected an absolute HTTP(S) URL such as https://api.cheeryhub.space/api.');
+}
+if (import.meta.env.PROD && !normalizedApiUrl) {
+  console.error(`[api] Using the production API fallback: ${PRODUCTION_API_URL}`);
+}
+
+export const API_BASE: string =
+  normalizedApiUrl ??
+  (import.meta.env.PROD ? PRODUCTION_API_URL : 'http://localhost:4000/api');
+
+export function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RETRIES = 2;
@@ -229,7 +248,16 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
       const code = codeOf(body);
 
-      if (res.status === 401 && !refreshed && !skipRefresh && code !== 'AUTH_REQUIRED') {
+      if (res.status === 401 && !skipRefresh && code === 'AUTH_REQUIRED') {
+        notifySessionExpired();
+        throw new ApiError(messageFor(res.status, body), {
+          status: res.status,
+          code,
+          requestId: requestIdOf(body),
+        });
+      }
+
+      if (res.status === 401 && !refreshed && !skipRefresh) {
         refreshed = true;
         if (await silentRefresh()) continue;
         notifySessionExpired();

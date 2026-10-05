@@ -6,7 +6,7 @@ import { Card, CardTitle, CardDescription } from '../components/Card';
 import { Input } from '../components/Input';
 import { Badge } from '../components/Badge';
 import { Modal, ConfirmDialog } from '../components/Modal';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import { PASSWORD_RULES, passwordProblem } from '../utils/validation';
 import type { AdminUser } from '../types';
 
@@ -49,7 +49,7 @@ export default function AdminPage() {
     setError('');
     try {
       const result = await api<{ users: AdminUser[] }>('/admin/users');
-      setUsers(result.users);
+      setUsers(asArray<AdminUser>(result?.users));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {

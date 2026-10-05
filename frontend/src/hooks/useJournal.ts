@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import type { JournalEntry } from '../types';
 import { useSocket } from './useSocket';
 
@@ -11,7 +11,7 @@ export function useJournal(userId: string | null) {
   const fetchEntries = useCallback(async () => {
     try {
       const data = await api<JournalEntry[]>('/journal');
-      setEntries(data);
+      setEntries(asArray<JournalEntry>(data));
     } catch {
       setEntries([]);
     } finally {

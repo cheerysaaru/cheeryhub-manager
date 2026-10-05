@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import type { Skill } from '../types';
 import { useSocket } from './useSocket';
 
@@ -11,7 +11,7 @@ export function useSkills(userId: string | null) {
   const fetchSkills = useCallback(async () => {
     try {
       const data = await api<Skill[]>('/skills');
-      setSkills(data);
+      setSkills(asArray<Skill>(data));
     } catch {
       setSkills([]);
     } finally {

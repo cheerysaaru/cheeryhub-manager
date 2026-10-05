@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, DollarSign, ArrowUpRight, ArrowDownRight, Calendar, ChevronLeft, ChevronRight, Download, BarChart2, PieChart } from 'lucide-react';
 import { parseLocalDate, todayISO } from './utils/date';
+import { asArray } from './services/api';
 
 type Api = <T>(path: string, init?: RequestInit) => Promise<T>;
 
@@ -239,7 +240,7 @@ export default function FinancePanel({ api }: { api: Api }) {
         api<WeeklyReport>('/transactions/report/weekly'),
         api<MonthlyReport>(`/transactions/report/monthly?year=${currentMonth.getFullYear()}&month=${currentMonth.getMonth() + 1}`)
       ]);
-      setTransactions(txs);
+      setTransactions(asArray<Transaction>(txs));
       setWeeklyReport(weekly);
       setMonthlyReport(monthly);
       setLoading(false);

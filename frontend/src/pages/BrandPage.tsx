@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Briefcase, Trash2, Pencil, ChevronDown, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useBrand } from '../hooks/useBrand';
+import { asArray } from '../services/api';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -57,8 +58,9 @@ export default function BrandPage() {
 
   async function toggleMilestone(project: BrandProject, ms: BrandMilestone) {
     await updateMilestone(project.id, ms.id, { completed: !ms.completed });
-    const completed = project.milestones.filter((m) => (m.id === ms.id ? !ms.completed : m.completed)).length;
-    const progress = project.milestones.length ? Math.round((completed / project.milestones.length) * 100) : 0;
+    const milestones = asArray<BrandMilestone>(project.milestones);
+    const completed = milestones.filter((m) => (m.id === ms.id ? !ms.completed : m.completed)).length;
+    const progress = milestones.length ? Math.round((completed / milestones.length) * 100) : 0;
     await update(project.id, { progress });
   }
 
@@ -89,6 +91,7 @@ export default function BrandPage() {
       ) : (
         <div className="goals-list">
           {projects.map((project) => {
+            const milestones = asArray<BrandMilestone>(project.milestones);
             const isExpanded = expanded.has(project.id);
             return (
               <Card key={project.id} className="goal-card" padding="md" {...projectMenu.bind(project.title)}>
@@ -136,8 +139,8 @@ export default function BrandPage() {
                         </div>
                       )}
                       <ul className="milestone-list">
-                        {project.milestones.length === 0 && <li className="empty-milestone">No milestones yet.</li>}
-                        {project.milestones.map((ms) => (
+                        {milestones.length === 0 && <li className="empty-milestone">No milestones yet.</li>}
+                        {milestones.map((ms) => (
                           <li key={ms.id} className={`milestone-item ${ms.completed ? 'completed' : ''}`}>
                             <button className="milestone-check" onClick={() => toggleMilestone(project, ms)} aria-label={ms.completed ? 'Uncomplete' : 'Complete'}>
                               {ms.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}

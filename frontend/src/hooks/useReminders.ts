@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import type { Reminder } from '../types';
 import { useSocket } from './useSocket';
 
@@ -11,7 +11,7 @@ export function useReminders(userId: string | null) {
   const fetchReminders = useCallback(async () => {
     try {
       const data = await api<Reminder[]>('/reminders');
-      setReminders(data);
+      setReminders(asArray<Reminder>(data));
     } catch {
       setReminders([]);
     } finally {

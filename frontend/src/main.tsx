@@ -6,6 +6,7 @@ import { useAuth, AuthProvider } from './hooks/useAuth';
 import { useSocket } from './hooks/useSocket';
 import { syncPendingWrites } from './services/api';
 import { Layout } from './components/Layout';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { getTheme, applyTheme } from './utils/theme';
 import AuthPage from './pages/AuthPage';
@@ -118,12 +119,14 @@ function App() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ToastProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </ToastProvider>
+    <AppErrorBoundary>
+      <ToastProvider>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </BrowserRouter>
+      </ToastProvider>
+    </AppErrorBoundary>
   </StrictMode>
 );

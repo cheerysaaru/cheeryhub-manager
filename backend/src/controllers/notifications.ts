@@ -4,12 +4,15 @@ import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
-import { generateNotifications } from '../lib/notifications';
+import { generateNotifications, refreshNotificationsInBackground } from '../lib/notifications';
 
 export async function listNotifications(request: AuthRequest, response: Response) {
   // Refresh standing reminders in the background so the bell is never stale
   // for long, while the current state streams back immediately.
-  void generateNotifications(request.userId!).catch(() => undefined);
+  refreshNotificationsInBackground(
+    request.userId!,
+    request as AuthRequest & { requestId?: string }
+  );
   const [items, unreadCount] = await Promise.all([
     prisma.notification.findMany({
       where: { userId: request.userId },

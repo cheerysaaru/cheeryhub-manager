@@ -101,7 +101,7 @@ describe('request validation and CORS', () => {
   it('answers 400 for a malformed JSON body', async () => {
     const response = await fetch(`${base}/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
       body: '{"email": ',
     });
     const body = (await response.json()) as Record<string, unknown>;
@@ -109,6 +109,24 @@ describe('request validation and CORS', () => {
     expect(response.status).toBe(400);
     expect(body.code).toBe('INVALID_REQUEST');
     expect(String(body.error)).toMatch(/check your input/i);
+    expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+  });
+
+  it('answers preflight with the configured methods and headers', async () => {
+    const response = await fetch(`${base}/api/tasks`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:5173',
+        'Access-Control-Request-Method': 'PATCH',
+        'Access-Control-Request-Headers': 'authorization,content-type',
+      },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+    expect(response.headers.get('access-control-allow-methods')).toContain('PATCH');
+    expect(response.headers.get('access-control-allow-headers')?.toLowerCase()).toContain('authorization');
+    expect(response.headers.get('access-control-allow-headers')?.toLowerCase()).toContain('content-type');
   });
 
   it('rejects a disallowed origin with a friendly message', async () => {

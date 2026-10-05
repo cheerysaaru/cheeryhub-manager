@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import type { AppNotification } from '../types';
+import { ApiLoadError } from './ApiLoadError';
 
 function relativeTime(iso: string): string {
   const then = new Date(iso).getTime();
@@ -17,7 +18,7 @@ function relativeTime(iso: string): string {
 }
 
 export function NotificationCenter({ userId }: { userId: string | null }) {
-  const { items, unreadCount, markRead, markAllRead } = useNotifications(userId);
+  const { items, unreadCount, loading, error, fetchNotifications, markRead, markAllRead } = useNotifications(userId);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -74,7 +75,10 @@ export function NotificationCenter({ userId }: { userId: string | null }) {
               </button>
             )}
           </div>
-          {items.length === 0 ? (
+          <ApiLoadError error={error} onRetry={() => void fetchNotifications()} />
+          {loading ? (
+            <p className="notification-empty">Loading notifications…</p>
+          ) : error ? null : items.length === 0 ? (
             <p className="notification-empty">Nothing yet. Reminders show up here.</p>
           ) : (
             <ul className="notification-list">

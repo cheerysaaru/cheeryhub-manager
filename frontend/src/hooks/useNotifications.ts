@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import { useSocket } from './useSocket';
 import type { AppNotification } from '../types';
 
@@ -7,16 +7,19 @@ export function useNotifications(userId: string | null) {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const data = await api<{ items: AppNotification[]; unreadCount: number }>('/notifications');
-      setItems(data.items);
-      setUnreadCount(data.unreadCount);
-    } catch {
-      setItems([]);
-      setUnreadCount(0);
+      const data: unknown = await api<unknown>('/notifications');
+      const payload = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+      setItems(asArray<AppNotification>(payload.items));
+      setUnreadCount(typeof payload.unreadCount === 'number' ? payload.unreadCount : 0);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load notifications.');
     } finally {
       setLoading(false);
     }
@@ -73,5 +76,5 @@ export function useNotifications(userId: string | null) {
     }
   }, [fetchNotifications]);
 
-  return { items, unreadCount, loading, fetchNotifications, markRead, markAllRead };
+  return { items, unreadCount, loading, error, fetchNotifications, markRead, markAllRead };
 }

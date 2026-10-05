@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import type { FocusSession } from '../types';
 import { useSocket } from './useSocket';
 
 export function useFocus(userId: string | null) {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchSessions = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await api<FocusSession[]>('/focus/history');
-      setSessions(data);
-    } catch {
-      setSessions([]);
+      setSessions(asArray<FocusSession>(data));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load focus sessions.');
     } finally {
       setLoading(false);
     }
@@ -48,5 +51,5 @@ export function useFocus(userId: string | null) {
     return session;
   }, []);
 
-  return { sessions, loading, fetchSessions, start, complete };
+  return { sessions, loading, error, fetchSessions, start, complete };
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import type { Transaction, WeeklyReport, MonthlyReport } from '../types';
 import { useSocket } from './useSocket';
 
@@ -21,7 +21,7 @@ export function useTransactions(userId: string | null) {
   const fetchTransactions = useCallback(async () => {
     try {
       const data = await api<Transaction[]>('/transactions');
-      const unique = Array.from(new Map(data.map((t) => [t.id, t])).values());
+      const unique = Array.from(new Map(asArray<Transaction>(data).map((t) => [t.id, t])).values());
       setTransactions(unique);
     } catch {
       setTransactions([]);

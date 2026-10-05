@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import { dedupe } from '../services/inflight';
 import { todayISO } from '../utils/date';
 import type { Habit } from '../types';
@@ -85,6 +85,7 @@ function applyDayStatus(
 export function useHabits(userId: string | null) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
   const habitsRef = useRef<Habit[]>([]);
@@ -106,11 +107,13 @@ export function useHabits(userId: string | null) {
   const isPending = useCallback((id: string) => pendingIds.has(id), [pendingIds]);
 
   const fetchHabits = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await dedupe('habits:list', () => api<Habit[]>('/habits'));
-      setHabits(data);
-    } catch {
-      setHabits([]);
+      setHabits(asArray<Habit>(data).map(normalizeHabit));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load habits.');
     } finally {
       setLoading(false);
     }
@@ -224,5 +227,6 @@ export function useHabits(userId: string | null) {
     [applyDayAction]
   );
 
-  return { habits, loading, creating, isPending, fetchHabits, create, update, remove, complete, clearToday, failToday, skipToday };
+  return { habits,   loading,
+  error, creating, isPending, fetchHabits, create, update, remove, complete, clearToday, failToday, skipToday };
 }

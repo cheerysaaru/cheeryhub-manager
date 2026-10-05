@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import type { BrandProject, BrandMilestone } from '../types';
 import { useSocket } from './useSocket';
 
@@ -11,7 +11,10 @@ export function useBrand(userId: string | null) {
   const fetchProjects = useCallback(async () => {
     try {
       const data = await api<BrandProject[]>('/brand');
-      setProjects(data);
+      setProjects(asArray<BrandProject>(data).map((project) => ({
+        ...project,
+        milestones: asArray<BrandMilestone>(project.milestones),
+      })));
     } catch {
       setProjects([]);
     } finally {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import { dedupe } from '../services/inflight';
 import type { Task } from '../types';
 import { useSocket } from './useSocket';
@@ -22,6 +22,7 @@ export function useTasks(userId: string | null) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [trash, setTrash] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
   const tasksRef = useRef<Task[]>([]);
@@ -43,11 +44,13 @@ export function useTasks(userId: string | null) {
   const isPending = useCallback((id: string) => pendingIds.has(id), [pendingIds]);
 
   const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await dedupe('tasks:list', () => api<Task[]>('/tasks'));
-      setTasks(data);
-    } catch {
-      setTasks([]);
+      setTasks(asArray<Task>(data));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load tasks.');
     } finally {
       setLoading(false);
     }
@@ -56,9 +59,9 @@ export function useTasks(userId: string | null) {
   const fetchTrash = useCallback(async () => {
     try {
       const data = await dedupe('tasks:trash', () => api<Task[]>('/tasks/trash'));
-      setTrash(data);
+      setTrash(asArray<Task>(data));
     } catch {
-      setTrash([]);
+      setError('Could not load the task trash. Please retry.');
     }
   }, []);
 
@@ -212,6 +215,7 @@ export function useTasks(userId: string | null) {
     tasks,
     trash,
     loading,
+    error,
     creating,
     isPending,
     fetchTasks,

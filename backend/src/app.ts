@@ -10,7 +10,7 @@ import cookieParser from 'cookie-parser';
 import rateLimit, { type MemoryStore, ipKeyGenerator } from 'express-rate-limit';
 import { getCorsOrigins } from './lib/config';
 import { envStatus, getEnv } from './env';
-import { newRequestId } from './lib/logger';
+import { logError, newRequestId } from './lib/logger';
 import { apiErrorHandler } from './utils/errors';
 import { prisma } from './lib/prisma';
 
@@ -282,6 +282,9 @@ export function createApp(options?: { rateLimit?: boolean }) {
         }
       },
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+      optionsSuccessStatus: 204,
       exposedHeaders: ['x-request-id', 'ratelimit-limit', 'ratelimit-remaining', 'ratelimit-reset', 'retry-after'],
     })
   );
@@ -347,13 +350,18 @@ export function createApp(options?: { rateLimit?: boolean }) {
 
   // Liveness + configuration report. Reports only booleans — whether each
   // variable is present — never the values themselves.
-  app.get('/api/health', async (_request, response) => {
+  app.get('/api/health', async (request, response) => {
     let database: 'connected' | 'disconnected' = 'disconnected';
     try {
       await prisma.$queryRaw`SELECT 1`;
       database = 'connected';
-    } catch {
-      database = 'disconnected';
+    } catch (error) {
+      logError((request as RequestWithId).requestId, error, {
+        stage: 'health-check',
+        part: 'database',
+        method: request.method,
+        url: request.originalUrl,
+      });
     }
 
     let config: Record<string, boolean> = {};
@@ -368,6 +376,7 @@ export function createApp(options?: { rateLimit?: boolean }) {
     response.status(healthy ? 200 : 503).json({
       status: healthy ? 'ok' : 'error',
       database,
+      ...(database === 'disconnected' ? { failingPart: 'database' } : {}),
       config,
       ...(configError ? { configError } : {}),
       uptimeSeconds: Math.round(process.uptime()),

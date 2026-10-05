@@ -11,13 +11,16 @@ import { Badge } from '../components/Badge';
 import { parseLocalDate } from '../utils/date';
 import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
 import { xpBreakdown, xpEarnedSpent } from '../utils/xpBreakdown';
+import { ApiLoadError } from '../components/ApiLoadError';
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const { stats, xp, streak, loading } = useAnalytics(user?.id ?? null);
-  const { tasks } = useTasks(user?.id ?? null);
-  const { habits } = useHabits(user?.id ?? null);
-  const { sessions } = useFocus(user?.id ?? null);
+  const { stats, xp, streak, loading, error: analyticsError, fetchAnalytics } = useAnalytics(user?.id ?? null);
+  const { tasks, error: tasksError, fetchTasks } = useTasks(user?.id ?? null);
+  const { habits, error: habitsError, fetchHabits } = useHabits(user?.id ?? null);
+  const { sessions, error: focusError, fetchSessions } = useFocus(user?.id ?? null);
+  const error = analyticsError ?? tasksError ?? habitsError ?? focusError;
+  const retry = () => void Promise.all([fetchAnalytics(), fetchTasks(), fetchHabits(), fetchSessions()]);
 
   const totalXP = xp?.total ?? 0;
   const level = levelFor(totalXP);
@@ -41,6 +44,7 @@ export default function AnalyticsPage() {
         </div>
       </header>
 
+      <ApiLoadError error={error} onRetry={retry} />
       <div className="stats-grid analytics-stats">
         <Card padding="md">
           <div className="stat-card">

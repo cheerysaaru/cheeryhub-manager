@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { TaskRow } from '../components/TaskRow';
+import { ApiLoadError } from '../components/ApiLoadError';
 import { SkeletonTaskList } from '../components/Skeleton';
 import { DeadlinePicker } from '../components/DeadlinePicker';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
@@ -25,9 +26,11 @@ export default function TasksPage() {
     tasks,
     trash,
     loading,
+    error,
     creating,
     isPending,
     create: createTask,
+    fetchTasks,
     checkIn,
     complete: completeTask,
     remove: removeTask,
@@ -217,9 +220,10 @@ export default function TasksPage() {
             )}
           </form>
 
+          <ApiLoadError error={error} onRetry={() => void fetchTasks()} />
           {loading ? (
             <SkeletonTaskList />
-          ) : activeTasks.length === 0 ? (
+          ) : error ? null : activeTasks.length === 0 ? (
             <div className="empty-state">
               <Circle size={36} strokeWidth={2} />
               <strong>No tasks yet</strong>

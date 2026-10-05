@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import { dedupe } from '../services/inflight';
 import { useSocket } from './useSocket';
 import type { DailyStats, XPTransaction } from '../types';
@@ -15,6 +15,7 @@ export function useAnalytics(userId: string | null) {
   const [xp, setXp] = useState<{ total: number; history: XPTransaction[] } | null>(null);
   const [streak, setStreak] = useState<StreakInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
   const mountedRef = useRef(true);
 
@@ -26,34 +27,45 @@ export function useAnalytics(userId: string | null) {
   }, []);
 
   const fetchStats = useCallback(async () => {
-    const payload = await dedupe('analytics:stats', () =>
-      api<{ stats?: DailyStats[] } | DailyStats[]>('/analytics')
-    );
-    const next = Array.isArray(payload) ? payload : (payload.stats ?? []);
-    if (mountedRef.current) setStats(next);
+    const payload: unknown = await dedupe('analytics:stats', () => api<unknown>('/analytics'));
+    const next = Array.isArray(payload)
+      ? payload
+      : payload && typeof payload === 'object' && 'stats' in payload
+        ? asArray<DailyStats>(payload.stats)
+        : [];
+    if (mountedRef.current) setStats(asArray<DailyStats>(next));
   }, []);
 
   const fetchXp = useCallback(async () => {
-    const data = await dedupe('analytics:xp', () =>
-      api<{ total: number; history: XPTransaction[] }>('/xp')
-    );
-    if (mountedRef.current) setXp(data);
+    const data: unknown = await dedupe('analytics:xp', () => api<unknown>('/xp'));
+    const payload = data && typeof data === 'object' ? data as Record<string, unknown> : {};
+    if (mountedRef.current) {
+      setXp({
+        total: typeof payload.total === 'number' ? payload.total : 0,
+        history: asArray<XPTransaction>(payload.history),
+      });
+    }
   }, []);
 
   const fetchStreaks = useCallback(async () => {
-    const data = await dedupe('analytics:streaks', () => api<StreakInfo>('/streaks'));
-    if (mountedRef.current) setStreak(data);
+    const data: unknown = await dedupe('analytics:streaks', () => api<unknown>('/streaks'));
+    if (mountedRef.current && data && typeof data === 'object') {
+      const payload = data as Partial<StreakInfo>;
+      setStreak({
+        current: typeof payload.current === 'number' ? payload.current : 0,
+        best: typeof payload.best === 'number' ? payload.best : 0,
+        todayActive: payload.todayActive === true,
+      });
+    }
   }, []);
 
   const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       await Promise.all([fetchStats(), fetchXp(), fetchStreaks()]);
-    } catch {
-      if (mountedRef.current) {
-        setStats([]);
-        setXp({ total: 0, history: [] });
-        setStreak(null);
-      }
+    } catch (caught) {
+      if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not load analytics.');
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -95,5 +107,5 @@ export function useAnalytics(userId: string | null) {
     return result;
   }, []);
 
-  return { stats, xp, streak, loading, fetchAnalytics, exportBackup, importBackup };
+  return { stats, xp, streak, loading, error, fetchAnalytics, exportBackup, importBackup };
 }

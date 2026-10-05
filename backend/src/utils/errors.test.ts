@@ -14,14 +14,14 @@ type Handler = (
 
 function run(
   error: unknown,
-  overrides: { requestId?: string; headersSent?: boolean } = {}
+  overrides: { requestId?: string; headersSent?: boolean; origin?: string } = {}
 ) {
-  const result: { status?: number; body?: unknown; headers: Record<string, unknown> } = {};
+  const result: { status?: number; body?: unknown; headers: Record<string, unknown> } = { headers: {} };
   const request = {
     method: 'POST',
     path: '/api/tasks',
     requestId: overrides.requestId,
-    headers: {},
+    headers: overrides.origin ? { origin: overrides.origin } : {},
   } as unknown as Request;
   const response = {
     headersSent: overrides.headersSent ?? false,
@@ -33,7 +33,8 @@ function run(
       result.body = payload;
       return this;
     },
-    setHeader() {
+    setHeader(name: string, value: string) {
+      result.headers[name.toLowerCase()] = value;
       return this;
     },
   } as unknown as Response;
@@ -76,6 +77,8 @@ describe('apiErrorHandler', () => {
     // The detailed log line is written server-side, scrubbed of the secret.
     const logged = consoleError.mock.calls.map((call) => String(call[0])).join('\n');
     expect(logged).toContain('jwt failure while verifying');
+    expect(logged).toContain('"method":"POST"');
+    expect(logged).toContain('"url":"/api/tasks"');
     expect(logged).not.toContain(SECRET);
     expect(logged).toContain('[redacted]');
   });
@@ -125,6 +128,22 @@ describe('apiErrorHandler', () => {
 
     expect(result.status).toBe(400);
     expect((result.body as Record<string, unknown>).code).toBe('INVALID_REQUEST');
+  });
+
+  it('keeps CORS headers on unexpected errors for an allowed origin', () => {
+    validateEnv(
+      { JWT_SECRET: SECRET, NODE_ENV: 'production', FRONTEND_URL: 'http://localhost:5173' },
+      { cache: true }
+    );
+    const result = run(new Error('database unavailable'), {
+      requestId: 'req-cors',
+      origin: 'http://localhost:5173',
+    });
+
+    expect(result.status).toBe(500);
+    expect(result.headers['access-control-allow-origin']).toBe('http://localhost:5173');
+    expect(result.headers['access-control-allow-credentials']).toBe('true');
+    expect((result.body as Record<string, unknown>).requestId).toBe('req-cors');
   });
 
   it('delegates when headers were already sent', () => {

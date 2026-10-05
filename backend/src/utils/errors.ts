@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler, Request, Response } from 'express';
 import { redactSecrets, getEnv } from '../env';
 import { logError } from '../lib/logger';
+import { getCorsOrigins } from '../lib/config';
 
 type RequestWithId = Request & { requestId?: string };
 
@@ -35,9 +36,18 @@ export const apiErrorHandler: ErrorRequestHandler = (error, request, response, n
 
   logError(requestWithId.requestId, error, {
     method: request.method,
-    path: request.path,
+    url: request.originalUrl || request.url || request.path,
     status,
   });
+
+  const origin = request.headers.origin;
+  if (origin && getCorsOrigins().includes(origin)) {
+    response.setHeader('Access-Control-Allow-Origin', origin);
+    response.setHeader('Access-Control-Allow-Credentials', 'true');
+    response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type');
+    response.setHeader('Vary', 'Origin');
+  }
 
   if (status === 403) {
     return response.status(403).json({

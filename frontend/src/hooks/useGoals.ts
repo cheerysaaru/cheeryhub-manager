@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, asArray } from '../services/api';
 import { dedupe } from '../services/inflight';
 import type { Goal, GoalMilestone } from '../types';
 import { useSocket } from './useSocket';
@@ -7,14 +7,20 @@ import { useSocket } from './useSocket';
 export function useGoals(userId: string | null) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchGoals = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await dedupe('goals:list', () => api<Goal[]>('/goals'));
-      setGoals(data);
-    } catch {
-      setGoals([]);
+      setGoals(asArray<Goal>(data).map((goal) => ({
+        ...goal,
+        milestones: asArray<GoalMilestone>(goal.milestones),
+      })));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load goals.');
     } finally {
       setLoading(false);
     }
@@ -78,5 +84,5 @@ export function useGoals(userId: string | null) {
     setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, milestones: g.milestones.filter((m) => m.id !== milestoneId) } : g)));
   }, []);
 
-  return { goals, loading, fetchGoals, create, update, remove, createMilestone, updateMilestone, deleteMilestone };
+  return { goals, loading, error, fetchGoals, create, update, remove, createMilestone, updateMilestone, deleteMilestone };
 }

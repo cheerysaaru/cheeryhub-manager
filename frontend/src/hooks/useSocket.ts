@@ -13,6 +13,10 @@ export function useSocket(userId: string | null) {
     }
 
     const socket = connectSocket(userId);
+    if (!socket) {
+      setConnected(false);
+      return;
+    }
 
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);

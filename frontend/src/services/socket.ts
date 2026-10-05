@@ -2,20 +2,26 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
-export function connectSocket(userId: string): Socket {
-  if (socket?.connected) return socket;
+export function connectSocket(_userId: string): Socket | null {
+  if (socket) return socket;
 
-  const configured = import.meta.env.VITE_API_URL;
-  const backendUrl =
-    configured && configured.startsWith('http')
-      ? configured.replace('/api', '')
-      : window.location.origin;
+  const configured = import.meta.env.VITE_SOCKET_URL?.trim();
+  if (!configured) return null;
 
-  socket = io(backendUrl, {
+  let socketUrl: URL;
+  try {
+    socketUrl = new URL(configured);
+    if (!['http:', 'https:'].includes(socketUrl.protocol) || !socketUrl.hostname) return null;
+  } catch {
+    console.error('[Socket] VITE_SOCKET_URL must be an absolute HTTP(S) URL; realtime is disabled.');
+    return null;
+  }
+
+  socket = io(socketUrl.toString(), {
     withCredentials: true,
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: 3,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
   });

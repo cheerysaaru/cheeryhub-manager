@@ -68,6 +68,21 @@ describe('api()', () => {
         error: 'Your session has expired. Please sign in again.',
         code: 'SESSION_EXPIRED',
       });
+
+      it('redirects immediately when a protected request has no authenticated session', async () => {
+        const handler = vi.fn();
+        onSessionExpired(handler);
+        vi.stubGlobal(
+          'fetch',
+          vi.fn(async () => jsonResponse(401, { error: 'Authentication required', code: 'AUTH_REQUIRED' }))
+        );
+
+        const error = await api('/tasks').catch((caught: unknown) => caught);
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as ApiError).status).toBe(401);
+        expect((error as ApiError).code).toBe('AUTH_REQUIRED');
+        expect(handler).toHaveBeenCalledTimes(1);
+      });
     });
     vi.stubGlobal('fetch', fetchMock);
 

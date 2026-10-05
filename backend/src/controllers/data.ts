@@ -4,7 +4,7 @@ import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
-import { generateNotifications } from '../lib/notifications';
+import { refreshNotificationsInBackground } from '../lib/notifications';
 import { POINTS, awardPoints } from '../lib/points';
 import { applyHabitDayPoints, revokeHabitDayPoints } from '../lib/habitPoints';
 import { resolveHabitDayKey } from '../lib/habitDay';
@@ -22,6 +22,12 @@ function getResource(request: AuthRequest): Resource { const segment = request.b
 function emitEvent(userId: string, resource: string, action: 'created' | 'updated' | 'deleted', data: unknown) {
   const singular = resource.endsWith('s') ? resource.slice(0, -1) : resource;
   emitToUser(userId, `${singular}:${action}`, data);
+}
+function queueNotificationRefresh(request: AuthRequest) {
+  refreshNotificationsInBackground(
+    request.userId!,
+    request as AuthRequest & { requestId?: string }
+  );
 }
 
 const FORBIDDEN_WRITE_KEYS = new Set(['id', 'userId', 'createdAt', 'updatedAt', 'deletedAt', 'startAt', 'extendedAt']);
@@ -94,7 +100,17 @@ export async function list(request: AuthRequest, response: Response) {
   const user = await prisma.user.findUnique({ where: { id: request.userId }, select: { timezone: true } });
   const today = getUserToday(user?.timezone || 'UTC');
   const where = { userId: request.userId, ...(key === 'tasks' || key === 'habits' ? { deletedAt: null } : {}) };
-  const records = await model.findMany({ where, orderBy: { createdAt: 'desc' }, ...(key === 'tasks' ? { include: { checkIns: { where: { userId: request.userId, date: today } } } } : key === 'habits' ? { include: { completions: { where: { userId: request.userId } } } } : {}) });
+  const records = await model.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    ...(key === 'tasks'
+      ? { include: { checkIns: { where: { userId: request.userId, date: today } } } }
+      : key === 'habits'
+        ? { include: { completions: { where: { userId: request.userId } } } }
+        : key === 'goals'
+          ? { include: { milestones: { orderBy: { createdAt: 'asc' } } } }
+          : {}),
+  });
   if (key === 'goals') {
     const now = Date.now();
     const overdueGoals = (records as Array<{ id: string; status: string; deadline: Date | null }>).filter(
@@ -178,7 +194,7 @@ export async function create(request: AuthRequest, response: Response) {
   }
   const model = prisma[modelMap[key]] as any; const record = await model.create({ data: { ...data, userId: request.userId } });
   emitEvent(request.userId!, key, 'created', record);
-  if (key === 'tasks') void generateNotifications(request.userId!).catch(() => undefined);
+  if (key === 'tasks') queueNotificationRefresh(request);
   return ok(response, record, 201);
 }
 export async function update(request: AuthRequest, response: Response) {
@@ -211,7 +227,7 @@ export async function update(request: AuthRequest, response: Response) {
       if (applied) emitToUser(request.userId!, 'xp:updated', { reason: 'Goal completed', amount: POINTS.GOAL_DONE });
     }
   }
-  if (key === 'tasks') void generateNotifications(request.userId!).catch(() => undefined);
+  if (key === 'tasks') queueNotificationRefresh(request);
   return ok(response, record);
 }
 export async function remove(request: AuthRequest, response: Response) {
@@ -461,7 +477,7 @@ export async function restoreTask(request: AuthRequest, response: Response) {
     data: { deletedAt: null },
   });
   emitToUser(request.userId!, 'task:restored', updated);
-  void generateNotifications(request.userId!).catch(() => undefined);
+  queueNotificationRefresh(request);
   return ok(response, updated);
 }
 
@@ -497,7 +513,7 @@ export async function markNotCompleted(request: AuthRequest, response: Response)
   });
   emitToUser(request.userId!, 'task:deleted', { id: task.id });
   emitToUser(request.userId!, 'xp:updated', { reason: 'Task marked as not completed', amount: POINTS.TASK_MISSED });
-  void generateNotifications(request.userId!).catch(() => undefined);
+  queueNotificationRefresh(request);
   return ok(response, updated);
 }
 
@@ -523,6 +539,6 @@ export async function extendTaskDeadline(request: AuthRequest, response: Respons
     data: { dueAt: deadline.dueAt, extendedAt: new Date() },
   });
   emitToUser(request.userId!, 'task:updated', updated);
-  void generateNotifications(request.userId!).catch(() => undefined);
+  queueNotificationRefresh(request);
   return ok(response, updated);
 }

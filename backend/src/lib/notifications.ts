@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { emitToUser } from './socket';
 import { timezoneOf, todayKey } from './time';
+import { logError } from './logger';
 
 export type NotificationInput = {
   type: string;
@@ -140,4 +141,17 @@ export async function generateNotifications(userId: string) {
     where: { userId, dedupeKey: { in: missing.map((candidate) => candidate.dedupeKey) } },
   });
   for (const row of rows) emitToUser(userId, 'notification:created', row);
+}
+
+export function refreshNotificationsInBackground(
+  userId: string,
+  request: { requestId?: string; method: string; originalUrl: string }
+): void {
+  void generateNotifications(userId).catch((error: unknown) => {
+    logError(request.requestId, error, {
+      stage: 'notification-refresh',
+      method: request.method,
+      url: request.originalUrl,
+    });
+  });
 }

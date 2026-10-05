@@ -14,14 +14,16 @@ import { useToast } from '../components/Toast';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import { archiveGoal } from '../utils/archivedments';
+import { ApiLoadError } from '../components/ApiLoadError';
+import { asArray } from '../services/api';
 import type { Goal, GoalMilestone } from '../types';
 import { daysUntil } from '../utils/date';
 
 export default function GoalsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { goals, loading, create, update, remove, createMilestone, updateMilestone, deleteMilestone } = useGoals(user?.id ?? null);
-  const { tasks } = useTasks(user?.id ?? null);
+  const { goals, loading, error: goalsError, fetchGoals, create, update, remove, createMilestone, updateMilestone, deleteMilestone } = useGoals(user?.id ?? null);
+  const { tasks, error: tasksError, fetchTasks } = useTasks(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null);
@@ -29,6 +31,7 @@ export default function GoalsPage() {
   const [milestoneForm, setMilestoneForm] = useState<{ goalId: string; title: string } | null>(null);
   const [form, setForm] = useState({ title: '', description: '', deadline: '', status: 'ACTIVE' as Goal['status'], progress: 0 });
   const goalMenu = useContextMenu();
+  const error = goalsError ?? tasksError;
 
   function openForm(goal?: Goal) {
     if (goal) {
@@ -90,8 +93,9 @@ export default function GoalsPage() {
 
   async function toggleMilestone(goal: Goal, milestone: GoalMilestone) {
     await updateMilestone(goal.id, milestone.id, { completed: !milestone.completed });
-    const completedCount = goal.milestones.filter((m) => (m.id === milestone.id ? !milestone.completed : m.completed)).length;
-    const newProgress = goal.milestones.length > 0 ? Math.round((completedCount / goal.milestones.length) * 100) : 0;
+    const milestones = asArray<GoalMilestone>(goal.milestones);
+    const completedCount = milestones.filter((m) => (m.id === milestone.id ? !milestone.completed : m.completed)).length;
+    const newProgress = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
     await update(goal.id, { progress: newProgress });
     if (newProgress === 100 && goal.progress < 100) {
       const archived = archiveGoal({ id: goal.id, title: goal.title, description: goal.description ?? undefined });
@@ -123,9 +127,13 @@ export default function GoalsPage() {
         </Button>
       </header>
 
+      <ApiLoadError
+        error={error}
+        onRetry={() => void Promise.all([fetchGoals(), fetchTasks()])}
+      />
       {loading ? (
         <div className="page-loading">Loading goals…</div>
-      ) : goals.length === 0 ? (
+      ) : error ? null : goals.length === 0 ? (
         <div className="empty-state">
           <Target size={40} />
           <strong>No goals yet</strong>
@@ -135,6 +143,7 @@ export default function GoalsPage() {
       ) : (
         <div className="goals-list">
           {goals.map((goal) => {
+            const milestones = asArray<GoalMilestone>(goal.milestones);
             const linkedTasks = tasks.filter((t) => t.goalId === goal.id && !t.deletedAt);
             const isExpanded = expanded.has(goal.id);
             const deadlineDays = goal.deadline ? daysUntil(goal.deadline) : null;
@@ -201,8 +210,8 @@ export default function GoalsPage() {
                         </div>
                       ) : null}
                       <ul className="milestone-list">
-                        {goal.milestones.length === 0 && <li className="empty-milestone">No milestones yet.</li>}
-                        {goal.milestones.map((ms) => (
+                        {milestones.length === 0 && <li className="empty-milestone">No milestones yet.</li>}
+                        {milestones.map((ms) => (
                           <li key={ms.id} className={`milestone-item ${ms.completed ? 'completed' : ''}`}>
                             <button className="milestone-check" onClick={() => toggleMilestone(goal, ms)} aria-label={ms.completed ? 'Uncomplete milestone' : 'Complete milestone'}>
                               {ms.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
