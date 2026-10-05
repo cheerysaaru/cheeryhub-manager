@@ -1,0 +1,74 @@
+name: Deploy Frontend to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-pages.yml"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: |
+          node -e "const u = new URL(process.env.VITE_API_URL); if (u.protocol !== 'https:' || u.pathname.replace(/\\/+$/, '') !== '/api') process.exit(1)"
+          npm run build --workspace frontend
+          test -s frontend/dist/index.html
+          test -s frontend/dist/404.html
+          test "$(cat frontend/dist/CNAME)" = "cheeryhub.space"
+        env:
+          # Root domain (cheeryhub.space) -> '/'. Set the repository variable
+          # VITE_BASE=/cheeryhub-manager/ only for username.github.io/repo-name.
+          VITE_BASE: ${{ vars.VITE_BASE || '/' }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.cheeryhub.space/api' }}
+          # Empty/undefined keeps realtime off (safe default).
+          VITE_SOCKET_URL: ${{ vars.VITE_SOCKET_URL }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

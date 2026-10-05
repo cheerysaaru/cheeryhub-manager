@@ -41,15 +41,16 @@ Variables are validated with Zod at startup — the server **exits with a readab
 | `EMAIL_FROM` | no | Resend sender | `Productivity <onboarding@resend.dev>` |
 | `COOKIE_SECURE` / `COOKIE_SAME_SITE` / `COOKIE_DOMAIN` | no | auth cookie | `production→secure`, `lax` |
 | `RATE_LIMIT_*`, `AUTH_RATE_LIMIT_MAX`, `LOGIN_RATE_LIMIT_MAX`, `REGISTER_RATE_LIMIT_MAX` | no | rate limiter | see `backend/.env.example` |
-| `VITE_API_URL` | frontend build | browser → API base URL | `http://localhost:4000/api` (fail-fast if unset in a production build) |
-| `VITE_BASE` | frontend build | GitHub Pages base path | `/` |
+| `VITE_API_URL` | frontend build | browser → API base URL | `http://localhost:4000/api` locally; production fallback is `https://api.cheeryhub.space/api` |
+| `VITE_SOCKET_URL` | frontend build | optional Socket.IO service URL | unset (realtime disabled) |
+| `VITE_BASE` | frontend build | Vite base path | `/` for the custom domain |
 
 How each platform supplies them:
 
-- **Cloudflare Worker (production API):** `npx wrangler secret put JWT_SECRET` and `npx wrangler secret put EMAIL_API_KEY` for secrets; non-secret values live in `backend/wrangler.toml` `[vars]`. The worker validates its environment on cold start and fails loudly if `JWT_SECRET` is missing.
+- **Cloudflare Worker (production API):** bind D1 as `DB`; set `JWT_SECRET` as a Worker secret and optionally set `EMAIL_API_KEY`. Non-secret values live in `backend/wrangler.toml` `[vars]`. The worker validates its environment on cold start and fails loudly if `JWT_SECRET` is missing.
 - **Local / systemd (Node):** `backend/.env` (root `.env` is also read). systemd uses `EnvironmentFile=backend/.env` ([deploy/cheeryhub-api.service](deploy/cheeryhub-api.service)).
 - **Vercel (frontend):** project env var `VITE_API_URL=https://api.cheeryhub.space/api`.
-- **CyberPanel (frontend):** GitHub Actions variable or secret `VITE_API_URL`; `.github/workflows/deploy.yml` builds the SPA and deploys only `frontend/dist/`.
+- **GitHub Pages (frontend):** optionally define the Actions variable `VITE_API_URL` as `https://api.cheeryhub.space/api`; `.github/workflows/deploy-pages.yml` builds the SPA and deploys `frontend/dist/`. `frontend/public/CNAME` preserves the `cheeryhub.space` custom domain.
 
 Errors returned by the API always carry `{ error, code, requestId }`; the same `requestId` appears in server logs and in the `X-Request-Id` response header.
 
@@ -87,7 +88,6 @@ npx gitleaks git --redact --verbose .   # whole history; never prints found secr
 
 ## Production
 
-- **CyberPanel frontend:** `.github/workflows/deploy.yml` builds the SPA using the required HTTPS `VITE_API_URL` Actions variable/secret, then syncs only `frontend/dist/` (including `.htaccess`) to `public_html`. The smoke test checks the HTML root, API health, and that `/.git/config` is forbidden.
-- **CyberPanel Node backend:** backend and Prisma files are synced to `/home/cheeryhub.space/app/`, outside the document root. The documented systemd service binds to `127.0.0.1`; OpenLiteSpeed/CyberPanel exposes the API over HTTPS. CORS and Helmet `connect-src` use `FRONTEND_URL`. See [deploy/DEPLOY.md](deploy/DEPLOY.md) for host-key secrets, runtime setup, and data-preserving deployment steps.
-- **Existing Worker configuration:** `backend/wrangler.toml` still configures `api.cheeryhub.space` as a Cloudflare Worker custom domain, and `.github/workflows/deploy-backend.yml` still deploys it. Before routing that same hostname to the CyberPanel Node service, move it off the Worker deliberately; do not run both backends behind the same API URL.
-- Production database migrations are not part of the deployment workflow. Keep the database and backend `.env` on the server and outside `public_html`; review and back up the database before separately approved schema changes.
+- **GitHub Pages frontend:** `.github/workflows/deploy-pages.yml` builds and deploys the SPA on pushes to `main`; GitHub Pages must be configured to use **GitHub Actions** as its source. The build uses the `VITE_API_URL` Actions variable when present and otherwise uses the production Worker URL.
+- **Cloudflare Worker API:** `.github/workflows/deploy-backend.yml` deploys the Worker and applies pending D1 migrations on changes to `backend/` or `prisma/`. Configure `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets, and verify the D1 migration history before the first automated migration run.
+- **Legacy CyberPanel Node deployment:** the `deploy/` scripts and service file remain for installations that deliberately use the Node server. They are not used by the GitHub Pages/Worker workflows; do not route `api.cheeryhub.space` to both runtimes.
