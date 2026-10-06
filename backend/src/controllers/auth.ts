@@ -131,7 +131,11 @@ export async function login(request: Request, response: Response) {
     where: { OR: [{ email: identifier }, { name: identifier }] },
   });
   if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
-    return fail(response, 'Invalid username or password', 401);
+    return response.status(401).json({
+      error: 'Invalid username or password',
+      code: 'INVALID_CREDENTIALS',
+      requestId: requestIdOf(request),
+    });
   }
   if (user.status !== 'ACTIVE') {
     return fail(response, 'Account disabled', 403);
@@ -242,6 +246,7 @@ export async function refreshSession(request: AuthRequest, response: Response) {
     return response.status(401).json({
       error: 'Authentication required',
       code: 'AUTH_REQUIRED',
+      requestId: requestIdOf(request),
     });
 
   let payload: { userId: string; iat?: number };
@@ -253,6 +258,7 @@ export async function refreshSession(request: AuthRequest, response: Response) {
     return response.status(401).json({
       error: 'Your session has expired. Please sign in again.',
       code: 'SESSION_EXPIRED',
+      requestId: requestIdOf(request),
     });
   }
 
@@ -264,6 +270,7 @@ export async function refreshSession(request: AuthRequest, response: Response) {
     return response.status(401).json({
       error: 'Your session has expired. Please sign in again.',
       code: 'SESSION_EXPIRED',
+      requestId: requestIdOf(request),
     });
   if (
     user.passwordChangedAt &&
@@ -272,6 +279,7 @@ export async function refreshSession(request: AuthRequest, response: Response) {
     return response.status(401).json({
       error: 'Your session has expired. Please sign in again.',
       code: 'SESSION_EXPIRED',
+      requestId: requestIdOf(request),
     });
 
   setAuthCookie(response, user.id);

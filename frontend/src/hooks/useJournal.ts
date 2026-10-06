@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, asArray } from '../services/api';
+import { api, ApiError, asArray } from '../services/api';
 import type { JournalEntry } from '../types';
 import { useSocket } from './useSocket';
 
 export function useJournal(userId: string | null) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchEntries = useCallback(async () => {
+    setError(null);
     try {
       const data = await api<JournalEntry[]>('/journal');
-      setEntries(asArray<JournalEntry>(data));
-    } catch {
-      setEntries([]);
+      setEntries(asArray<JournalEntry>(data)
+        .filter((entry): entry is JournalEntry => Boolean(entry && typeof entry === 'object' && typeof entry.id === 'string' && typeof entry.date === 'string')));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load journal entries.');
     } finally {
       setLoading(false);
     }
@@ -36,8 +39,9 @@ export function useJournal(userId: string | null) {
   const getByDate = useCallback(async (date: string) => {
     try {
       return await api<JournalEntry>(`/journal/${date}`);
-    } catch {
-      return null;
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 404) return null;
+      throw caught;
     }
   }, []);
 
@@ -63,5 +67,5 @@ export function useJournal(userId: string | null) {
     return entry;
   }, []);
 
-  return { entries, loading, fetchEntries, getByDate, save, update };
+  return { entries, loading, error, fetchEntries, getByDate, save, update };
 }

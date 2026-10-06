@@ -33,7 +33,15 @@ export function useAnalytics(userId: string | null) {
       : payload && typeof payload === 'object' && 'stats' in payload
         ? asArray<DailyStats>(payload.stats)
         : [];
-    if (mountedRef.current) setStats(asArray<DailyStats>(next));
+    if (mountedRef.current) {
+      setStats(asArray<DailyStats>(next).filter((item): item is DailyStats => Boolean(
+        item &&
+        typeof item === 'object' &&
+        typeof item.id === 'string' &&
+        typeof item.date === 'string' &&
+        typeof item.productivityPercentage === 'number'
+      )));
+    }
   }, []);
 
   const fetchXp = useCallback(async () => {
@@ -42,7 +50,13 @@ export function useAnalytics(userId: string | null) {
     if (mountedRef.current) {
       setXp({
         total: typeof payload.total === 'number' ? payload.total : 0,
-        history: asArray<XPTransaction>(payload.history),
+        history: asArray<XPTransaction>(payload.history).filter((item): item is XPTransaction => Boolean(
+          item &&
+          typeof item === 'object' &&
+          typeof item.id === 'string' &&
+          typeof item.amount === 'number' &&
+          typeof item.reason === 'string'
+        )),
       });
     }
   }, []);
@@ -80,13 +94,19 @@ export function useAnalytics(userId: string | null) {
   useEffect(() => {
     const cleanups = [
       on('xp:updated', () => {
-        void fetchXp().catch(() => undefined);
+        void fetchXp().catch((caught: unknown) => {
+          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh XP.');
+        });
       }),
       on('habit:updated', () => {
-        void fetchStreaks().catch(() => undefined);
+        void fetchStreaks().catch((caught: unknown) => {
+          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh streaks.');
+        });
       }),
       on('task:updated', () => {
-        void fetchStreaks().catch(() => undefined);
+        void fetchStreaks().catch((caught: unknown) => {
+          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh streaks.');
+        });
       }),
     ];
     return () => {

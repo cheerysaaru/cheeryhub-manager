@@ -8,6 +8,8 @@ import { Badge } from '../components/Badge';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
+import { ApiLoadError } from '../components/ApiLoadError';
+import { asArray } from '../services/api';
 import type { Transaction, WeeklyReport, MonthlyReport } from '../types';
 import { formatShortDate, parseLocalDate, todayISO } from '../utils/date';
 import { downloadJson } from '../utils/misc';
@@ -206,7 +208,7 @@ function TrendChart({ byDay }: { byDay: MonthlyReport['byDay'] }) {
 
 export default function FinancePage() {
   const { user } = useAuth();
-  const { transactions, weeklyReport, monthlyReport, loading, fetchReports, create, update, remove } = useTransactions(user?.id ?? null);
+  const { transactions, weeklyReport, monthlyReport, loading, error, fetchTransactions, fetchReports, create, update, remove } = useTransactions(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
@@ -239,10 +241,10 @@ export default function FinancePage() {
   }
 
   const filtered = filterType === 'ALL' ? transactions : transactions.filter((t) => t.type === filterType);
-  const wi = weeklyReport?.weekly.income ?? 0;
-  const we = weeklyReport?.weekly.expense ?? 0;
-  const mi = monthlyReport?.summary.income ?? 0;
-  const me = monthlyReport?.summary.expense ?? 0;
+  const wi = weeklyReport?.weekly?.income ?? 0;
+  const we = weeklyReport?.weekly?.expense ?? 0;
+  const mi = monthlyReport?.summary?.income ?? 0;
+  const me = monthlyReport?.summary?.expense ?? 0;
 
   return (
     <div className="page">
@@ -256,18 +258,25 @@ export default function FinancePage() {
         </Button>
       </header>
 
+      <ApiLoadError
+        error={error}
+        onRetry={() => void Promise.all([
+          fetchTransactions(),
+          fetchReports(currentMonth.getFullYear(), currentMonth.getMonth() + 1),
+        ])}
+      />
       <div className="reports-grid">
-        <ReportCard title="This Week" income={wi} expense={we} net={wi - we} periodLabel={weeklyReport ? `${weeklyReport.period.weekStart} – ${weeklyReport.period.weekEnd}` : ''}>
-          <CategoryBreakdown data={weeklyReport?.monthly.byCategory.income ?? {}} type="income" />
-          <CategoryBreakdown data={weeklyReport?.monthly.byCategory.expense ?? {}} type="expense" />
+        <ReportCard title="This Week" income={wi} expense={we} net={wi - we} periodLabel={weeklyReport?.period ? `${weeklyReport.period.weekStart} – ${weeklyReport.period.weekEnd}` : ''}>
+          <CategoryBreakdown data={weeklyReport?.monthly?.byCategory?.income ?? {}} type="income" />
+          <CategoryBreakdown data={weeklyReport?.monthly?.byCategory?.expense ?? {}} type="expense" />
         </ReportCard>
-        <ReportCard title={`Month of ${currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`} income={mi} expense={me} net={mi - me} periodLabel={monthlyReport ? `${monthlyReport.period.monthStart} – ${monthlyReport.period.monthEnd}` : ''}>
-          <CategoryBreakdown data={monthlyReport?.byCategory.income ?? {}} type="income" />
-          <CategoryBreakdown data={monthlyReport?.byCategory.expense ?? {}} type="expense" />
+        <ReportCard title={`Month of ${currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`} income={mi} expense={me} net={mi - me} periodLabel={monthlyReport?.period ? `${monthlyReport.period.monthStart} – ${monthlyReport.period.monthEnd}` : ''}>
+          <CategoryBreakdown data={monthlyReport?.byCategory?.income ?? {}} type="income" />
+          <CategoryBreakdown data={monthlyReport?.byCategory?.expense ?? {}} type="expense" />
         </ReportCard>
       </div>
 
-      <TrendChart byDay={monthlyReport?.byDay ?? []} />
+      <TrendChart byDay={asArray(monthlyReport?.byDay)} />
 
       <div className="finance-controls">
         <div className="month-nav">

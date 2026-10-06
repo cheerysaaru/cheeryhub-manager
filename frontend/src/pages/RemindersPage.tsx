@@ -10,12 +10,13 @@ import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
 import { Switch } from '../components/Switch';
+import { ApiLoadError } from '../components/ApiLoadError';
 import type { Reminder } from '../types';
 import { todayISO, daysUntil, parseLocalDate } from '../utils/date';
 
 export default function RemindersPage() {
   const { user } = useAuth();
-  const { reminders, loading, create, update, remove } = useReminders(user?.id ?? null);
+  const { reminders, loading, error, fetchReminders, create, update, remove } = useReminders(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Reminder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Reminder | null>(null);
@@ -81,6 +82,7 @@ export default function RemindersPage() {
         </Button>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchReminders()} />
       {loading ? (
         <div className="page-loading">Loading reminders…</div>
       ) : reminders.length === 0 ? (

@@ -11,11 +11,12 @@ import { Modal, ConfirmDialog } from '../components/Modal';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
+import { ApiLoadError } from '../components/ApiLoadError';
 import type { BrandProject, BrandMilestone } from '../types';
 
 export default function BrandPage() {
   const { user } = useAuth();
-  const { projects, loading, create, update, remove, createMilestone, updateMilestone, deleteMilestone } = useBrand(user?.id ?? null);
+  const { projects, loading, error, fetchProjects, create, update, remove, createMilestone, updateMilestone, deleteMilestone } = useBrand(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<BrandProject | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BrandProject | null>(null);
@@ -79,6 +80,7 @@ export default function BrandPage() {
         </Button>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchProjects()} />
       {loading ? (
         <div className="page-loading">Loading projects…</div>
       ) : projects.length === 0 ? (

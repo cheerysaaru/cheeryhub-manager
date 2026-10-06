@@ -64,7 +64,7 @@ export default function GoalsPage() {
       await update(editingGoal.id, data);
     } else {
       const created = await create(data);
-      archivedId = created.id;
+      archivedId = created?.id;
     }
     setShowForm(false);
     if (data.progress === 100 && (!editingGoal || editingGoal.progress < 100)) {

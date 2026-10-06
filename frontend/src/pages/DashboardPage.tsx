@@ -10,6 +10,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Progress } from '../components/Progress';
 import { useToast } from '../components/Toast';
+import { ApiLoadError } from '../components/ApiLoadError';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { HeaderStats } from '../components/HeaderStats';
@@ -98,6 +99,7 @@ export default function DashboardPage() {
     tasks,
     trash,
     loading: tasksLoading,
+    error: tasksError,
     creating: creatingTask,
     isPending: isTaskPending,
     create: createTask,
@@ -105,6 +107,7 @@ export default function DashboardPage() {
     complete: completeTask,
     remove: removeTask,
     fetchTrash,
+    fetchTasks,
     restore: restoreTask,
     purge: purgeTask,
     markNotCompleted,
@@ -113,6 +116,7 @@ export default function DashboardPage() {
   const {
     habits,
     loading: habitsLoading,
+    error: habitsError,
     creating: creatingHabit,
     isPending: isHabitPending,
     create: createHabit,
@@ -121,9 +125,11 @@ export default function DashboardPage() {
     failToday,
     skipToday,
     remove: removeHabit,
+    fetchHabits,
   } = useHabits(user?.id ?? null);
-  const { goals } = useGoals(user?.id ?? null);
-  const { xp, streak } = useAnalytics(user?.id ?? null);
+  const { goals, error: goalsError, fetchGoals } = useGoals(user?.id ?? null);
+  const { xp, streak, error: analyticsError, fetchAnalytics } = useAnalytics(user?.id ?? null);
+  const loadError = tasksError ?? habitsError ?? goalsError ?? analyticsError;
 
   const [taskForm, setTaskForm] = useState({ title: '' });
   const [dueAt, setDueAt] = useState<string | null>(null);
@@ -298,6 +304,10 @@ export default function DashboardPage() {
         />
       </header>
 
+      <ApiLoadError
+        error={loadError}
+        onRetry={() => void Promise.all([fetchTasks(), fetchHabits(), fetchGoals(), fetchAnalytics()])}
+      />
       <section className="stats-grid" aria-label="Today's progress">
         <Card padding="md">
           <div className="stat-card">

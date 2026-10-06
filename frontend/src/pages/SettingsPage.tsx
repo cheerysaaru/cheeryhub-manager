@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Settings, Download, LogOut, User, Palette } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/Button';
@@ -6,6 +6,7 @@ import { Card, CardTitle, CardDescription } from '../components/Card';
 import { Input } from '../components/Input';
 import { Switch } from '../components/Switch';
 import { Avatar } from '../components/Avatar';
+import { ApiLoadError } from '../components/ApiLoadError';
 import { Tabs, TabsList, TabsTrigger } from '../components/Tabs';
 import { ProfilePhotoCropModal } from '../components/ProfilePhotoCropModal';
 import { api } from '../services/api';
@@ -21,6 +22,7 @@ export default function SettingsPage() {
   const { user, logout } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,29 +85,34 @@ export default function SettingsPage() {
     notifyProfileUpdated();
   }
 
+  const fetchSettings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api<UserSettings>('/settings');
+      if (!data) throw new Error('The settings response was empty.');
+      setSettings(data);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load settings.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    api<UserSettings>('/settings')
-      .then((data) => setSettings(data))
-      .catch(() => {
-        setSettings({
-          id: '', userId: user?.id ?? '',
-          wakeUpTime: '07:00', sleepTime: '22:30',
-          breakfastTime: '08:00', lunchTime: '12:30', dinnerTime: '18:30',
-          defaultFocusDuration: 25, defaultBreakDuration: 5, notificationsEnabled: true,
-          createdAt: '', updatedAt: '',
-        });
-      })
-      .finally(() => setLoading(false));
-  }, [user]);
+    void fetchSettings();
+  }, [fetchSettings]);
 
   async function saveSettings() {
     if (!settings) return;
     setSaving(true);
     try {
       const updated = await api<UserSettings>('/settings', { method: 'PUT', body: JSON.stringify(settings) });
-      setSettings(updated);
+      setSettings(updated ?? settings);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not save settings.');
     } finally {
       setSaving(false);
     }
@@ -142,8 +149,17 @@ export default function SettingsPage() {
     setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
-  if (loading || !settings) {
+  if (loading && !settings) {
     return <div className="page-loading">Loading settings…</div>;
+  }
+
+  if (!settings) {
+    return (
+      <div className="page">
+        <header className="page-header"><h1>Settings</h1></header>
+        <ApiLoadError error={error} onRetry={() => void fetchSettings()} />
+      </div>
+    );
   }
 
   return (
@@ -155,6 +171,7 @@ export default function SettingsPage() {
         </div>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchSettings()} />
       <Card padding="lg">
         <div className="settings-section">
           <div className="settings-section-header">

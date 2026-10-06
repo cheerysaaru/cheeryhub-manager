@@ -26,6 +26,10 @@ export type AuthRequest = Request & {
   userRole?: 'ADMIN' | 'USER';
 };
 
+function requestIdOf(request: Request): string | undefined {
+  return (request as Request & { requestId?: string }).requestId;
+}
+
 export async function requireAuth(
   request: AuthRequest,
   response: Response,
@@ -38,41 +42,57 @@ export async function requireAuth(
     return response.status(401).json({
       error: 'Authentication required',
       code: 'AUTH_REQUIRED',
+      requestId: requestIdOf(request),
     });
+  let payload: { userId: string; iat?: number };
   try {
-    const payload = jwt.verify(token, getJwtSecret()) as { userId: string; iat?: number };
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: { id: true, role: true, status: true, passwordChangedAt: true },
-    });
-    if (!user)
-      return response.status(401).json({
-        error: 'Your session has expired. Please sign in again.',
-        code: 'SESSION_EXPIRED',
-      });
-    if (user.status !== 'ACTIVE')
-      return response.status(403).json({
-        error: 'This account has been disabled. Please contact support.',
-        code: 'ACCOUNT_DISABLED',
-      });
-    // Tokens issued before the last password change are dead everywhere.
-    if (
-      user.passwordChangedAt &&
-      (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
-    )
-      return response.status(401).json({
-        error: 'Your session has expired. Please sign in again.',
-        code: 'SESSION_EXPIRED',
-      });
-    request.userId = user.id;
-    request.userRole = user.role;
-    next();
+    const decoded = jwt.verify(token, getJwtSecret());
+    if (typeof decoded === 'string' || typeof decoded.userId !== 'string' || !decoded.userId) {
+      throw new Error('Token payload has no user id');
+    }
+    payload = { userId: decoded.userId, iat: decoded.iat };
   } catch {
     return response.status(401).json({
       error: 'Your session has expired. Please sign in again.',
       code: 'SESSION_EXPIRED',
+      requestId: requestIdOf(request),
     });
   }
+
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true, status: true, passwordChangedAt: true },
+    });
+  } catch (error) {
+    return next(error);
+  }
+
+  if (!user)
+    return response.status(401).json({
+      error: 'Your session has expired. Please sign in again.',
+      code: 'SESSION_EXPIRED',
+      requestId: requestIdOf(request),
+    });
+  if (user.status !== 'ACTIVE')
+    return response.status(403).json({
+      error: 'This account has been disabled. Please contact support.',
+      code: 'ACCOUNT_DISABLED',
+    });
+  // Tokens issued before the last password change are dead everywhere.
+  if (
+    user.passwordChangedAt &&
+    (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
+  )
+    return response.status(401).json({
+      error: 'Your session has expired. Please sign in again.',
+      code: 'SESSION_EXPIRED',
+      requestId: requestIdOf(request),
+    });
+  request.userId = user.id;
+  request.userRole = user.role;
+  return next();
 }
 
 export function requireAdmin(

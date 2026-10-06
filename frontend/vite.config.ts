@@ -27,7 +27,10 @@ function spaFallback404(): Plugin {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), spaFallback404()],
-  base: '/',
+  // '/' for the custom domain cheeryhub.space (or any root deploy).
+  // Set VITE_BASE=/cheeryhub-manager/ when publishing to
+  // username.github.io/cheeryhub-manager so asset URLs resolve there.
+  base: process.env.VITE_BASE || '/',
   build: {
     rollupOptions: {
       output: {

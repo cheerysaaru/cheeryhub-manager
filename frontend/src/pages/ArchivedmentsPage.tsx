@@ -8,6 +8,7 @@ import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
 import { Textarea } from '../components/Textarea';
+import { ApiLoadError } from '../components/ApiLoadError';
 import { readArchivedments, addArchivedment, type Archivedment } from '../utils/archivedments';
 import { api } from '../services/api';
 import { todayISO, parseLocalDate } from '../utils/date';
@@ -23,7 +24,7 @@ function formatAchievedDate(dateStr: string): string {
 export default function ArchivedmentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { goals } = useGoals(user?.id ?? null);
+  const { goals, error, fetchGoals } = useGoals(user?.id ?? null);
   const [items, setItems] = useState<Archivedment[]>(() => readArchivedments());
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ emoji: '', title: '', description: '', date: todayISO() });
@@ -55,7 +56,7 @@ export default function ArchivedmentsPage() {
     setShowForm(true);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
     const entry = addArchivedment({
@@ -67,11 +68,19 @@ export default function ArchivedmentsPage() {
     setItems(readArchivedments());
     setShowForm(false);
     // Award +5 points for the achievement (idempotent on the server).
-    void api('/achievements/unlock', {
-      method: 'POST',
-      body: JSON.stringify({ id: entry.id, title: entry.title }),
-    }).catch(() => undefined);
-    toast({ type: 'success', title: 'Achievement added', message: `${entry.title} · +5 points` });
+    try {
+      await api('/achievements/unlock', {
+        method: 'POST',
+        body: JSON.stringify({ id: entry.id, title: entry.title }),
+      });
+      toast({ type: 'success', title: 'Achievement added', message: `${entry.title} · +5 points` });
+    } catch (caught) {
+      toast({
+        type: 'error',
+        title: 'Achievement saved locally, but XP was not awarded',
+        message: caught instanceof Error ? caught.message : 'Please try again.',
+      });
+    }
   }
 
   return (
@@ -86,6 +95,7 @@ export default function ArchivedmentsPage() {
         </Button>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchGoals()} />
       {visible.length === 0 ? (
         <div className="empty-state">
           <Archive size={40} />

@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { api, clearAppStorage, syncPendingWrites } from '../services/api';
+import { api, ApiError, clearAppStorage, syncPendingWrites } from '../services/api';
 import type { User } from '../types';
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
+  authError: string | null;
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<User>;
   forgotPassword: (email: string) => Promise<string>;
@@ -23,6 +24,14 @@ export function browserTimezone(): string {
   }
 }
 
+function requireUser(payload: { user: User } | null | undefined, action: string): User {
+  const fetched = payload?.user;
+  if (!fetched || typeof fetched !== 'object' || typeof fetched.id !== 'string') {
+    throw new Error('The server sent an unexpected response while trying to ' + action + '. Please try again.');
+  }
+  return fetched;
+}
+
 async function syncTimezone(fetched: User): Promise<User> {
   const timezone = browserTimezone();
   if (!timezone || timezone === fetched.timezone) return fetched;
@@ -30,6 +39,7 @@ async function syncTimezone(fetched: User): Promise<User> {
     await api('/settings', { method: 'PUT', body: JSON.stringify({ timezone }) });
     return { ...fetched, timezone };
   } catch {
+    console.warn('[auth] Could not sync the browser timezone; continuing with the saved timezone.');
     return fetched;
   }
 }
@@ -37,9 +47,11 @@ async function syncTimezone(fetched: User): Promise<User> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const syncedUser = useRef<string | null>(null);
 
   const adoptUser = useCallback(async (next: User) => {
+    setAuthError(null);
     if (syncedUser.current !== next.id) {
       syncedUser.current = next.id;
       const synced = await syncTimezone(next);
@@ -51,12 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUser = useCallback(async () => {
+    setLoading(true);
+    setAuthError(null);
     try {
       const result = await api<{ user: User }>('/auth/me');
-      await adoptUser(result.user);
-    } catch {
-      setUser(null);
-      syncedUser.current = null;
+      await adoptUser(requireUser(result, 'continue'));
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 401) {
+        setUser(null);
+        syncedUser.current = null;
+      } else {
+        setAuthError(caught instanceof Error ? caught.message : 'Could not verify your session.');
+      }
     } finally {
       setLoading(false);
     }
@@ -65,9 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     clearAppStorage();
     fetchUser();
-    syncPendingWrites();
-    window.addEventListener('online', syncPendingWrites);
-    return () => window.removeEventListener('online', syncPendingWrites);
+    const sync = () => {
+      void syncPendingWrites().catch((error: unknown) => {
+        console.error('[api] Could not sync pending writes:', error);
+      });
+    };
+    sync();
+    window.addEventListener('online', sync);
+    return () => window.removeEventListener('online', sync);
   }, [fetchUser]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -75,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify({ email, password, timezone: browserTimezone() }),
     });
-    return adoptUser(result.user);
+    return adoptUser(requireUser(result, 'continue'));
   }, [adoptUser]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
@@ -83,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify({ name, email, password, timezone: browserTimezone() }),
     });
-    return adoptUser(result.user);
+    return adoptUser(requireUser(result, 'continue'));
   }, [adoptUser]);
 
   const forgotPassword = useCallback(async (email: string) => {
@@ -116,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
+      authError,
       login,
       register,
       forgotPassword,
@@ -123,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser: fetchUser,
     }),
-    [user, loading, login, register, forgotPassword, resetPassword, logout, fetchUser]
+    [user, loading, authError, login, register, forgotPassword, resetPassword, logout, fetchUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

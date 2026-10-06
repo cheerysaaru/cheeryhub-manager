@@ -5,7 +5,8 @@ import { todayISO } from '../utils/date';
 import type { Habit } from '../types';
 import { useSocket } from './useSocket';
 
-function normalizeHabit(habit: Partial<Habit> & { id: string }): Habit {
+function normalizeHabit(input: Partial<Habit> & { id: string }): Habit {
+  const habit = (input ?? {}) as Partial<Habit> & { id: string };
   return {
     ...habit,
     completedToday: habit.completedToday ?? false,
@@ -14,10 +15,10 @@ function normalizeHabit(habit: Partial<Habit> & { id: string }): Habit {
     completedDays: habit.completedDays ?? 0,
     weekCompletedDays: habit.weekCompletedDays ?? 0,
     weekStart: habit.weekStart ?? todayISO(),
-    weekDates: habit.weekDates ?? [],
-    completedDates: habit.completedDates ?? [],
-    failedDates: habit.failedDates ?? [],
-    skippedDates: habit.skippedDates ?? [],
+    weekDates: asArray<string>(habit.weekDates),
+    completedDates: asArray<string>(habit.completedDates),
+    failedDates: asArray<string>(habit.failedDates),
+    skippedDates: asArray<string>(habit.skippedDates),
   } as Habit;
 }
 
@@ -111,7 +112,9 @@ export function useHabits(userId: string | null) {
     setError(null);
     try {
       const data = await dedupe('habits:list', () => api<Habit[]>('/habits'));
-      setHabits(asArray<Habit>(data).map(normalizeHabit));
+      setHabits(asArray<Habit>(data)
+        .filter((habit): habit is Habit => Boolean(habit && typeof habit === 'object' && typeof habit.id === 'string' && typeof habit.name === 'string'))
+        .map(normalizeHabit));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load habits.');
     } finally {
@@ -155,8 +158,9 @@ export function useHabits(userId: string | null) {
 
   const update = useCallback(async (id: string, data: Partial<Habit>) => {
     const habit = await api<Habit>(`/habits/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-    setHabits((prev) => prev.map((h) => (h.id === id ? habit : h)));
-    return habit;
+    const normalized = normalizeHabit(habit);
+    setHabits((prev) => prev.map((h) => (h.id === id ? normalized : h)));
+    return normalized;
   }, []);
 
   const remove = useCallback(async (id: string) => {
