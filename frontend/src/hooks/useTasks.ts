@@ -4,7 +4,8 @@ import { dedupe } from '../services/inflight';
 import type { Task } from '../types';
 import { useSocket } from './useSocket';
 
-function normalizeTask(task: Partial<Task> & { id: string }): Task {
+function normalizeTask(input: Partial<Task> & { id: string }): Task {
+  const task = (input ?? {}) as Partial<Task> & { id: string };
   return {
     ...task,
     checkedToday: task.checkedToday ?? false,
@@ -48,7 +49,9 @@ export function useTasks(userId: string | null) {
     setError(null);
     try {
       const data = await dedupe('tasks:list', () => api<Task[]>('/tasks'));
-      setTasks(asArray<Task>(data));
+      setTasks(asArray<Task>(data)
+        .filter((task): task is Task => Boolean(task && typeof task === 'object' && typeof task.id === 'string' && typeof task.title === 'string' && typeof task.status === 'string'))
+        .map(normalizeTask));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load tasks.');
     } finally {
@@ -59,7 +62,9 @@ export function useTasks(userId: string | null) {
   const fetchTrash = useCallback(async () => {
     try {
       const data = await dedupe('tasks:trash', () => api<Task[]>('/tasks/trash'));
-      setTrash(asArray<Task>(data));
+      setTrash(asArray<Task>(data)
+        .filter((task): task is Task => Boolean(task && typeof task === 'object' && typeof task.id === 'string' && typeof task.title === 'string' && typeof task.status === 'string'))
+        .map(normalizeTask));
     } catch {
       setError('Could not load the task trash. Please retry.');
     }

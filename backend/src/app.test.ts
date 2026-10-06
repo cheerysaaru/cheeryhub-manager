@@ -74,6 +74,7 @@ describe('auth errors', () => {
     expect(body.code).toBe('AUTH_REQUIRED');
     expect(String(body.error)).toMatch(/authentication/i);
     expect(response.headers.get('x-request-id')).toBeTruthy();
+    expect(body.requestId).toBe(response.headers.get('x-request-id'));
   });
 
   it('rejects an unreadable refresh token as an expired session', async () => {
@@ -86,6 +87,7 @@ describe('auth errors', () => {
     expect(response.status).toBe(401);
     expect(body.code).toBe('SESSION_EXPIRED');
     expect(String(body.error)).toMatch(/expired/i);
+    expect(body.requestId).toBe(response.headers.get('x-request-id'));
   });
 
   it('tells a cookie-less refresh call there is nothing to refresh', async () => {
@@ -94,6 +96,7 @@ describe('auth errors', () => {
 
     expect(response.status).toBe(401);
     expect(body.code).toBe('AUTH_REQUIRED');
+    expect(body.requestId).toBe(response.headers.get('x-request-id'));
   });
 });
 

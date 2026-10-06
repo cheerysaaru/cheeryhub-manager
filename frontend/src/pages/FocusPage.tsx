@@ -6,11 +6,12 @@ import { useTasks } from '../hooks/useTasks';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { ApiLoadError } from '../components/ApiLoadError';
 import type { FocusSession } from '../types';
 
 export default function FocusPage() {
   const { user } = useAuth();
-  const { sessions, loading, start, complete } = useFocus(user?.id ?? null);
+  const { sessions, loading, error, fetchSessions, start, complete } = useFocus(user?.id ?? null);
   const { tasks } = useTasks(user?.id ?? null);
   const [duration, setDuration] = useState(25);
   const [selectedTask, setSelectedTask] = useState('');
@@ -89,6 +90,7 @@ export default function FocusPage() {
         </div>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchSessions()} />
       {!runningSession ? (
         <Card className="focus-start-card" padding="lg">
           <div className="focus-start-inner">

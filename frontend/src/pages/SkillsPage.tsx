@@ -9,11 +9,12 @@ import { Progress } from '../components/Progress';
 import { Modal, ConfirmDialog } from '../components/Modal';
 import { ContextMenu, useContextMenu } from '../components/ContextMenu';
 import { Input } from '../components/Input';
+import { ApiLoadError } from '../components/ApiLoadError';
 import type { Skill } from '../types';
 
 export default function SkillsPage() {
   const { user } = useAuth();
-  const { skills, loading, create, update, remove } = useSkills(user?.id ?? null);
+  const { skills, loading, error, fetchSkills, create, update, remove } = useSkills(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Skill | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Skill | null>(null);
@@ -62,6 +63,7 @@ export default function SkillsPage() {
         </Button>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchSkills()} />
       {loading ? (
         <div className="page-loading">Loading skills…</div>
       ) : skills.length === 0 ? (

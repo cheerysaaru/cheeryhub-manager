@@ -16,7 +16,8 @@ export function useNotifications(userId: string | null) {
     try {
       const data: unknown = await api<unknown>('/notifications');
       const payload = data && typeof data === 'object' ? data as Record<string, unknown> : {};
-      setItems(asArray<AppNotification>(payload.items));
+      setItems(asArray<AppNotification>(payload.items)
+        .filter((item): item is AppNotification => Boolean(item && typeof item === 'object' && typeof item.id === 'string')));
       setUnreadCount(typeof payload.unreadCount === 'number' ? payload.unreadCount : 0);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load notifications.');

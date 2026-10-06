@@ -6,14 +6,23 @@ import { useSocket } from './useSocket';
 export function useReminders(userId: string | null) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchReminders = useCallback(async () => {
+    setError(null);
     try {
       const data = await api<Reminder[]>('/reminders');
-      setReminders(asArray<Reminder>(data));
-    } catch {
-      setReminders([]);
+      setReminders(asArray<Reminder>(data)
+        .filter((reminder): reminder is Reminder => Boolean(
+          reminder &&
+          typeof reminder === 'object' &&
+          typeof reminder.id === 'string' &&
+          typeof reminder.title === 'string' &&
+          typeof reminder.reminderDate === 'string'
+        )));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load reminders.');
     } finally {
       setLoading(false);
     }
@@ -54,5 +63,5 @@ export function useReminders(userId: string | null) {
     setReminders((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
-  return { reminders, loading, fetchReminders, create, update, remove };
+  return { reminders, loading, error, fetchReminders, create, update, remove };
 }

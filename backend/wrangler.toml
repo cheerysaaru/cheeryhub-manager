@@ -25,3 +25,25 @@ APP_URL = "https://cheeryhub.space"
 #   npx wrangler secret put EMAIL_API_KEY   # optional (Resend), enables email
 # The worker refuses to start without JWT_SECRET and logs the name of every
 # missing variable (values are never printed).
+
+# Staging is intended for local Wrangler dev with a remote, isolated D1 binding:
+#   npx wrangler dev --env staging --remote
+# It has no route bound to the production API hostname.
+[env.staging]
+name = "cheeryhub-api-staging"
+workers_dev = true
+routes = []
+
+[env.staging.vars]
+FRONTEND_URL = "http://127.0.0.1:4173,http://localhost:4173"
+NODE_ENV = "development"
+EMAIL_FROM = "Productivity <onboarding@resend.dev>"
+APP_URL = "http://127.0.0.1:4173"
+COOKIE_SECURE = "false"
+COOKIE_SAME_SITE = "lax"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "cheeryhub-staging-db"
+database_id = "252f2084-f40d-4c93-91ff-1f7c08f05854"
+migrations_dir = "migrations"

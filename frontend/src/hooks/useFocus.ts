@@ -14,7 +14,8 @@ export function useFocus(userId: string | null) {
     setError(null);
     try {
       const data = await api<FocusSession[]>('/focus/history');
-      setSessions(asArray<FocusSession>(data));
+      setSessions(asArray<FocusSession>(data)
+        .filter((session): session is FocusSession => Boolean(session && typeof session === 'object' && typeof session.id === 'string' && typeof session.status === 'string' && typeof session.startedAt === 'string')));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load focus sessions.');
     } finally {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Circle, CircleX, Coffee, Lock, ChevronUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useHabits } from '../hooks/useHabits';
+import { ApiLoadError } from '../components/ApiLoadError';
 import { useToast } from '../components/Toast';
 import { useDayActions } from '../hooks/useDayActions';
 import { DayContextMenu, type DayMenuTarget } from '../components/DayContextMenu';
@@ -148,7 +149,7 @@ function MonthSection({
 export default function CommitmentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { habits, loading, isPending, complete, failToday, skipToday, clearToday } = useHabits(user?.id ?? null);
+  const { habits, loading, error, fetchHabits, isPending, complete, failToday, skipToday, clearToday } = useHabits(user?.id ?? null);
   const runDayAction = useDayActions({ complete, failToday, skipToday, clearToday }, toast);
   const [dayMenu, setDayMenu] = useState<DayMenuTarget | null>(null);
   const [visibleMonths, setVisibleMonths] = useState<Record<string, number>>({});
@@ -191,6 +192,7 @@ export default function CommitmentsPage() {
         </Link>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchHabits()} />
       <div className="backfill-banner">
         <strong>Back-fill window:</strong> the last 3 days stay editable — tap a cell to open its actions
         (undo, check in, failed, leave). Older days are locked.

@@ -7,6 +7,7 @@ import { useSocket } from './hooks/useSocket';
 import { syncPendingWrites } from './services/api';
 import { Layout } from './components/Layout';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
+import { Button } from './components/Button';
 import { ToastProvider } from './components/Toast';
 import { getTheme, applyTheme } from './utils/theme';
 import AuthPage from './pages/AuthPage';
@@ -48,17 +49,28 @@ applyTheme(getTheme());
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+    void navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      .catch((error: unknown) => console.warn('[service-worker] Registration failed:', error));
   });
 }
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, authError, refreshUser } = useAuth();
   useSocket(user?.id ?? null);
 
   useEffect(() => {
-    syncPendingWrites();
-    const online = () => { syncPendingWrites(); window.location.reload(); };
+    const syncWrites = () => {
+      void syncPendingWrites().catch((error: unknown) => {
+        console.error('[api] Could not sync pending writes:', error);
+      });
+    };
+    syncWrites();
+    const online = () => {
+      void syncPendingWrites()
+        .then(() => window.location.reload())
+        .catch((error: unknown) => console.error('[api] Could not sync pending writes:', error));
+    };
     const offline = () => {};
     window.addEventListener('online', online);
     window.addEventListener('offline', offline);
@@ -78,6 +90,17 @@ function App() {
   }
 
   if (!user) {
+    if (authError) {
+      return (
+        <main role="alert" className="app-error-screen">
+          <h1>Could not verify your session</h1>
+          <p>{authError}</p>
+          <Button type="button" onClick={() => void refreshUser()}>
+            Retry
+          </Button>
+        </main>
+      );
+    }
     return (
       <Routes>
         <Route path="/" element={<AuthPage />} />

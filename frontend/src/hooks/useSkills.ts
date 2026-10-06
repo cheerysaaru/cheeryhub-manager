@@ -6,14 +6,18 @@ import { useSocket } from './useSocket';
 export function useSkills(userId: string | null) {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchSkills = useCallback(async () => {
+    setError(null);
+    setLoading(true);
     try {
       const data = await api<Skill[]>('/skills');
-      setSkills(asArray<Skill>(data));
-    } catch {
-      setSkills([]);
+      setSkills(asArray<Skill>(data)
+        .filter((skill): skill is Skill => Boolean(skill && typeof skill === 'object' && typeof skill.id === 'string' && typeof skill.name === 'string')));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load skills.');
     } finally {
       setLoading(false);
     }
@@ -54,5 +58,5 @@ export function useSkills(userId: string | null) {
     setSkills((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  return { skills, loading, fetchSkills, create, update, remove };
+  return { skills, loading, error, fetchSkills, create, update, remove };
 }

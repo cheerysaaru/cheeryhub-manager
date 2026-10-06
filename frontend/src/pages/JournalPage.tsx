@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Textarea } from '../components/Textarea';
 import { Badge } from '../components/Badge';
+import { ApiLoadError } from '../components/ApiLoadError';
 import { parseLocalDate, shiftDate as shiftLocalDate, todayISO } from '../utils/date';
 
 const fields = [
@@ -20,7 +21,7 @@ type FieldKey = (typeof fields)[number]['key'];
 
 export default function JournalPage() {
   const { user } = useAuth();
-  const { entries, loading, getByDate, save } = useJournal(user?.id ?? null);
+  const { entries, loading, error, fetchEntries, getByDate, save } = useJournal(user?.id ?? null);
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [form, setForm] = useState<Record<FieldKey, string>>({
     accomplishments: '',
@@ -33,10 +34,13 @@ export default function JournalPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loadingEntry, setLoadingEntry] = useState(false);
+  const [entryError, setEntryError] = useState<string | null>(null);
+  const [entryRetry, setEntryRetry] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingEntry(true);
+    setEntryError(null);
     getByDate(selectedDate).then((entry) => {
       if (cancelled) return;
       if (entry) {
@@ -52,10 +56,13 @@ export default function JournalPage() {
         setForm({ accomplishments: '', lessons: '', procrastination: '', improvements: '', gratitude: '' });
         setPassionScore(5);
       }
-      setLoadingEntry(false);
+    }).catch((caught: unknown) => {
+      if (!cancelled) setEntryError(caught instanceof Error ? caught.message : 'Could not load this journal entry.');
+    }).finally(() => {
+      if (!cancelled) setLoadingEntry(false);
     });
     return () => { cancelled = true; };
-  }, [selectedDate, getByDate]);
+  }, [selectedDate, getByDate, entryRetry]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -106,8 +113,10 @@ export default function JournalPage() {
         </div>
       </header>
 
+      <ApiLoadError error={error} onRetry={() => void fetchEntries()} />
       <Card padding="lg">
-        {loadingEntry ? (
+        <ApiLoadError error={entryError} onRetry={() => setEntryRetry((retry) => retry + 1)} />
+        {entryError ? null : loadingEntry ? (
           <div className="page-loading">Loading entry…</div>
         ) : (
           <form onSubmit={handleSave} className="journal-form">
@@ -155,6 +164,7 @@ export default function JournalPage() {
             <h2 id="journal-history-heading">Past Entries</h2>
             <p className="panel-subtitle">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</p>
           </div>
+
         </div>
         {loading ? (
           <div className="page-loading">Loading…</div>

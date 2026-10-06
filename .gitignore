@@ -6,7 +6,6 @@ coverage/
 dist/
 build/
 *.db
-!prisma/dev.db
 *.db.backup-*
 test*.json
 test*.ts
@@ -14,6 +13,7 @@ test*.ts
 *.err
 *.tsbuildinfo
 .dev.vars
+.dev.vars.*
 .wrangler/
 
 *.pid

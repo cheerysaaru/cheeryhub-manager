@@ -16,19 +16,32 @@ export function useTransactions(userId: string | null) {
   const [weeklyReport, setWeeklyReport] = useState<WeeklyReport | null>(null);
   const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchTransactions = useCallback(async () => {
+    setError(null);
     try {
       const data = await api<Transaction[]>('/transactions');
-      const unique = Array.from(new Map(asArray<Transaction>(data).map((t) => [t.id, t])).values());
+      const validTransactions = asArray<Transaction>(data)
+        .filter((transaction): transaction is Transaction => Boolean(
+          transaction &&
+          typeof transaction === 'object' &&
+          typeof transaction.id === 'string' &&
+          typeof transaction.type === 'string' &&
+          typeof transaction.category === 'string' &&
+          typeof transaction.amount === 'number' &&
+          typeof transaction.date === 'string'
+        ));
+      const unique = Array.from(new Map(validTransactions.map((transaction) => [transaction.id, transaction])).values());
       setTransactions(unique);
-    } catch {
-      setTransactions([]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load transactions.');
     }
   }, []);
 
   const fetchReports = useCallback(async (year?: number, month?: number) => {
+    setError(null);
     try {
       const [weekly, monthly] = await Promise.all([
         api<WeeklyReport>('/transactions/report/weekly'),
@@ -36,9 +49,10 @@ export function useTransactions(userId: string | null) {
       ]);
       setWeeklyReport(weekly);
       setMonthlyReport(monthly);
-    } catch {
+    } catch (caught) {
       setWeeklyReport(null);
       setMonthlyReport(null);
+      setError(caught instanceof Error ? caught.message : 'Could not load transaction reports.');
     } finally {
       setLoading(false);
     }
@@ -88,6 +102,7 @@ export function useTransactions(userId: string | null) {
     weeklyReport,
     monthlyReport,
     loading,
+    error,
     fetchTransactions,
     fetchReports,
     create,

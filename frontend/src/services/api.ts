@@ -102,7 +102,6 @@ function isAuthPath(path: string): boolean {
     '/auth/reset',
     '/auth/logout',
     '/auth/refresh',
-    '/auth/verify-email',
   ];
   return noRefresh.some((prefix) => path.startsWith(prefix));
 }
@@ -243,7 +242,10 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
       if (res.ok) {
         sessionExpiredNotified = false;
-        return (body?.data ?? body) as T;
+        // Never resolve null/undefined: a caller doing `result.x` or
+        // `data.filter(...)` must not white-screen on an empty 200 body.
+        const payload = body?.data ?? body;
+        return (payload === null || payload === undefined ? ({} as T) : payload) as T;
       }
 
       const code = codeOf(body);
