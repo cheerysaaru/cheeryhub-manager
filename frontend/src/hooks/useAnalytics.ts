@@ -18,6 +18,7 @@ export function useAnalytics(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
   const mountedRef = useRef(true);
+  const streakRequestRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -61,9 +62,13 @@ export function useAnalytics(userId: string | null) {
     }
   }, []);
 
-  const fetchStreaks = useCallback(async () => {
-    const data: unknown = await dedupe('analytics:streaks', () => api<unknown>('/streaks'));
-    if (mountedRef.current && data && typeof data === 'object') {
+  const fetchStreaks = useCallback(async (forceRefresh = false) => {
+    const requestId = ++streakRequestRef.current;
+    const load = () => api<unknown>('/streaks');
+    const data: unknown = forceRefresh
+      ? await load()
+      : await dedupe('analytics:streaks', load);
+    if (mountedRef.current && requestId === streakRequestRef.current && data && typeof data === 'object') {
       const payload = data as Partial<StreakInfo>;
       setStreak({
         current: typeof payload.current === 'number' ? payload.current : 0,
@@ -100,6 +105,11 @@ export function useAnalytics(userId: string | null) {
       }),
       on('habit:updated', () => {
         void fetchStreaks().catch((caught: unknown) => {
+          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh streaks.');
+        });
+      }),
+      on('task:created', () => {
+        void fetchStreaks(true).catch((caught: unknown) => {
           if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh streaks.');
         });
       }),
