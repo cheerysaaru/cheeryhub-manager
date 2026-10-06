@@ -4,6 +4,7 @@ import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
+import type { Prisma } from '@prisma/client';
 
 const transactionSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']),
@@ -33,15 +34,15 @@ export async function listTransactions(request: AuthRequest, response: Response)
   const type = getQueryParam(request.query, 'type');
   const category = getQueryParam(request.query, 'category');
 
-  const where: any = { userId: request.userId };
+  const where: Prisma.TransactionWhereInput = { userId: request.userId };
 
   if (startDate || endDate) {
     where.date = {};
-    if (startDate) where.date.gte = new Date(startDate);
-    if (endDate) where.date.lte = new Date(endDate);
+    if (startDate) where.date = { ...where.date as object, gte: new Date(startDate) };
+    if (endDate) where.date = { ...where.date as object, lte: new Date(endDate) };
   }
-  if (type) where.type = type;
-  if (category) where.category = category;
+  if (type) where.type = type as 'INCOME' | 'EXPENSE';
+  if (category) where.category = category as Prisma.EnumTransactionCategoryFilter | undefined;
 
   const transactions = await prisma.transaction.findMany({
     where,

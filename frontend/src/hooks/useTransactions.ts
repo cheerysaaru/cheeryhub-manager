@@ -37,6 +37,8 @@ export function useTransactions(userId: string | null) {
       setTransactions(unique);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load transactions.');
+    } finally {
+      setLoading(false);
     }
   }, []);
 

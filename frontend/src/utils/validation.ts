@@ -7,7 +7,7 @@ export const USERNAME_ERROR = 'Username must be 3–20 characters: letters, numb
 
 export function passwordProblems(password: string): string[] {
   const problems: string[] = [];
-  if (password.length < 8) problems.push('8 characters');
+  if (password.length < 8) problems.push('at least 8 characters');
   if (!/[A-Z]/.test(password)) problems.push('an uppercase letter');
   if (!/[0-9]/.test(password)) problems.push('a number');
   if (!/[!@#$%^&*]/.test(password)) problems.push('a special character (!@#$%^&*)');

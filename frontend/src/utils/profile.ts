@@ -83,7 +83,7 @@ export function updateAllAvatars(base64: string | null): void {
         img.src = base64;
         img.style.display = '';
       }
-      el.style.backgroundImage = `url(${base64})`;
+      el.style.backgroundImage = `url("${base64}")`;
       el.style.backgroundSize = 'cover';
       el.style.backgroundPosition = 'center';
       el.style.backgroundColor = '';
