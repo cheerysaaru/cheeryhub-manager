@@ -1,11 +1,5 @@
-// @ts-nocheck - itty-router v6 strict generics incompatible with custom Request type
-import { Router } from 'itty-router';
-import type { AppRequest } from './types/index';
-import { corsMiddleware, withCors } from './middleware/cors';
+import type { AppRequest, AppEnv } from './types/index';
 import { verifyAuth } from './middleware/auth';
-import { parseJsonBody } from './middleware/parseBody';
-import { requestLogger } from './middleware/logging';
-import { errorHandler } from './middleware/errorHandler';
 import * as authRoutes from './routes/auth';
 import * as healthRoutes from './routes/health';
 import * as tasksRoutes from './routes/tasks';
@@ -21,257 +15,256 @@ import * as analyticsRoutes from './routes/analytics';
 import * as brandRoutes from './routes/brand';
 import * as backupRoutes from './routes/backup';
 
-const router = Router() as any;
-
-// Middleware stack - CORS first, then logging, then body parsing
-router.all('*', corsMiddleware);
-router.all('*', requestLogger);
-router.all('*', async (req: any) => {
-  await parseJsonBody(req);
-});
-
-// Public routes (no auth required)
-router.get('/api/health', (req: any) => healthRoutes.health(req));
-router.post('/api/auth/register', (req: any) => authRoutes.register(req));
-router.post('/api/auth/login', (req: any) => authRoutes.login(req));
-router.post('/api/auth/logout', (req: any) => authRoutes.logout(req));
-
-// Auth check middleware for protected routes
-const authRequired = async (req: any) => {
-  const result = await verifyAuth(req);
-  if (result instanceof Response) {
-    return result; // Return 401 error
-  }
-  // Update req with user info
-  Object.assign(req, result);
+const getCorsHeaders = (origin: string): Record<string, string> => {
+  const allowedOrigins = [
+    'https://cheeryhub.space',
+    'https://www.cheeryhub.space',
+    'https://cheerysaaru.github.io',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000'
+  ];
+  
+  const isAllowed = allowedOrigins.includes(origin);
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://cheeryhub.space',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie, Accept',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+    'Content-Type': 'application/json'
+  };
 };
 
-// Protected routes (auth required)
-router.get('/api/auth/me', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return authRoutes.me(req);
-});
+const parseUrl = (url: string) => {
+  const parsed = new URL(url);
+  return {
+    pathname: parsed.pathname,
+    searchParams: parsed.searchParams
+  };
+};
 
-// Tasks routes
-router.get('/api/tasks', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return tasksRoutes.listTasks(req);
-});
-router.post('/api/tasks', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return tasksRoutes.createTask(req);
-});
-router.put('/api/tasks/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return tasksRoutes.updateTask(req);
-});
-router.delete('/api/tasks/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return tasksRoutes.deleteTask(req);
-});
+const parseJsonBody = async (request: Request): Promise<any> => {
+  try {
+    if (request.method === 'GET' || request.method === 'DELETE' || request.method === 'OPTIONS' || request.method === 'HEAD') {
+      return undefined;
+    }
+    const contentType = request.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      return undefined;
+    }
+    return await request.json().catch(() => undefined);
+  } catch (error) {
+    console.error('[parseJsonBody]', error);
+    return undefined;
+  }
+};
 
-// Habits routes
-router.get('/api/habits', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return habitsRoutes.listHabits(req);
-});
-router.post('/api/habits', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return habitsRoutes.createHabit(req);
-});
-router.put('/api/habits/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return habitsRoutes.updateHabit(req);
-});
-router.delete('/api/habits/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return habitsRoutes.deleteHabit(req);
-});
-router.post('/api/habits/:id/complete', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return habitsRoutes.completeHabit(req);
-});
+async function handleRequest(request: Request, env: AppEnv, ctx: ExecutionContext): Promise<Response> {
+  const origin = request.headers.get('origin') || '';
+  const corsHeaders = getCorsHeaders(origin);
+  
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    });
+  }
 
-// Goals routes
-router.get('/api/goals', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return goalsRoutes.listGoals(req);
-});
-router.post('/api/goals', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return goalsRoutes.createGoal(req);
-});
-router.put('/api/goals/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return goalsRoutes.updateGoal(req);
-});
-router.delete('/api/goals/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return goalsRoutes.deleteGoal(req);
-});
+  try {
+    const { pathname, searchParams } = parseUrl(request.url);
+    const body = await parseJsonBody(request);
+    
+    // Create app request
+    const appReq: any = {
+      ...request,
+      method: request.method,
+      url: request.url,
+      pathname,
+      searchParams,
+      body,
+      env,
+      headers: request.headers,
+      params: {}
+    };
+    
+    let response: Response | undefined;
 
-// Skills routes
-router.get('/api/skills', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return skillsRoutes.listSkills(req);
-});
-router.post('/api/skills', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return skillsRoutes.createSkill(req);
-});
-router.put('/api/skills/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return skillsRoutes.updateSkill(req);
-});
-router.delete('/api/skills/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return skillsRoutes.deleteSkill(req);
-});
+    // Public routes
+    if (pathname === '/api/health' && request.method === 'GET') {
+      response = await healthRoutes.health(appReq);
+    } else if (pathname === '/api/auth/register' && request.method === 'POST') {
+      response = await authRoutes.register(appReq);
+    } else if (pathname === '/api/auth/login' && request.method === 'POST') {
+      response = await authRoutes.login(appReq);
+    } else if (pathname === '/api/auth/logout' && request.method === 'POST') {
+      response = await authRoutes.logout(appReq);
+    }
+    
+    // Protected routes - require auth first
+    else {
+      const authResult = await verifyAuth(appReq);
+      
+      if (authResult instanceof Response) {
+        // Auth failed
+        return new Response(authResult.body, {
+          status: authResult.status,
+          headers: corsHeaders
+        });
+      }
+      
+      // Auth succeeded, update request with user
+      Object.assign(appReq, authResult);
+      
+      // Tasks routes
+      if (pathname === '/api/tasks' && request.method === 'GET') {
+        response = await tasksRoutes.listTasks(appReq);
+      } else if (pathname === '/api/tasks' && request.method === 'POST') {
+        response = await tasksRoutes.createTask(appReq);
+      } else if (pathname.match(/^\/api\/tasks\/[^/]+$/) && request.method === 'GET') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.getTask(appReq);
+      } else if (pathname.match(/^\/api\/tasks\/[^/]+$/) && request.method === 'PUT') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.updateTask(appReq);
+      } else if (pathname.match(/^\/api\/tasks\/[^/]+$/) && request.method === 'DELETE') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.deleteTask(appReq);
+      }
+      
+      // Habits routes
+      else if (pathname === '/api/habits' && request.method === 'GET') {
+        response = await habitsRoutes.listHabits(appReq);
+      } else if (pathname === '/api/habits' && request.method === 'POST') {
+        response = await habitsRoutes.createHabit(appReq);
+      } else if (pathname.match(/^\/api\/habits\/[^/]+$/) && request.method === 'GET') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await habitsRoutes.getHabit(appReq);
+      } else if (pathname.match(/^\/api\/habits\/[^/]+$/) && request.method === 'PUT') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await habitsRoutes.updateHabit(appReq);
+      } else if (pathname.match(/^\/api\/habits\/[^/]+$/) && request.method === 'DELETE') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await habitsRoutes.deleteHabit(appReq);
+      } else if (pathname.match(/^\/api\/habits\/[^/]+\/complete$/) && request.method === 'POST') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await habitsRoutes.completeHabit(appReq);
+      }
+      
+      // Goals routes
+      else if (pathname === '/api/goals' && request.method === 'GET') {
+        response = await goalsRoutes.listGoals(appReq);
+      } else if (pathname === '/api/goals' && request.method === 'POST') {
+        response = await goalsRoutes.createGoal(appReq);
+      } else if (pathname.match(/^\/api\/goals\/[^/]+$/) && request.method === 'PUT') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await goalsRoutes.updateGoal(appReq);
+      } else if (pathname.match(/^\/api\/goals\/[^/]+$/) && request.method === 'DELETE') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await goalsRoutes.deleteGoal(appReq);
+      }
+      
+      // Streaks routes
+      else if (pathname === '/api/streaks' && request.method === 'GET') {
+        response = await streaksRoutes.getStreaks(appReq);
+      } else if (pathname.match(/^\/api\/streaks\/[^/]+\/check-in$/) && request.method === 'POST') {
+        const id = pathname.split('/')[3];
+        appReq.params.id = id;
+        response = await streaksRoutes.checkIn(appReq);
+      }
+      
+      // Analytics routes
+      else if (pathname === '/api/analytics' && request.method === 'GET') {
+        response = await analyticsRoutes.getAnalytics(appReq);
+      }
+      
+      // Notifications routes
+      else if (pathname === '/api/notifications' && request.method === 'GET') {
+        response = await notificationsRoutes.listNotifications(appReq);
+      }
+      
+      // Skills, Settings, Transactions, Reminders, Brand, Backup routes
+      else if (pathname === '/api/skills' && request.method === 'GET') {
+        response = await skillsRoutes.listSkills(appReq);
+      } else if (pathname === '/api/skills' && request.method === 'POST') {
+        response = await skillsRoutes.createSkill(appReq);
+      } else if (pathname === '/api/settings' && request.method === 'GET') {
+        response = await settingsRoutes.getSettings(appReq);
+      } else if (pathname === '/api/settings' && request.method === 'PUT') {
+        response = await settingsRoutes.updateSettings(appReq);
+      } else if (pathname === '/api/transactions' && request.method === 'GET') {
+        response = await transactionsRoutes.listTransactions(appReq);
+      } else if (pathname === '/api/transactions' && request.method === 'POST') {
+        response = await transactionsRoutes.createTransaction(appReq);
+      } else if (pathname === '/api/reminders' && request.method === 'GET') {
+        response = await remindersRoutes.listReminders(appReq);
+      } else if (pathname === '/api/reminders' && request.method === 'POST') {
+        response = await remindersRoutes.createReminder(appReq);
+      } else if (pathname === '/api/brand' && request.method === 'GET') {
+        response = await brandRoutes.getBrand(appReq);
+      } else if (pathname === '/api/brand' && request.method === 'PUT') {
+        response = await brandRoutes.updateBrand(appReq);
+      } else if (pathname === '/api/backup/export' && request.method === 'POST') {
+        response = await backupRoutes.exportData(appReq);
+      }
+    }
 
-// Notifications routes
-router.get('/api/notifications', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return notificationsRoutes.listNotifications(req);
-});
-router.post('/api/notifications/:id/read', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return notificationsRoutes.markNotificationAsRead(req);
-});
+    // No route matched
+    if (!response) {
+      return new Response(JSON.stringify({ error: 'Not Found', code: 'NOT_FOUND' }), {
+        status: 404,
+        headers: corsHeaders
+      });
+    }
 
-// Reminders routes
-// @ts-expect-error TS2554 - itty-router v6 type mismatch
-router.get('/api/reminders', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return remindersRoutes.listReminders(req);
-});
-// @ts-expect-error TS2554
-router.post('/api/reminders', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return remindersRoutes.createReminder(req);
-});
-// @ts-expect-error TS2554
-router.put('/api/reminders/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return remindersRoutes.updateReminder(req);
-});
-// @ts-expect-error TS2554
-router.delete('/api/reminders/:id', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return remindersRoutes.deleteReminder(req);
-});
+    // Add CORS headers to response
+    const responseHeaders = new Headers(response.headers);
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      responseHeaders.set(key, value);
+    });
 
-// Transactions routes
-router.get('/api/transactions', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return transactionsRoutes.listTransactions(req);
-});
-router.post('/api/transactions', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return transactionsRoutes.createTransaction(req);
-});
-
-// Settings routes
-router.get('/api/settings', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return settingsRoutes.getSettings(req);
-});
-router.put('/api/settings', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return settingsRoutes.updateSettings(req);
-});
-
-// Streaks routes
-router.get('/api/streaks', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return streaksRoutes.getStreaks(req);
-});
-router.post('/api/streaks/:id/check-in', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return streaksRoutes.checkIn(req);
-});
-
-// Analytics routes
-router.get('/api/analytics', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return analyticsRoutes.getAnalytics(req);
-});
-
-// Brand routes
-router.get('/api/brand', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return brandRoutes.getBrand(req);
-});
-router.put('/api/brand', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return brandRoutes.updateBrand(req);
-});
-
-// Backup routes
-router.post('/api/backup/export', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return backupRoutes.exportData(req);
-});
-router.get('/api/backup/history', async (req: any) => {
-  const authResult = await authRequired(req);
-  if (authResult instanceof Response) return authResult;
-  return backupRoutes.getBackupHistory(req);
-});
-
-// 404 handler
-router.all('*', () => {
-  return new Response(
-    JSON.stringify({ error: 'Not Found', code: 'NOT_FOUND' }),
-    { status: 404, headers: { 'Content-Type': 'application/json' } }
-  );
-});
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders
+    });
+  } catch (error) {
+    console.error('[handleRequest]', error);
+    return new Response(
+      JSON.stringify({
+        error: (error as Error).message || 'Internal Server Error',
+        code: 'INTERNAL_ERROR'
+      }),
+      {
+        status: 500,
+        headers: corsHeaders
+      }
+    );
+  }
+}
 
 export default {
-  fetch: async (request: Request, env: any, ctx: ExecutionContext) => {
+  async fetch(request: Request, env: AppEnv, ctx: ExecutionContext): Promise<Response> {
     try {
-      const req = request as any as AppRequest;
-      req.env = env;
-            const response = await router.handle(req);
-      return withCors(response || new Response('', { status: 204 }), req);
+      return await handleRequest(request, env, ctx);
     } catch (error) {
-      const req = request as any as AppRequest;
-      req.env = env;
-      return errorHandler(error as Error, req);
+      console.error('[fetch]', error);
+      return new Response(
+        JSON.stringify({ error: 'Worker Error', code: 'WORKER_ERROR' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
-  },
+  }
 };
-
-
