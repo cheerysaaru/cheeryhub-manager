@@ -478,8 +478,10 @@ export function createApp(options?: { rateLimit?: boolean }) {
   app.put('/api/settings', updateSettings);
 
   app.post('/api/focus/start', startFocus);
-  app.post('/api/focus/:id/complete', completeFocus);
+  // IMPORTANT: /focus/history must be before /focus/:id/complete or 'history'
+  // is matched as a session ID.
   app.get('/api/focus/history', focusHistory);
+  app.post('/api/focus/:id/complete', completeFocus);
 
   app.get('/api/journal', journalList);
   app.get('/api/journal/:date', journalByDate);
@@ -494,12 +496,14 @@ export function createApp(options?: { rateLimit?: boolean }) {
 
   const transactionRouter = express.Router();
 
+  // IMPORTANT: specific sub-routes must come BEFORE /:id or Express matches
+  // 'report' as a transaction ID and calls the wrong handler.
+  transactionRouter.get('/report/weekly', getWeeklyReport);
+  transactionRouter.get('/report/monthly', getMonthlyReport);
   transactionRouter.get('/', listTransactions);
   transactionRouter.post('/', createTransaction);
   transactionRouter.put('/:id', updateTransaction);
   transactionRouter.delete('/:id', deleteTransaction);
-  transactionRouter.get('/report/weekly', getWeeklyReport);
-  transactionRouter.get('/report/monthly', getMonthlyReport);
 
   app.use('/api/transactions', transactionRouter);
 

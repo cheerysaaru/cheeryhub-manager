@@ -3,35 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
+    "dev": "wrangler dev --env staging --remote",
+    "build": "wrangler build",
+    "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/adapter-d1": "6.12.0",
-    "@prisma/client": "6.12.0",
-    "bcryptjs": "^3.0.2",
-    "compression": "^1.8.2",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.1.0",
-    "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "socket.io": "^4.8.3",
-    "zod": "^4.1.8"
+    "@cloudflare/workers-types": "^4.20241218.1",
+    "itty-router": "^6.0.0",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/compression": "^1.8.1",
-    "@types/cookie-parser": "^1.4.9",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.5.2",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.8",
+    "typescript": "^5.9.2",
+    "wrangler": "^3.85.0"
   }
 }

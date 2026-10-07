@@ -1,5 +1,5 @@
 name = "cheeryhub-api"
-main = "src/worker.ts"
+main = "src/index.ts"
 compatibility_date = "2026-09-23"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
@@ -47,3 +47,4 @@ binding = "DB"
 database_name = "cheeryhub-staging-db"
 database_id = "252f2084-f40d-4c93-91ff-1f7c08f05854"
 migrations_dir = "migrations"
+
