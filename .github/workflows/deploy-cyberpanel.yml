@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Build frontend
-        run: npm run build
+        run: npm run build --workspace frontend
 
       - name: Deploy to CyberPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
