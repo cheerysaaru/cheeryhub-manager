@@ -17,7 +17,15 @@ function relativeTime(iso: string): string {
 }
 
 export function NotificationCenter({ userId }: { userId: string | null }) {
-  const { items, unreadCount, markRead, markAllRead } = useNotifications(userId);
+  const {
+    items,
+    unreadCount,
+    loading,
+    error,
+    fetchNotifications,
+    markRead,
+    markAllRead,
+  } = useNotifications(userId);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -74,9 +82,24 @@ export function NotificationCenter({ userId }: { userId: string | null }) {
               </button>
             )}
           </div>
-          {items.length === 0 ? (
+          {error && (
+            <div className="notification-error" role="alert">
+              <p>{error}</p>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void fetchNotifications()}
+                disabled={loading}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {loading && items.length === 0 ? (
+            <p className="notification-empty" role="status">Loading notifications…</p>
+          ) : items.length === 0 && !error ? (
             <p className="notification-empty">Nothing yet. Reminders show up here.</p>
-          ) : (
+          ) : items.length > 0 ? (
             <ul className="notification-list">
               {items.map((item) => (
                 <li key={item.id}>
@@ -96,7 +119,7 @@ export function NotificationCenter({ userId }: { userId: string | null }) {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </div>
       )}
     </div>

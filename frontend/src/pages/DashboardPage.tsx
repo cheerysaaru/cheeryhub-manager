@@ -65,7 +65,12 @@ export default function DashboardPage() {
     remove: removeHabit,
   } = useHabits(user?.id ?? null, user?.timezone);
   const { goals } = useGoals(user?.id ?? null);
-  const { xp, streak } = useAnalytics(user?.id ?? null);
+  const {
+    xp,
+    streak,
+    error: analyticsError,
+    fetchAnalytics,
+  } = useAnalytics(user?.id ?? null);
 
   const [taskForm, setTaskForm] = useState({ title: '' });
   const [dueAt, setDueAt] = useState<string | null>(null);
@@ -243,6 +248,19 @@ export default function DashboardPage() {
           onOpenPoints={() => setPointsOpen(true)}
         />
       </header>
+
+      {analyticsError && (
+        <div className="api-error-message" role="alert">
+          <p>{analyticsError}</p>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void fetchAnalytics()}
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <section className="stats-grid" aria-label="Today's progress">
         <Card padding="md">

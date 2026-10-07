@@ -39,8 +39,18 @@ export async function requireAuth(
       error: 'Authentication required',
       code: 'AUTH_REQUIRED',
     });
+
+  let payload: { userId: string; iat?: number };
   try {
-    const payload = jwt.verify(token, getJwtSecret()) as { userId: string; iat?: number };
+    payload = jwt.verify(token, getJwtSecret()) as { userId: string; iat?: number };
+  } catch {
+    return response.status(401).json({
+      error: 'Your session has expired. Please sign in again.',
+      code: 'SESSION_EXPIRED',
+    });
+  }
+
+  try {
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: { id: true, role: true, status: true, passwordChangedAt: true },
@@ -66,12 +76,9 @@ export async function requireAuth(
       });
     request.userId = user.id;
     request.userRole = user.role;
-    next();
-  } catch {
-    return response.status(401).json({
-      error: 'Your session has expired. Please sign in again.',
-      code: 'SESSION_EXPIRED',
-    });
+    return next();
+  } catch (error) {
+    return next(error);
   }
 }
 

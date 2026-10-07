@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler, Request, Response } from 'express';
 import { redactSecrets, getEnv } from '../env';
-import { logError } from '../lib/logger';
+import { logError, newRequestId } from '../lib/logger';
 
 type RequestWithId = Request & { requestId?: string };
 
@@ -31,9 +31,12 @@ export const apiErrorHandler: ErrorRequestHandler = (error, request, response, n
   if (response.headersSent) return next(error);
 
   const requestWithId = request as RequestWithId;
+  const requestId = requestWithId.requestId ?? newRequestId();
+  requestWithId.requestId = requestId;
+  response.setHeader('x-request-id', requestId);
   const status = statusFor(error);
 
-  logError(requestWithId.requestId, error, {
+  logError(requestId, error, {
     method: request.method,
     path: request.path,
     status,
@@ -43,7 +46,7 @@ export const apiErrorHandler: ErrorRequestHandler = (error, request, response, n
     return response.status(403).json({
       error: 'This origin is not allowed to call the API.',
       code: 'ORIGIN_NOT_ALLOWED',
-      requestId: requestWithId.requestId,
+      requestId,
     });
   }
 
@@ -55,7 +58,7 @@ export const apiErrorHandler: ErrorRequestHandler = (error, request, response, n
     return response.status(400).json({
       error: message,
       code: 'INVALID_REQUEST',
-      requestId: requestWithId.requestId,
+      requestId,
     });
   }
 
@@ -68,6 +71,6 @@ export const apiErrorHandler: ErrorRequestHandler = (error, request, response, n
   return response.status(500).json({
     error: message,
     code: 'INTERNAL_ERROR',
-    requestId: requestWithId.requestId,
+    requestId,
   });
 };

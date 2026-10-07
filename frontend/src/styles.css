@@ -454,6 +454,19 @@ button:active { transform: translateY(1px); }
   font-size: 1rem;
 }
 .error-message { color: var(--danger); font-size: 1rem; margin-top: 12px; }
+.api-error-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.api-error-message p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .success-message { color: var(--success); font-size: 1rem; margin-top: 12px; font-weight: 600; }
 .auth-links {
   display: flex;
@@ -1874,6 +1887,18 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 }
 .notification-mark-all:hover { text-decoration: underline; }
 .notification-empty { margin: 14px 4px; color: var(--text-muted); font-size: 0.85rem; text-align: center; }
+.notification-error {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 12px 4px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--danger);
+  text-align: center;
+}
+.notification-error p { margin: 0; font-size: 0.85rem; }
 .notification-list { list-style: none; margin: 0; padding: 6px 0 0; display: grid; gap: 4px; }
 .notification-item {
   display: flex;

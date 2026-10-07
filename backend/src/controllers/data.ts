@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import type { Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
@@ -428,14 +428,26 @@ async function setHabitDayStatus(
   return ok(response, { ...payload, ...completion, dayKey: dayKey(date) });
 }
 
-export async function completeHabit(request: AuthRequest, response: Response) {
-  return setHabitDayStatus(request, response, 'COMPLETED');
+export function completeHabit(
+  request: AuthRequest,
+  response: Response,
+  next: NextFunction
+) {
+  return setHabitDayStatus(request, response, 'COMPLETED').catch(next);
 }
-export async function failHabitToday(request: AuthRequest, response: Response) {
-  return setHabitDayStatus(request, response, 'FAILED');
+export function failHabitToday(
+  request: AuthRequest,
+  response: Response,
+  next: NextFunction
+) {
+  return setHabitDayStatus(request, response, 'FAILED').catch(next);
 }
-export async function skipHabitToday(request: AuthRequest, response: Response) {
-  return setHabitDayStatus(request, response, 'SKIPPED');
+export function skipHabitToday(
+  request: AuthRequest,
+  response: Response,
+  next: NextFunction
+) {
+  return setHabitDayStatus(request, response, 'SKIPPED').catch(next);
 }
 export async function getOne(request: AuthRequest, response: Response) {
   const key = getResource(request); const model = prisma[modelMap[key]] as any; const record = await model.findFirst({ where: { id: request.params.id, userId: request.userId } });
@@ -458,8 +470,12 @@ export async function stopTaskTimer(request: AuthRequest, response: Response) {
   const task = await prisma.task.findFirst({ where: { id: String(request.params.id), userId: request.userId!, deletedAt: null } }); if (!task) return fail(response, 'Task not found', 404);
   return ok(response, await prisma.task.update({ where: { id: task.id }, data: { timerStartedAt: null } }));
 }
-export async function clearHabitToday(request: AuthRequest, response: Response) {
-  return clearHabitDay(request, response, 0);
+export function clearHabitToday(
+  request: AuthRequest,
+  response: Response,
+  next: NextFunction
+) {
+  return clearHabitDay(request, response, 0).catch(next);
 }
 
 async function clearHabitDay(request: AuthRequest, response: Response, retry: number) {

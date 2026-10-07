@@ -14,7 +14,14 @@ import { xpBreakdown, xpEarnedSpent } from '../utils/xpBreakdown';
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const { stats, xp, streak, loading } = useAnalytics(user?.id ?? null);
+  const {
+    stats,
+    xp,
+    streak,
+    loading,
+    error,
+    fetchAnalytics,
+  } = useAnalytics(user?.id ?? null);
   const { tasks } = useTasks(user?.id ?? null);
   const { habits } = useHabits(user?.id ?? null, user?.timezone);
   const { sessions } = useFocus(user?.id ?? null);
@@ -40,6 +47,20 @@ export default function AnalyticsPage() {
           <h1>Your progress at a glance</h1>
         </div>
       </header>
+
+      {error && (
+        <div className="api-error-message" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void fetchAnalytics()}
+            disabled={loading}
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="stats-grid analytics-stats">
         <Card padding="md">

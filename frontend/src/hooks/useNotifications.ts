@@ -7,16 +7,22 @@ export function useNotifications(userId: string | null) {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
   const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await api<{ items: AppNotification[]; unreadCount: number }>('/notifications');
       setItems(data.items);
       setUnreadCount(data.unreadCount);
-    } catch {
-      setItems([]);
-      setUnreadCount(0);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to load notifications right now. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -57,8 +63,13 @@ export function useNotifications(userId: string | null) {
     setUnreadCount((count) => Math.max(0, count - 1));
     try {
       await api(`/notifications/${id}/read`, { method: 'POST' });
-    } catch {
-      void fetchNotifications();
+    } catch (caught) {
+      await fetchNotifications();
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to update this notification. Please try again.'
+      );
     }
   }, [fetchNotifications, items]);
 
@@ -68,10 +79,23 @@ export function useNotifications(userId: string | null) {
     setUnreadCount(0);
     try {
       await api('/notifications/read-all', { method: 'POST' });
-    } catch {
-      void fetchNotifications();
+    } catch (caught) {
+      await fetchNotifications();
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to update notifications. Please try again.'
+      );
     }
   }, [fetchNotifications]);
 
-  return { items, unreadCount, loading, fetchNotifications, markRead, markAllRead };
+  return {
+    items,
+    unreadCount,
+    loading,
+    error,
+    fetchNotifications,
+    markRead,
+    markAllRead,
+  };
 }

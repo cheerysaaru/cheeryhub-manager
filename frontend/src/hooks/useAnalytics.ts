@@ -15,6 +15,7 @@ export function useAnalytics(userId: string | null) {
   const [xp, setXp] = useState<{ total: number; history: XPTransaction[] } | null>(null);
   const [streak, setStreak] = useState<StreakInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
   const mountedRef = useRef(true);
 
@@ -45,19 +46,28 @@ export function useAnalytics(userId: string | null) {
     if (mountedRef.current) setStreak(data);
   }, []);
 
+  const reportError = useCallback((caught: unknown) => {
+    if (!mountedRef.current) return;
+    setError(
+      caught instanceof Error
+        ? caught.message
+        : 'Unable to load analytics right now. Please try again.'
+    );
+  }, []);
+
   const fetchAnalytics = useCallback(async () => {
+    if (mountedRef.current) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       await Promise.all([fetchStats(), fetchXp(), fetchStreaks()]);
-    } catch {
-      if (mountedRef.current) {
-        setStats([]);
-        setXp({ total: 0, history: [] });
-        setStreak(null);
-      }
+    } catch (caught) {
+      reportError(caught);
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [fetchStats, fetchXp, fetchStreaks]);
+  }, [fetchStats, fetchXp, fetchStreaks, reportError]);
 
   useEffect(() => {
     void fetchAnalytics();
@@ -68,19 +78,19 @@ export function useAnalytics(userId: string | null) {
   useEffect(() => {
     const cleanups = [
       on('xp:updated', () => {
-        void fetchXp().catch(() => undefined);
+        void fetchXp().catch(reportError);
       }),
       on('habit:updated', () => {
-        void fetchStreaks().catch(() => undefined);
+        void fetchStreaks().catch(reportError);
       }),
       on('task:updated', () => {
-        void fetchStreaks().catch(() => undefined);
+        void fetchStreaks().catch(reportError);
       }),
     ];
     return () => {
       cleanups.forEach((cleanup) => cleanup());
     };
-  }, [fetchXp, fetchStreaks, on]);
+  }, [fetchXp, fetchStreaks, on, reportError]);
 
   const exportBackup = useCallback(async () => {
     const data = await api<Blob>('/backup/export');
@@ -95,5 +105,5 @@ export function useAnalytics(userId: string | null) {
     return result;
   }, []);
 
-  return { stats, xp, streak, loading, fetchAnalytics, exportBackup, importBackup };
+  return { stats, xp, streak, loading, error, fetchAnalytics, exportBackup, importBackup };
 }
