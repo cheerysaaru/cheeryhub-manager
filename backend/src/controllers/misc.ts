@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import type { Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
@@ -64,16 +64,27 @@ export async function unlockAchievement(request: AuthRequest, response: Response
   return ok(response, { awarded: applied ? POINTS.ACHIEVEMENT : 0 });
 }
 
-export async function streaks(request: AuthRequest, response: Response) {
-  const user = await prisma.user.findUnique({ where: { id: request.userId! }, select: { timezone: true } });
-  const timezone = timezoneOf(user?.timezone);
-  const today = todayKey(timezone);
-  // A day counts only when the user was logged in AND added at least one
-  // task that day — task creation is the login evidence we keep.
-  const tasks = await prisma.task.findMany({
-    where: { userId: request.userId! },
-    select: { createdAt: true },
-  });
-  const activeDays = tasks.map((task) => dayKeyInTz(task.createdAt, timezone));
-  return ok(response, streakFromDays(activeDays, today));
+export async function streaks(
+  request: AuthRequest,
+  response: Response,
+  next: NextFunction
+) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: request.userId! },
+      select: { timezone: true },
+    });
+    const timezone = timezoneOf(user?.timezone);
+    const today = todayKey(timezone);
+    // A day counts only when the user was logged in AND added at least one
+    // task that day — task creation is the login evidence we keep.
+    const tasks = await prisma.task.findMany({
+      where: { userId: request.userId! },
+      select: { createdAt: true },
+    });
+    const activeDays = tasks.map((task) => dayKeyInTz(task.createdAt, timezone));
+    return ok(response, streakFromDays(activeDays, today));
+  } catch (error) {
+    return next(error);
+  }
 }

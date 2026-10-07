@@ -208,4 +208,23 @@ describe('api()', () => {
     expect(failing).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(warning.mock.calls)).not.toContain(privateToken);
   });
+
+  it('logs safe request metadata in development without logging query or body secrets', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse(500, { error: 'private response detail' }))
+    );
+
+    await api('/notifications?access_token=private-query-value').catch(() => undefined);
+
+    const logged = JSON.stringify(warning.mock.calls);
+    expect(logged).toContain('"method":"GET"');
+    expect(logged).toContain('/api/notifications');
+    expect(logged).toContain('"status":500');
+    expect(logged).toContain('"errorName":"Error"');
+    expect(logged).not.toContain('private-query-value');
+    expect(logged).not.toContain('private response detail');
+    warning.mockRestore();
+  });
 });

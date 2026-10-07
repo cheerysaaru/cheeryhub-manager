@@ -35,6 +35,11 @@ describe('dayKeyInTz / todayKey', () => {
     expect(todayKey('UTC', new Date('2026-06-15T23:59:59Z'))).toBe('2026-06-15');
     expect(todayKey('Pacific/Auckland', new Date('2026-06-15T23:59:59Z'))).toBe('2026-06-16');
   });
+
+  it('keeps day keys aligned around UTC+5:30 and UTC-8 midnight', () => {
+    expect(todayKey('Asia/Kolkata', new Date('2026-10-07T19:00:00Z'))).toBe('2026-10-08');
+    expect(todayKey('Etc/GMT+8', new Date('2026-10-07T07:30:00Z'))).toBe('2026-10-06');
+  });
 });
 
 describe('shiftDayKey', () => {

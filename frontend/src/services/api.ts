@@ -166,7 +166,11 @@ export function silentRefresh(): Promise<boolean> {
   return refreshInFlight;
 }
 
-type ParsedResponse = { response: Response; body: Record<string, unknown> | null };
+type ParsedResponse = {
+  response: Response;
+  body: Record<string, unknown> | null;
+  parseError?: unknown;
+};
 
 async function fetchOnce(path: string, init?: RequestInit): Promise<ParsedResponse> {
   const controller = new AbortController();
@@ -183,15 +187,17 @@ async function fetchOnce(path: string, init?: RequestInit): Promise<ParsedRespon
     });
 
     let body: Record<string, unknown> | null = null;
+    let parseError: unknown;
     try {
       const text = await response.text();
       body = text ? (JSON.parse(text) as Record<string, unknown>) : null;
     } catch (error) {
       if (controller.signal.aborted) throw error;
       // Non-JSON payload (proxy HTML error page, empty body) — never shown raw.
+      parseError = error;
       body = null;
     }
-    return { response, body };
+    return { response, body, parseError };
   } finally {
     clearTimeout(timer);
   }
@@ -226,6 +232,31 @@ function retryDelayMs(response: Response | null, attempt: number): number {
   return RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)] ?? 0;
 }
 
+function logApiFailure(
+  method: string,
+  path: string,
+  status: number,
+  error: unknown
+): void {
+  if (!import.meta.env.DEV) return;
+
+  let target = path.split('?')[0] ?? path;
+  try {
+    const url = new URL(`${API_BASE}${path}`);
+    target = `${url.host}${url.pathname}`;
+  } catch {
+    // Keep only the path without query parameters if the URL is malformed.
+  }
+
+  const rawName = error instanceof Error ? error.name : 'UnknownError';
+  console.warn('[api] Request failed', {
+    method,
+    target,
+    status,
+    errorName: /^[A-Za-z][A-Za-z0-9]*$/.test(rawName) ? rawName : 'Error',
+  });
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase();
   const idempotent = method === 'GET' || method === 'HEAD' || method === 'PUT' || method === 'DELETE';
@@ -237,8 +268,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   for (;;) {
     let response: Response | null = null;
     try {
-      const { response: res, body } = await fetchOnce(path, init);
+      const { response: res, body, parseError } = await fetchOnce(path, init);
       response = res;
+      if (parseError) logApiFailure(method, path, res.status, parseError);
 
       if (res.ok) {
         sessionExpiredNotified = false;
@@ -246,6 +278,10 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
         // `data.filter(...)` must not white-screen on an empty 200 body.
         const payload = body?.data ?? body;
         return (payload === null || payload === undefined ? ({} as T) : payload) as T;
+      }
+
+      if (!parseError) {
+        logApiFailure(method, path, res.status, new Error('HTTP response was not successful'));
       }
 
       const code = codeOf(body);
@@ -283,6 +319,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       });
     } catch (error) {
       if (error instanceof ApiError) throw error;
+      logApiFailure(method, path, response?.status ?? 0, error);
       // Network failure or timeout: retry only idempotent requests so a POST
       // can never be delivered twice.
       if (idempotent && attempts < MAX_RETRIES) {

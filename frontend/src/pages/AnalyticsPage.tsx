@@ -17,7 +17,7 @@ export default function AnalyticsPage() {
   const { user } = useAuth();
   const { stats, xp, streak, loading, error: analyticsError, fetchAnalytics } = useAnalytics(user?.id ?? null);
   const { tasks, error: tasksError, fetchTasks } = useTasks(user?.id ?? null);
-  const { habits, error: habitsError, fetchHabits } = useHabits(user?.id ?? null);
+  const { habits, error: habitsError, fetchHabits } = useHabits(user?.id ?? null, user?.timezone);
   const { sessions, error: focusError, fetchSessions } = useFocus(user?.id ?? null);
   const error = analyticsError ?? tasksError ?? habitsError ?? focusError;
   const retry = () => void Promise.all([fetchAnalytics(), fetchTasks(), fetchHabits(), fetchSessions()]);

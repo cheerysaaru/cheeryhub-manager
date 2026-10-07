@@ -80,7 +80,7 @@ export function NotificationCenter({ userId }: { userId: string | null }) {
             <p className="notification-empty">Loading notifications…</p>
           ) : error ? null : items.length === 0 ? (
             <p className="notification-empty">Nothing yet. Reminders show up here.</p>
-          ) : (
+          ) : items.length > 0 ? (
             <ul className="notification-list">
               {items.map((item) => (
                 <li key={item.id}>
@@ -100,7 +100,7 @@ export function NotificationCenter({ userId }: { userId: string | null }) {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </div>
       )}
     </div>

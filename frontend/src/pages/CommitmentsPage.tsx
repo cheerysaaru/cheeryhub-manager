@@ -41,17 +41,19 @@ function WindowCell({
   habit,
   date,
   today,
+  timeZone,
   pending,
   onOpen,
 }: {
   habit: Habit;
   date: string;
   today: string;
+  timeZone: string;
   pending: boolean;
   onOpen: (target: { habitId: string; date: string; status: DayStatus; x: number; y: number }) => void;
 }) {
-  const status = dayStatus(habit, date, today);
-  const editable = isEditableDay(date, today);
+  const status = dayStatus(habit, date, today, timeZone);
+  const editable = status !== 'NOT_STARTED' && isEditableDay(date, today);
   const parsed = parseLocalDate(date);
   return (
     <button
@@ -78,6 +80,7 @@ function MonthSection({
   year,
   month,
   today,
+  timeZone,
   pending,
   onOpen,
 }: {
@@ -85,11 +88,15 @@ function MonthSection({
   year: number;
   month: number;
   today: string;
+  timeZone: string;
   pending: boolean;
   onOpen: (target: { habitId: string; date: string; status: DayStatus; x: number; y: number }) => void;
 }) {
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month]);
-  const summary = useMemo(() => monthSummary(habit, year, month, today), [habit, year, month, today]);
+  const summary = useMemo(
+    () => monthSummary(habit, year, month, today, timeZone),
+    [habit, year, month, today, timeZone]
+  );
   const weekdays = useMemo(() => weekdayHeaders(), []);
 
   return (
@@ -110,8 +117,8 @@ function MonthSection({
           if (!cell.inMonth) {
             return <span key={cell.date} className="month-cell is-outside" aria-hidden="true" />;
           }
-          const status = dayStatus(habit, cell.date, today);
-          const editable = isEditableDay(cell.date, today);
+          const status = dayStatus(habit, cell.date, today, timeZone);
+          const editable = status !== 'NOT_STARTED' && isEditableDay(cell.date, today);
           const title = !editable && cell.date <= today && status !== 'NOT_STARTED' && status !== 'FUTURE'
             ? `${formatShortFullDate(cell.date)} · ${STATUS_LABEL[status]} — ${LOCKED_TOOLTIP}`
             : `${formatShortFullDate(cell.date)} · ${STATUS_LABEL[status]}`;
@@ -149,12 +156,17 @@ function MonthSection({
 export default function CommitmentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { habits, loading, error, fetchHabits, isPending, complete, failToday, skipToday, clearToday } = useHabits(user?.id ?? null);
-  const runDayAction = useDayActions({ complete, failToday, skipToday, clearToday }, toast);
+  const { habits, loading, error, fetchHabits, isPending, complete, failToday, skipToday, clearToday } =
+    useHabits(user?.id ?? null, user?.timezone);
+  const runDayAction = useDayActions(
+    { complete, failToday, skipToday, clearToday },
+    toast
+  );
   const [dayMenu, setDayMenu] = useState<DayMenuTarget | null>(null);
   const [visibleMonths, setVisibleMonths] = useState<Record<string, number>>({});
 
-  const today = todayISO();
+  const today = todayISO(user?.timezone);
+  const timeZone = user?.timezone ?? 'UTC';
   const windowDays = useMemo(() => [shiftDate(today, -2), shiftDate(today, -1), today], [today]);
 
   const openMenu = (target: { habitId: string; date: string; status: DayStatus; x: number; y: number }) =>
@@ -206,7 +218,14 @@ export default function CommitmentsPage() {
         <span className="legend-item locked"><Lock size={12} /> locked</span>
       </div>
 
-      {habits.length === 0 ? (
+      {error && (
+        <div className="commitment-load-error" role="alert">
+          <p>{error}</p>
+          <button type="button" className="btn btn-secondary" onClick={() => void fetchHabits()}>Retry</button>
+        </div>
+      )}
+
+      {habits.length === 0 && !error ? (
         <section className="panel">
           <div className="empty-state">
             <Circle size={36} strokeWidth={2} />
@@ -220,7 +239,7 @@ export default function CommitmentsPage() {
           {habits.map((habit) => {
             const failedCount = habit.failedDates.length;
             const skippedCount = habit.skippedDates.length;
-            const startKey = habitStartKey(habit);
+            const startKey = habitStartKey(habit, timeZone);
             const allMonths = startKey ? monthsThrough(startKey, today) : [];
             const visible = showCountFor(habit);
             const hiddenMonths = allMonths.length - visible;
@@ -245,6 +264,7 @@ export default function CommitmentsPage() {
                       habit={habit}
                       date={date}
                       today={today}
+                      timeZone={timeZone}
                       pending={isPending(habit.id)}
                       onOpen={openMenu}
                     />
@@ -262,6 +282,7 @@ export default function CommitmentsPage() {
                         year={year}
                         month={month}
                         today={today}
+                        timeZone={timeZone}
                         pending={isPending(habit.id)}
                         onOpen={openMenu}
                       />

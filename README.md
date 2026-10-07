@@ -91,3 +91,6 @@ npx gitleaks git --redact --verbose .   # whole history; never prints found secr
 - **GitHub Pages frontend:** `.github/workflows/deploy-pages.yml` builds and deploys the SPA on pushes to `main`; GitHub Pages must be configured to use **GitHub Actions** as its source. The build uses the `VITE_API_URL` Actions variable when present and otherwise uses the production Worker URL.
 - **Cloudflare Worker API:** `.github/workflows/deploy-backend.yml` deploys the Worker and applies pending D1 migrations on changes to `backend/` or `prisma/`. Configure `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets, and verify the D1 migration history before the first automated migration run.
 - **Legacy CyberPanel Node deployment:** the `deploy/` scripts and service file remain for installations that deliberately use the Node server. They are not used by the GitHub Pages/Worker workflows; do not route `api.cheeryhub.space` to both runtimes.
+- `FRONTEND_URL` is the comma-separated CORS and Socket.IO origin allow-list; production includes both `https://cheeryhub.space` and `https://www.cheeryhub.space`.
+- Health/status: `GET https://api.cheeryhub.space/api/health` reports database and configuration status without exposing secret values.
+- Data lives in the D1 database configured in `backend/wrangler.toml`; migrations are in `backend/migrations`.

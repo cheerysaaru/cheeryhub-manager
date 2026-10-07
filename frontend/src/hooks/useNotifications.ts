@@ -61,8 +61,13 @@ export function useNotifications(userId: string | null) {
     setUnreadCount((count) => Math.max(0, count - 1));
     try {
       await api(`/notifications/${id}/read`, { method: 'POST' });
-    } catch {
-      void fetchNotifications();
+    } catch (caught) {
+      await fetchNotifications();
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to update this notification. Please try again.'
+      );
     }
   }, [fetchNotifications, items]);
 
@@ -72,8 +77,13 @@ export function useNotifications(userId: string | null) {
     setUnreadCount(0);
     try {
       await api('/notifications/read-all', { method: 'POST' });
-    } catch {
-      void fetchNotifications();
+    } catch (caught) {
+      await fetchNotifications();
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to update notifications. Please try again.'
+      );
     }
   }, [fetchNotifications]);
 

@@ -39,7 +39,7 @@ beforeEach(() => {
 });
 
 describe('useDayActions', () => {
-  it('checks in today without offering an undo toast', async () => {
+  it('checks in today and offers Undo for 5 seconds', async () => {
     const api = makeApi();
     const toast = vi.fn();
     const run = capture(api, toast);
@@ -48,7 +48,9 @@ describe('useDayActions', () => {
 
     expect(ok).toBe(true);
     expect(api.complete).toHaveBeenCalledWith('h1', dayKey(0));
-    expect(toast).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledTimes(1);
+    expect(toast.mock.calls[0][0].duration).toBe(5000);
+    expect(toast.mock.calls[0][0].action?.label).toBe('Undo');
   });
 
   it('marks a PAST day and offers Undo for 5 seconds', async () => {

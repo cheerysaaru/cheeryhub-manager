@@ -3,7 +3,7 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import path from 'path';
-import cors from 'cors';
+import cors, { type CorsOptionsDelegate } from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -241,6 +241,41 @@ export function createApp(options?: { rateLimit?: boolean }) {
     }
   };
 
+  const corsOptions: CorsOptionsDelegate<Request> = (request, callback) => {
+    const origin = request.get('origin');
+    const requestHost = request.get('host');
+
+    if (origin && requestHost) {
+      try {
+        if (new URL(origin).host === requestHost) {
+          callback(null, { origin: false });
+          return;
+        }
+      } catch {
+        // Let the allow-list check reject malformed origins.
+      }
+    }
+
+    if (isAllowedOrigin(origin)) {
+      callback(null, {
+        origin: Boolean(origin),
+        credentials: true,
+        exposedHeaders: [
+          'x-request-id',
+          'ratelimit-limit',
+          'ratelimit-remaining',
+          'ratelimit-reset',
+          'retry-after',
+        ],
+      });
+      return;
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  };
+
+  app.use(cors(corsOptions));
+
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -250,42 +285,6 @@ export function createApp(options?: { rateLimit?: boolean }) {
       },
       crossOriginResourcePolicy: { policy: 'cross-origin' },
       crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-    })
-  );
-
-  // Same-origin requests (the SPA and its crossorigin assets served by this
-  // very server) carry an Origin header that is not listed in FRONTEND_URL.
-  // They need no CORS headers at all — drop the header so the origin callback
-  // below does not reject them, while cross-origin requests keep the existing
-  // allow-list behaviour untouched.
-  app.use((request: Request, _response: Response, next: NextFunction) => {
-    const origin = request.headers.origin;
-    if (origin && request.headers.host) {
-      try {
-        if (new URL(origin).host === request.headers.host) {
-          delete request.headers.origin;
-        }
-      } catch {
-        // Malformed Origin — leave it for the CORS callback to judge.
-      }
-    }
-    next();
-  });
-
-  app.use(
-    cors({
-      origin: (origin, callback) => {
-        if (isAllowedOrigin(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      },
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type'],
-      optionsSuccessStatus: 204,
-      exposedHeaders: ['x-request-id', 'ratelimit-limit', 'ratelimit-remaining', 'ratelimit-reset', 'retry-after'],
     })
   );
 
@@ -524,6 +523,16 @@ export function createApp(options?: { rateLimit?: boolean }) {
       response.sendFile(path.join(clientDist, 'index.html'));
     });
   }
+
+  app.use((request: Request, response: Response) =>
+    response.status(404).json({
+      error: request.path.startsWith('/api')
+        ? 'API route not found.'
+        : 'Resource not found.',
+      code: 'NOT_FOUND',
+      requestId: (request as RequestWithId).requestId,
+    })
+  );
 
   app.use(apiErrorHandler);
 

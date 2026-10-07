@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff, TrendingUp, TrendingDown, Lock } from 'lucide-react';
+import { Plus, Target, CheckCircle2, Circle, CircleX, Coffee, Clock, ArrowRight, X, CalendarClock, Trash2, RotateCcw, AlarmClockOff, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useHabits } from '../hooks/useHabits';
@@ -16,81 +16,21 @@ import { ConfirmDialog, Modal } from '../components/Modal';
 import { HeaderStats } from '../components/HeaderStats';
 import { Badge } from '../components/Badge';
 import { DayContextMenu, type DayMenuTarget } from '../components/DayContextMenu';
+import { CommitmentWeekStrip, CommitmentWeekStripSkeleton } from '../components/CommitmentWeekStrip';
 import { useDayActions } from '../hooks/useDayActions';
-import { LOCKED_TOOLTIP, formatShortFullDate, type DayStatus } from '../utils/commitmentCalendar';
+import { formatShortFullDate } from '../utils/commitmentCalendar';
 import { TaskRow } from '../components/TaskRow';
 import { Skeleton, SkeletonRows } from '../components/Skeleton';
 import { DeadlinePicker } from '../components/DeadlinePicker';
-import { formatDate, formatShortDate, greeting, parseLocalDate, shiftDate, todayISO } from '../utils/date';
+import { formatDate, formatShortDate, greeting, todayISO } from '../utils/date';
 import { ROUTES } from '../routes';
 import { levelFor, pointsIntoLevel, pointsToNextLevel } from '../utils/points';
 import { xpBreakdown, xpEarnedSpent } from '../utils/xpBreakdown';
 import { formatDeadline } from '../utils/deadline';
 import { getDisplayName } from '../utils/profile';
-import type { Task, Habit } from '../types';
+import type { Task } from '../types';
 
 const DASHBOARD_TASK_LIMIT = 6;
-
-function WeekChecklist({
-  habit,
-  onCheck,
-  onDayTap,
-  pending,
-}: {
-  habit: Habit;
-  onCheck: (id: string, date?: string) => void;
-  onDayTap: (target: { habitId: string; date: string; status: DayStatus; x: number; y: number }) => void;
-  pending?: boolean;
-}) {
-  const today = todayISO();
-  const backFillUntil = shiftDate(today, -2);
-  return (
-    <div className="week-panel">
-      <div className="week-heading">
-        <strong>{habit.weekCompletedDays}/7 this week</strong>
-        <span>Mon–Sun</span>
-      </div>
-      <div className="day-buttons">
-        {habit.weekDates.map((date) => {
-          const checked = habit.completedDates.includes(date);
-          const failed = habit.failedDates.includes(date);
-          const skipped = habit.skippedDates.includes(date);
-          const future = date > today;
-          const beforeWindow = date < backFillUntil;
-          const editable = !future && !beforeWindow;
-          const recorded = checked || failed || skipped;
-          const status: DayStatus = checked ? 'COMPLETED' : failed ? 'FAILED' : skipped ? 'SKIPPED' : future ? 'FUTURE' : 'EMPTY';
-          const label = parseLocalDate(date).toLocaleDateString(undefined, { weekday: 'short' });
-          const number = parseLocalDate(date).getDate();
-          const statusText = checked ? ', checked in' : failed ? ', failed' : skipped ? ', left' : future ? ', not started' : beforeWindow ? ', locked' : ', nothing recorded';
-          return (
-            <button
-              key={date}
-              disabled={!editable || pending}
-              aria-busy={pending || undefined}
-              className={`day-check ${checked ? 'checked' : ''} ${failed ? 'failed' : ''} ${skipped ? 'skipped' : ''} ${date === today ? 'today' : ''} ${future ? 'future' : ''} ${beforeWindow ? 'outside-window locked' : ''} ${editable && !checked && !failed && !skipped ? 'backfill' : ''}`}
-              onClick={(event) => {
-                if (!editable) return;
-                if (recorded) {
-                  onDayTap({ habitId: habit.id, date, status, x: event.clientX, y: event.clientY });
-                } else {
-                  onCheck(habit.id, date);
-                }
-              }}
-              aria-label={`${label} ${number}${statusText}${editable && !recorded ? ', tap to check in' : editable ? ', tap to change' : ''}`}
-              title={future ? 'This day has not started yet' : beforeWindow ? LOCKED_TOOLTIP : failed ? 'Failed that day' : skipped ? 'Left this day' : checked ? 'Checked in — tap to change' : editable ? 'Check in for this day' : date}
-            >
-              {checked ? <CheckCircle2 size={18} /> : failed ? <CircleX size={18} /> : skipped ? <Coffee size={18} /> : beforeWindow ? <Lock size={18} /> : <Circle size={18} />}
-              <small>{label}</small>
-              <b>{number}</b>
-            </button>
-          );
-        })}
-      </div>
-      <p className="week-backfill-note">Yesterday and the day before stay editable — tap an empty day to back-fill, a recorded day to change it.</p>
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -119,14 +59,14 @@ export default function DashboardPage() {
     error: habitsError,
     creating: creatingHabit,
     isPending: isHabitPending,
+    fetchHabits,
     create: createHabit,
     complete: completeHabit,
     clearToday,
     failToday,
     skipToday,
     remove: removeHabit,
-    fetchHabits,
-  } = useHabits(user?.id ?? null);
+  } = useHabits(user?.id ?? null, user?.timezone);
   const { goals, error: goalsError, fetchGoals } = useGoals(user?.id ?? null);
   const { xp, streak, error: analyticsError, fetchAnalytics } = useAnalytics(user?.id ?? null);
   const loadError = tasksError ?? habitsError ?? goalsError ?? analyticsError;
@@ -144,7 +84,10 @@ export default function DashboardPage() {
   const [purgeTarget, setPurgeTarget] = useState<Task | null>(null);
   const [pointsOpen, setPointsOpen] = useState(false);
   const [dayMenu, setDayMenu] = useState<DayMenuTarget | null>(null);
-  const runDayAction = useDayActions({ complete: completeHabit, clearToday, failToday, skipToday }, toast);
+  const runDayAction = useDayActions(
+    { complete: completeHabit, clearToday, failToday, skipToday },
+    toast
+  );
 
   const activeTasks = useMemo(
     () => tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ARCHIVED' && !t.deletedAt),
@@ -268,7 +211,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (tasksLoading || habitsLoading) {
+  if (tasksLoading) {
     return (
       <div className="dashboard-page" role="status" aria-label="Loading dashboard">
         <div className="page-header">
@@ -283,6 +226,7 @@ export default function DashboardPage() {
           ))}
         </div>
         <SkeletonRows rows={5} height="58px" />
+        <CommitmentWeekStripSkeleton />
       </div>
     );
   }
@@ -461,35 +405,55 @@ export default function DashboardPage() {
             <Button type="submit" size="md" loading={creatingHabit}><Plus size={18} /> Add</Button>
           </form>
 
-          {habits.length === 0 ? (
+          {habitsLoading ? (
+            <div className="commitment-list" aria-label="Loading commitments">
+              <CommitmentWeekStripSkeleton />
+            </div>
+          ) : habitsError && habits.length === 0 ? (
+            <div className="commitment-load-error" role="alert">
+              <p>{habitsError}</p>
+              <Button size="sm" variant="secondary" onClick={() => void fetchHabits()}>Retry</Button>
+            </div>
+          ) : habits.length === 0 ? (
             <div className="empty-state">
               <Target size={32} />
               <strong>No commitments yet</strong>
               <p>Add a daily habit to start building streaks</p>
             </div>
           ) : (
-            <div className="commitment-list" role="list">
-              {habits.map((habit) => (
-                <article
-                  key={habit.id}
-                  className="commitment-card"
-                  {...habitMenu.bind(habit.name)}
-                >
-                  <div className="commitment-main">
-                    <div className="commitment-info">
-                      <strong>{habit.name}</strong>
-                      <span>{habit.completedDays} total days · {habit.weekCompletedDays}/7 this week</span>
+            <>
+              {habitsError && (
+                <div className="commitment-load-error compact" role="alert">
+                  <p>{habitsError}</p>
+                  <Button size="sm" variant="secondary" onClick={() => void fetchHabits()}>Retry</Button>
+                </div>
+              )}
+              <div className="commitment-list" role="list">
+                {habits.map((habit) => (
+                  <article
+                    key={habit.id}
+                    className="commitment-card"
+                    {...habitMenu.bind(habit.name)}
+                  >
+                    <div className="commitment-main">
+                      <div className="commitment-info">
+                        <strong>{habit.name}</strong>
+                        <span>{habit.completedDays} total days · {habit.weekCompletedDays}/7 this week</span>
+                      </div>
+                      <CommitmentWeekStrip
+                        habit={habit}
+                        today={todayISO(user?.timezone)}
+                        timeZone={user?.timezone ?? 'UTC'}
+                        onCheck={(id, date) => {
+                          void runDayAction(id, date ?? todayISO(user?.timezone), 'checkin');
+                        }}
+                        onDayTap={(target) =>
+                          setDayMenu({ ...target, label: formatShortFullDate(target.date) })
+                        }
+                        pending={isHabitPending(habit.id)}
+                      />
                     </div>
-                    <WeekChecklist
-                      habit={habit}
-                      onCheck={completeHabit}
-                      onDayTap={(target) =>
-                        setDayMenu({ ...target, label: formatShortFullDate(target.date) })
-                      }
-                      pending={isHabitPending(habit.id)}
-                    />
-                  </div>
-                  <div className="commitment-actions">
+                    <div className="commitment-actions">
                     <Button
                       variant={habit.completedToday ? 'secondary' : 'primary'}
                       size="md"
@@ -540,10 +504,11 @@ export default function DashboardPage() {
                         Undo
                       </Button>
                     )}
-                  </div>
-                </article>
-              ))}
-            </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
           )}
         </section>
       </div>

@@ -78,17 +78,26 @@ export function useAnalytics(userId: string | null) {
     }
   }, []);
 
+  const reportError = useCallback((caught: unknown) => {
+    if (!mountedRef.current) return;
+    setError(
+      caught instanceof Error
+        ? caught.message
+        : 'Unable to load analytics right now. Please try again.'
+    );
+  }, []);
+
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       await Promise.all([fetchStats(), fetchXp(), fetchStreaks()]);
     } catch (caught) {
-      if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not load analytics.');
+      reportError(caught);
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [fetchStats, fetchXp, fetchStreaks]);
+  }, [fetchStats, fetchXp, fetchStreaks, reportError]);
 
   useEffect(() => {
     void fetchAnalytics();
@@ -99,30 +108,22 @@ export function useAnalytics(userId: string | null) {
   useEffect(() => {
     const cleanups = [
       on('xp:updated', () => {
-        void fetchXp().catch((caught: unknown) => {
-          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh XP.');
-        });
+        void fetchXp().catch(reportError);
       }),
       on('habit:updated', () => {
-        void fetchStreaks().catch((caught: unknown) => {
-          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh streaks.');
-        });
+        void fetchStreaks().catch(reportError);
       }),
       on('task:created', () => {
-        void fetchStreaks(true).catch((caught: unknown) => {
-          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh streaks.');
-        });
+        void fetchStreaks(true).catch(reportError);
       }),
       on('task:updated', () => {
-        void fetchStreaks().catch((caught: unknown) => {
-          if (mountedRef.current) setError(caught instanceof Error ? caught.message : 'Could not refresh streaks.');
-        });
+        void fetchStreaks().catch(reportError);
       }),
     ];
     return () => {
       cleanups.forEach((cleanup) => cleanup());
     };
-  }, [fetchXp, fetchStreaks, on]);
+  }, [fetchXp, fetchStreaks, on, reportError]);
 
   const exportBackup = useCallback(async () => {
     const data = await api<Blob>('/backup/export');

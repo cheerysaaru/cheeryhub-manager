@@ -15,7 +15,11 @@ export type HabitDayKeyResult = { ok: true; key: string } | { ok: false; error: 
  * Resolves the raw date a client sent into a 'YYYY-MM-DD' key that is inside
  * the back-fill window. Missing input means today.
  */
-export function resolveHabitDayKey(raw: unknown, today: string): HabitDayKeyResult {
+export function resolveHabitDayKey(
+  raw: unknown,
+  today: string,
+  startedOn?: string
+): HabitDayKeyResult {
   if (raw === undefined || raw === null || raw === '') return { ok: true, key: today };
   const key = String(raw).trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return { ok: false, error: 'Invalid date' };
@@ -23,6 +27,9 @@ export function resolveHabitDayKey(raw: unknown, today: string): HabitDayKeyResu
   const earliest = shiftDayKey(today, -BACK_FILL_DAYS);
   if (key < earliest) {
     return { ok: false, error: `Only today and the last ${BACK_FILL_DAYS} days can be updated` };
+  }
+  if (startedOn && key < startedOn) {
+    return { ok: false, error: 'This commitment had not started on that day' };
   }
   return { ok: true, key };
 }

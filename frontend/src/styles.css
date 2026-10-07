@@ -454,6 +454,19 @@ button:active { transform: translateY(1px); }
   font-size: 1rem;
 }
 .error-message { color: var(--danger); font-size: 1rem; margin-top: 12px; }
+.api-error-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.api-error-message p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .success-message { color: var(--success); font-size: 1rem; margin-top: 12px; font-weight: 600; }
 .auth-links {
   display: flex;
@@ -1874,6 +1887,18 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 }
 .notification-mark-all:hover { text-decoration: underline; }
 .notification-empty { margin: 14px 4px; color: var(--text-muted); font-size: 0.85rem; text-align: center; }
+.notification-error {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 12px 4px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--danger);
+  text-align: center;
+}
+.notification-error p { margin: 0; font-size: 0.85rem; }
 .notification-list { list-style: none; margin: 0; padding: 6px 0 0; display: grid; gap: 4px; }
 .notification-item {
   display: flex;
@@ -2185,6 +2210,61 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   .empty-state { padding: 24px 14px; }
   .empty-state strong { font-size: 0.95rem; }
   .task-panel .btn, .panel .btn { max-width: 100%; }
+}
+
+.commitment-main {
+  grid-template-columns: minmax(0, 0.6fr) minmax(320px, 1.5fr);
+  align-items: start;
+}
+.week-panel { width: 100%; min-width: 0; }
+.day-buttons { grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 4px; }
+.dashboard-page .day-check { min-width: 44px; min-height: 54px; position: relative; }
+.day-check.not-started { opacity: 0.42; cursor: not-allowed; }
+.day-lock { position: absolute; right: 3px; bottom: 3px; }
+.week-skeleton-line,
+.week-day-skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg-hover) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: week-strip-pulse 1.4s ease-in-out infinite;
+}
+.week-skeleton-line { width: 120px; height: 12px; }
+.week-skeleton-line.short { width: 54px; }
+.week-panel-skeleton .day-buttons { margin-top: 8px; }
+.week-day-skeleton { min-width: 44px; min-height: 54px; }
+.commitment-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  color: var(--danger);
+}
+.commitment-load-error p { margin: 0; overflow-wrap: anywhere; }
+.commitment-load-error.compact { margin-bottom: 12px; }
+@keyframes week-strip-pulse {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (max-width: 1024px) {
+  .commitment-main { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .commitment-week-strip .day-buttons,
+  .week-panel-skeleton .day-buttons {
+    position: relative;
+    left: 50%;
+    width: min(100vw, 336px);
+    min-width: min(320px, 100vw);
+    max-width: 100vw;
+    transform: translateX(-50%);
+    grid-template-columns: repeat(7, minmax(44px, 1fr));
+    gap: 2px;
+  }
 }
 
 /* Phase 6: Level & Points breakdown */
