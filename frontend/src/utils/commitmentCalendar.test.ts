@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildMonthGrid,
+  buildWeekDateKeys,
+  buildWeekDays,
   dayStatus,
   habitStartKey,
   isEditableDay,
@@ -9,11 +11,12 @@ import {
   monthSummary,
   currentStreak,
   bestStreak,
+  dayKeyOf,
   weekdayHeaders,
   EDIT_WINDOW_DAYS,
   LOCKED_TOOLTIP,
 } from './commitmentCalendar';
-import { parseLocalDate } from './date';
+import { dateKeyInTimeZone, parseLocalDate, todayISO } from './date';
 
 function assertWellFormedGrid(year: number, month: number) {
   const grid = buildMonthGrid(year, month);
@@ -141,6 +144,79 @@ describe('isEditableDay (3-day window + lock)', () => {
     expect(isEditableDay('2026-12-31', '2027-01-01')).toBe(true);
     expect(isEditableDay('2026-12-30', '2027-01-01')).toBe(true);
     expect(isEditableDay('2026-12-29', '2027-01-01')).toBe(false);
+  });
+});
+
+describe('commitment week strip', () => {
+  it('always creates seven Monday-first cells for commitments of any age', () => {
+    const today = '2026-10-07';
+    const expected = [
+      '2026-10-05',
+      '2026-10-06',
+      '2026-10-07',
+      '2026-10-08',
+      '2026-10-09',
+      '2026-10-10',
+      '2026-10-11',
+    ];
+    const createdToday = {
+      completedDates: [],
+      failedDates: [],
+      skippedDates: [],
+      createdAt: '2026-10-07T10:00:00.000Z',
+    };
+    const createdWeeksAgo = {
+      ...createdToday,
+      createdAt: '2026-09-16T10:00:00.000Z',
+    };
+
+    expect(buildWeekDateKeys(today)).toEqual(expected);
+    expect(buildWeekDays(createdToday, today, 'UTC')).toHaveLength(7);
+    expect(buildWeekDays(createdWeeksAgo, today, 'UTC')).toHaveLength(7);
+    expect(buildWeekDays(createdToday, today, 'UTC')[2]).toMatchObject({
+      date: today,
+      status: 'EMPTY',
+      editable: true,
+    });
+    expect(buildWeekDays(createdToday, today, 'UTC').slice(0, 2).map((day) => day.status))
+      .toEqual(['NOT_STARTED', 'NOT_STARTED']);
+  });
+
+  it('shows days before a Wednesday commitment as not started, not failed', () => {
+    const days = buildWeekDays({
+      completedDates: [],
+      failedDates: [],
+      skippedDates: [],
+      createdAt: '2026-10-07T12:00:00.000Z',
+    }, '2026-10-11', 'UTC');
+
+    expect(days).toHaveLength(7);
+    expect(days.slice(0, 2).map((day) => day.status)).toEqual(['NOT_STARTED', 'NOT_STARTED']);
+    expect(days[0].editable).toBe(false);
+    expect(days[2].status).toBe('EMPTY');
+  });
+
+  it('locks days outside the edit window and keeps future days disabled', () => {
+    const days = buildWeekDays({
+      completedDates: [],
+      failedDates: [],
+      skippedDates: [],
+      createdAt: '2026-09-16T10:00:00.000Z',
+    }, '2026-10-08', 'UTC');
+
+    expect(days[0]).toMatchObject({ date: '2026-10-05', editable: false });
+    expect(days[1]).toMatchObject({ date: '2026-10-06', editable: true });
+    expect(days[3]).toMatchObject({ date: '2026-10-08', editable: true });
+    expect(days[4]).toMatchObject({ date: '2026-10-09', status: 'FUTURE', editable: false });
+  });
+
+  it('uses the user timezone when an instant crosses local midnight', () => {
+    const afterUtcMidnightInIndia = new Date('2026-10-07T19:00:00.000Z');
+    const beforeLocalMidnightAtUtcMinusEight = new Date('2026-10-07T07:30:00.000Z');
+
+    expect(todayISO('Asia/Kolkata', afterUtcMidnightInIndia)).toBe('2026-10-08');
+    expect(dateKeyInTimeZone(beforeLocalMidnightAtUtcMinusEight, 'Etc/GMT+8')).toBe('2026-10-06');
+    expect(dayKeyOf('2026-10-07T19:00:00.000Z', 'Asia/Kolkata')).toBe('2026-10-08');
   });
 });
 

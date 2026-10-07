@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { dedupe } from '../services/inflight';
+import { buildWeekDateKeys } from '../utils/commitmentCalendar';
 import { todayISO } from '../utils/date';
 import type { Habit } from '../types';
 import { useSocket } from './useSocket';
 
-function normalizeHabit(habit: Partial<Habit> & { id: string }): Habit {
+function normalizeHabit(habit: Partial<Habit> & { id: string }, timeZone?: string): Habit {
+  const weekDates = habit.weekDates?.length === 7
+    ? habit.weekDates
+    : buildWeekDateKeys(todayISO(timeZone));
   return {
     ...habit,
     completedToday: habit.completedToday ?? false,
@@ -13,8 +17,8 @@ function normalizeHabit(habit: Partial<Habit> & { id: string }): Habit {
     skippedToday: habit.skippedToday ?? false,
     completedDays: habit.completedDays ?? 0,
     weekCompletedDays: habit.weekCompletedDays ?? 0,
-    weekStart: habit.weekStart ?? todayISO(),
-    weekDates: habit.weekDates ?? [],
+    weekStart: habit.weekStart ?? weekDates[0],
+    weekDates,
     completedDates: habit.completedDates ?? [],
     failedDates: habit.failedDates ?? [],
     skippedDates: habit.skippedDates ?? [],
@@ -25,12 +29,16 @@ function prependUnique(list: Habit[], habit: Habit): Habit[] {
   return list.some((item) => item.id === habit.id) ? list : [habit, ...list];
 }
 
-function mergeHabit(current: Habit | undefined, incoming: Partial<Habit> & { id: string }): Habit {
+function mergeHabit(
+  current: Habit | undefined,
+  incoming: Partial<Habit> & { id: string },
+  timeZone?: string
+): Habit {
   const base = current ?? ({} as Habit);
   return normalizeHabit({
     ...base,
     ...incoming,
-    weekDates: incoming.weekDates?.length ? incoming.weekDates : base.weekDates ?? [],
+    weekDates: incoming.weekDates?.length === 7 ? incoming.weekDates : base.weekDates,
     completedDates: incoming.completedDates ?? base.completedDates ?? [],
     failedDates: incoming.failedDates ?? base.failedDates ?? [],
     skippedDates: incoming.skippedDates ?? base.skippedDates ?? [],
@@ -40,18 +48,19 @@ function mergeHabit(current: Habit | undefined, incoming: Partial<Habit> & { id:
     completedDays: incoming.completedDays ?? base.completedDays ?? 0,
     weekCompletedDays: incoming.weekCompletedDays ?? base.weekCompletedDays ?? 0,
     weekStart: incoming.weekStart ?? base.weekStart,
-  });
+  }, timeZone);
 }
 
-function todayKey(): string {
-  return todayISO();
+function todayKey(timeZone?: string): string {
+  return todayISO(timeZone);
 }
 
 /** Optimistically move one day's status; `null` clears the day. */
 function applyDayStatus(
   habit: Habit,
   day: string,
-  status: 'COMPLETED' | 'FAILED' | 'SKIPPED' | null
+  status: 'COMPLETED' | 'FAILED' | 'SKIPPED' | null,
+  timeZone?: string
 ): Habit {
   const hadCompleted = habit.completedDates.includes(day);
   const completedDates = habit.completedDates.filter((d) => d !== day);
@@ -64,7 +73,7 @@ function applyDayStatus(
   const weekCompletedDays = habit.weekDates.length
     ? completedDates.filter((d) => habit.weekDates.includes(d)).length
     : habit.weekCompletedDays;
-  const isToday = day === todayKey();
+  const isToday = day === todayKey(timeZone);
   return {
     ...habit,
     completedDates,
@@ -82,9 +91,10 @@ function applyDayStatus(
   };
 }
 
-export function useHabits(userId: string | null) {
+export function useHabits(userId: string | null, timeZone?: string) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
   const habitsRef = useRef<Habit[]>([]);
@@ -106,29 +116,31 @@ export function useHabits(userId: string | null) {
   const isPending = useCallback((id: string) => pendingIds.has(id), [pendingIds]);
 
   const fetchHabits = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await dedupe('habits:list', () => api<Habit[]>('/habits'));
-      setHabits(data);
+      setHabits(data.map((habit) => normalizeHabit(habit, timeZone)));
     } catch {
-      setHabits([]);
+      setError('Could not load commitments. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [timeZone]);
 
   useEffect(() => {
     fetchHabits();
     const cleanup = on<Habit>('habit:created', (habit) => {
-      setHabits((prev) => prependUnique(prev, normalizeHabit(habit)));
+      setHabits((prev) => prependUnique(prev, normalizeHabit(habit, timeZone)));
     });
     const cleanup2 = on<Habit>('habit:updated', (habit) => {
-      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit) : h)));
+      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit, timeZone) : h)));
     });
     const cleanup3 = on<{ id: string }>('habit:deleted', ({ id }) => {
       setHabits((prev) => prev.filter((h) => h.id !== id));
     });
     const cleanup4 = on<Habit>('habit:completed', (habit) => {
-      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit) : h)));
+      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit, timeZone) : h)));
     });
     return () => {
       cleanup();
@@ -136,25 +148,26 @@ export function useHabits(userId: string | null) {
       cleanup3();
       cleanup4();
     };
-  }, [fetchHabits, on]);
+  }, [fetchHabits, on, timeZone]);
 
   const create = useCallback(async (data: Partial<Habit>) => {
     setCreating(true);
     try {
       const habit = await api<Habit>('/habits', { method: 'POST', body: JSON.stringify(data) });
-      const normalized = normalizeHabit(habit);
+      const normalized = normalizeHabit(habit, timeZone);
       setHabits((prev) => prependUnique(prev, normalized));
       return normalized;
     } finally {
       setCreating(false);
     }
-  }, []);
+  }, [timeZone]);
 
   const update = useCallback(async (id: string, data: Partial<Habit>) => {
     const habit = await api<Habit>(`/habits/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-    setHabits((prev) => prev.map((h) => (h.id === id ? habit : h)));
-    return habit;
-  }, []);
+    const normalized = normalizeHabit(habit, timeZone);
+    setHabits((prev) => prev.map((h) => (h.id === id ? normalized : h)));
+    return normalized;
+  }, [timeZone]);
 
   const remove = useCallback(async (id: string) => {
     await api(`/habits/${id}`, { method: 'DELETE' });
@@ -173,11 +186,11 @@ export function useHabits(userId: string | null) {
       status: 'COMPLETED' | 'FAILED' | 'SKIPPED' | null,
       request: () => Promise<unknown>
     ): Promise<boolean> => {
-      const day = date ?? todayKey();
+      const day = date ?? todayKey(timeZone);
       const before = habitsRef.current.find((habit) => habit.id === id);
       if (!before) return false;
       markPending(id, true);
-      setHabits((prev) => prev.map((habit) => (habit.id === id ? applyDayStatus(habit, day, status) : habit)));
+      setHabits((prev) => prev.map((habit) => (habit.id === id ? applyDayStatus(habit, day, status, timeZone) : habit)));
       try {
         await request();
         return true;
@@ -189,7 +202,7 @@ export function useHabits(userId: string | null) {
         markPending(id, false);
       }
     },
-    [markPending]
+    [markPending, timeZone]
   );
 
   const complete = useCallback(
@@ -224,5 +237,5 @@ export function useHabits(userId: string | null) {
     [applyDayAction]
   );
 
-  return { habits, loading, creating, isPending, fetchHabits, create, update, remove, complete, clearToday, failToday, skipToday };
+  return { habits, loading, error, creating, isPending, fetchHabits, create, update, remove, complete, clearToday, failToday, skipToday };
 }

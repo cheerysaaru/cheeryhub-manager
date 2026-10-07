@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { type Db } from './points';
-import { applyHabitDayPoints, revokeHabitDayPoints, type HabitPointsStatus } from './habitPoints';
+import {
+  applyHabitDayPoints,
+  planHabitDayPoints,
+  revokeHabitDayPoints,
+  type HabitPointsStatus,
+} from './habitPoints';
 
 /**
  * In-memory ledger double implementing exactly the subset of the Prisma
@@ -89,6 +94,32 @@ async function setDay(ledger: ReturnType<typeof makeLedger>, status: HabitPoints
 }
 
 describe('commitment day ledger transitions', () => {
+  it('plans a check-in as a transaction operation with the correct points delta', async () => {
+    const ledger = makeLedger();
+    const plan = await planHabitDayPoints(ledger.db, { ...INPUT, status: 'COMPLETED' });
+
+    expect(plan.delta).toBe(4);
+    expect(plan.reason).toBe('Daily commitment checked in');
+    expect(plan.operations).toHaveLength(1);
+    await Promise.all(plan.operations);
+    expect(ledger.total()).toBe(4);
+  });
+
+  it('plans undo reversals as append-only operations', async () => {
+    const ledger = makeLedger();
+    await setDay(ledger, 'COMPLETED');
+    const before = ledger.snapshot();
+    const plan = await planHabitDayPoints(ledger.db, { ...INPUT, status: 'SKIPPED' });
+
+    expect(plan.delta).toBe(-4);
+    expect(plan.operations).toHaveLength(1);
+    await Promise.all(plan.operations);
+    expect(ledger.total()).toBe(0);
+    expect(ledger.rows[0]).toEqual(before[0]);
+    expect(ledger.rows[1].amount).toBe(-4);
+    expect(ledger.rows[1].dedupeKey).toBe('habit:checkin:h1:2026-10-01#rev1');
+  });
+
   it('check-in adds 4 once and stays idempotent when tapped again', async () => {
     const ledger = makeLedger();
 

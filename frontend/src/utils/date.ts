@@ -5,6 +5,19 @@ export function getLocalDateString(date: Date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+export function dateKeyInTimeZone(date: Date, timeZone?: string): string {
+  if (!timeZone) return getLocalDateString(date);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
 export function parseLocalDate(dateStr: string): Date {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr.trim());
   if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 0, 0, 0, 0);
@@ -21,8 +34,8 @@ export function greeting(name: string): string {
   return `${hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}, ${name.split(' ')[0]}.`;
 }
 
-export function todayISO(): string {
-  return getLocalDateString();
+export function todayISO(timeZone?: string, now: Date = new Date()): string {
+  return dateKeyInTimeZone(now, timeZone);
 }
 
 export function shiftDate(dateStr: string, days: number): string {

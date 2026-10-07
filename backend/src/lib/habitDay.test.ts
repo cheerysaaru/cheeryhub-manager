@@ -29,6 +29,17 @@ describe('resolveHabitDayKey (3-day edit window)', () => {
     });
   });
 
+  it('rejects editable-window dates before a commitment was created', () => {
+    expect(resolveHabitDayKey('2026-10-01', TODAY, '2026-10-02')).toEqual({
+      ok: false,
+      error: 'This commitment had not started on that day',
+    });
+    expect(resolveHabitDayKey('2026-10-02', TODAY, '2026-10-02')).toEqual({
+      ok: true,
+      key: '2026-10-02',
+    });
+  });
+
   it('rejects future dates', () => {
     expect(resolveHabitDayKey('2026-10-03', TODAY)).toEqual({
       ok: false,
@@ -72,4 +83,3 @@ describe('isHabitDayEditable', () => {
     expect(LOCKED_TOOLTIP).toBe('Locked after 2 days');
   });
 });
-

@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { todayISO } from '../utils/date';
 import { formatShortFullDate } from '../utils/commitmentCalendar';
 import type { ToastFn } from '../components/Toast';
 import type { DayAction } from '../components/DayContextMenu';
@@ -19,14 +18,13 @@ const ACTION_TITLES: Record<Exclude<DayAction, 'undo'>, string> = {
 
 /**
  * Shared tap handler for commitment days: runs the optimistic day action and,
- * for PAST days, offers an Undo toast for ~5s afterwards.
+ * offers an Undo toast for ~5s afterwards.
  */
 export function useDayActions(api: DayApi, toast: ToastFn) {
   const { complete, clearToday, failToday, skipToday } = api;
 
   return useCallback(
     async (habitId: string, date: string, action: DayAction): Promise<boolean> => {
-      const isPast = date < todayISO();
       let ok: boolean;
       if (action === 'checkin') ok = await complete(habitId, date);
       else if (action === 'fail') ok = await failToday(habitId, date);
@@ -34,7 +32,7 @@ export function useDayActions(api: DayApi, toast: ToastFn) {
       else ok = await clearToday(habitId, date);
       if (!ok) return false;
 
-      if (isPast && action !== 'undo') {
+      if (action !== 'undo') {
         toast({
           type: 'info',
           title: ACTION_TITLES[action],

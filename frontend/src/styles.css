@@ -2187,6 +2187,61 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
   .task-panel .btn, .panel .btn { max-width: 100%; }
 }
 
+.commitment-main {
+  grid-template-columns: minmax(0, 0.6fr) minmax(320px, 1.5fr);
+  align-items: start;
+}
+.week-panel { width: 100%; min-width: 0; }
+.day-buttons { grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 4px; }
+.dashboard-page .day-check { min-width: 44px; min-height: 54px; position: relative; }
+.day-check.not-started { opacity: 0.42; cursor: not-allowed; }
+.day-lock { position: absolute; right: 3px; bottom: 3px; }
+.week-skeleton-line,
+.week-day-skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg-hover) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: week-strip-pulse 1.4s ease-in-out infinite;
+}
+.week-skeleton-line { width: 120px; height: 12px; }
+.week-skeleton-line.short { width: 54px; }
+.week-panel-skeleton .day-buttons { margin-top: 8px; }
+.week-day-skeleton { min-width: 44px; min-height: 54px; }
+.commitment-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  color: var(--danger);
+}
+.commitment-load-error p { margin: 0; overflow-wrap: anywhere; }
+.commitment-load-error.compact { margin-bottom: 12px; }
+@keyframes week-strip-pulse {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (max-width: 1024px) {
+  .commitment-main { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .commitment-week-strip .day-buttons,
+  .week-panel-skeleton .day-buttons {
+    position: relative;
+    left: 50%;
+    width: min(100vw, 336px);
+    min-width: min(320px, 100vw);
+    max-width: 100vw;
+    transform: translateX(-50%);
+    grid-template-columns: repeat(7, minmax(44px, 1fr));
+    gap: 2px;
+  }
+}
+
 /* Phase 6: Level & Points breakdown */
 .points-summary {
   display: flex;

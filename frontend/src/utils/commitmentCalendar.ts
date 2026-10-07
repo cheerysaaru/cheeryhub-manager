@@ -3,7 +3,7 @@
  * Everything here is side-effect free so the calendar can be unit tested and
  * only the visible month is ever computed (older months load on demand).
  */
-import { getLocalDateString, parseLocalDate, shiftDate } from './date';
+import { dateKeyInTimeZone, getLocalDateString, parseLocalDate, shiftDate } from './date';
 
 /** Users may fix today and the last 2 days — mirrors the server window. */
 export const EDIT_WINDOW_DAYS = 2;
@@ -42,8 +42,11 @@ export interface MonthCell {
 }
 
 /** Local 'YYYY-MM-DD' for an ISO timestamp (date part only). */
-export function dayKeyOf(iso: string): string {
-  return getLocalDateString(parseLocalDate(iso));
+export function dayKeyOf(iso: string, timeZone?: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return dateKeyInTimeZone(date, timeZone);
 }
 
 /**
@@ -118,9 +121,9 @@ export function shiftMonth(
  * First day that can hold data for this commitment: its creation day, or the
  * earliest recorded day if history predates it (e.g. an import).
  */
-export function habitStartKey(habit: HabitDayData): string | null {
+export function habitStartKey(habit: HabitDayData, timeZone?: string): string | null {
   const recorded = [...habit.completedDates, ...habit.failedDates, ...habit.skippedDates].sort();
-  const created = habit.createdAt ? dayKeyOf(habit.createdAt) : null;
+  const created = habit.createdAt ? dayKeyOf(habit.createdAt, timeZone) : null;
   if (recorded.length && created) return recorded[0] < created ? recorded[0] : created;
   if (recorded.length) return recorded[0];
   return created;
@@ -145,13 +148,13 @@ export function monthsThrough(startKey: string, today: string): { year: number; 
  * future > recorded status > before the commitment existed (not started) >
  * nothing recorded.
  */
-export function dayStatus(habit: HabitDayData, date: string, today: string): DayStatus {
+export function dayStatus(habit: HabitDayData, date: string, today: string, timeZone?: string): DayStatus {
   if (date > today) return 'FUTURE';
+  const created = habit.createdAt ? dayKeyOf(habit.createdAt, timeZone) : null;
+  if (created && date < created) return 'NOT_STARTED';
   if (habit.completedDates.includes(date)) return 'COMPLETED';
   if (habit.failedDates.includes(date)) return 'FAILED';
   if (habit.skippedDates.includes(date)) return 'SKIPPED';
-  const created = habit.createdAt ? dayKeyOf(habit.createdAt) : null;
-  if (created && date < created) return 'NOT_STARTED';
   return 'EMPTY';
 }
 
@@ -159,6 +162,33 @@ export function dayStatus(habit: HabitDayData, date: string, today: string): Day
 export function isEditableDay(date: string, today: string): boolean {
   if (date > today) return false;
   return date >= shiftDate(today, -EDIT_WINDOW_DAYS);
+}
+
+export interface WeekDay {
+  date: string;
+  status: DayStatus;
+  editable: boolean;
+}
+
+export function buildWeekDateKeys(today: string): string[] {
+  const weekday = parseLocalDate(today).getDay();
+  const monday = shiftDate(today, -((weekday + 6) % 7));
+  return Array.from({ length: 7 }, (_, index) => shiftDate(monday, index));
+}
+
+export function buildWeekDays(
+  habit: HabitDayData,
+  today: string,
+  timeZone?: string
+): WeekDay[] {
+  return buildWeekDateKeys(today).map((date) => {
+    const status = dayStatus(habit, date, today, timeZone);
+    return {
+      date,
+      status,
+      editable: status !== 'NOT_STARTED' && isEditableDay(date, today),
+    };
+  });
 }
 
 /** Cycle order: check in -> failed -> leave -> clear. */
@@ -183,9 +213,10 @@ export function monthSummary(
   habit: HabitDayData,
   year: number,
   monthIndex: number,
-  today: string
+  today: string,
+  timeZone?: string
 ): MonthSummary {
-  const created = habit.createdAt ? dayKeyOf(habit.createdAt) : null;
+  const created = habit.createdAt ? dayKeyOf(habit.createdAt, timeZone) : null;
   let checked = 0;
   let failed = 0;
   let leave = 0;
@@ -195,7 +226,7 @@ export function monthSummary(
     if (cell.date > today) continue;
     if (created && cell.date < created) continue;
     eligible += 1;
-    const status = dayStatus(habit, cell.date, today);
+    const status = dayStatus(habit, cell.date, today, timeZone);
     if (status === 'COMPLETED') checked += 1;
     else if (status === 'FAILED') failed += 1;
     else if (status === 'SKIPPED') leave += 1;

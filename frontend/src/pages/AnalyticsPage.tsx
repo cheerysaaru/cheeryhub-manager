@@ -16,7 +16,7 @@ export default function AnalyticsPage() {
   const { user } = useAuth();
   const { stats, xp, streak, loading } = useAnalytics(user?.id ?? null);
   const { tasks } = useTasks(user?.id ?? null);
-  const { habits } = useHabits(user?.id ?? null);
+  const { habits } = useHabits(user?.id ?? null, user?.timezone);
   const { sessions } = useFocus(user?.id ?? null);
 
   const totalXP = xp?.total ?? 0;
