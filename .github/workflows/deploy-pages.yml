@@ -47,6 +47,29 @@ jobs:
           test -s frontend/dist/index.html
           test -s frontend/dist/404.html
           test "$(cat frontend/dist/CNAME)" = "cheeryhub.space"
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from 'node:fs/promises';
+
+          const assetDir = 'frontend/dist/assets';
+          // Upstream router/socket fallbacks may mention localhost without being API configuration.
+          const bundles = (await readdir(assetDir)).filter(
+            (file) => file.endsWith('.js') && !file.startsWith('vendor-')
+          );
+          if (bundles.length === 0) {
+            console.error('No JavaScript bundles were built.');
+            process.exit(1);
+          }
+
+          const contents = await Promise.all(
+            bundles.map((file) => readFile(`${assetDir}/${file}`, 'utf8'))
+          );
+          for (const forbidden of ['localhost', 'YOUR-WORKER-URL']) {
+            if (contents.some((bundle) => bundle.includes(forbidden))) {
+              console.error(`Built JavaScript bundle contains forbidden text: ${forbidden}`);
+              process.exitCode = 1;
+            }
+          }
+          NODE
         env:
           # Root domain (cheeryhub.space) -> '/'. Set the repository variable
           # VITE_BASE=/cheeryhub-manager/ only for username.github.io/repo-name.

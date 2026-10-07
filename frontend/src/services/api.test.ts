@@ -21,6 +21,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe('api()', () => {
@@ -170,12 +171,15 @@ describe('api()', () => {
   });
 
   it('retries network failures for idempotent requests only', async () => {
+    vi.stubEnv('DEV', true);
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const failing = vi.fn(async () => {
       throw new TypeError('Failed to fetch');
     });
     vi.stubGlobal('fetch', failing);
+    const privateToken = 'never-log-this-token';
 
-    const error = await api('/tasks').catch((caught: unknown) => caught);
+    const error = await api(`/tasks?token=${privateToken}`).catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).status).toBe(0);
     expect((error as ApiError).code).toBe('NETWORK_ERROR');
@@ -183,11 +187,25 @@ describe('api()', () => {
       'Cannot reach the server. Please check your connection and try again.'
     );
     expect(failing).toHaveBeenCalledTimes(3);
+    expect(warning).toHaveBeenCalledWith(
+      '[api] Network request failed',
+      expect.objectContaining({
+        method: 'GET',
+        url: expect.stringMatching(/^https?:\/\/[^/]+\/api\/tasks$/),
+        status: 0,
+        errorName: 'TypeError',
+      })
+    );
+    expect(JSON.stringify(warning.mock.calls)).not.toContain('Failed to fetch');
 
     failing.mockClear();
-    const loginError = await api('/auth/login', { method: 'POST', body: '{}' }).catch((caught: unknown) => caught);
+    const loginError = await api('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ password: privateToken }),
+    }).catch((caught: unknown) => caught);
     expect(loginError).toBeInstanceOf(ApiError);
     expect((loginError as ApiError).code).toBe('NETWORK_ERROR');
     expect(failing).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(warning.mock.calls)).not.toContain(privateToken);
   });
 });

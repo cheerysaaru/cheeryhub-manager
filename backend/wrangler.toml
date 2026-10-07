@@ -15,7 +15,7 @@ pattern = "api.cheeryhub.space"
 custom_domain = true
 
 [vars]
-FRONTEND_URL = "https://cheeryhub.space,https://cheerysaaru.github.io"
+FRONTEND_URL = "https://cheeryhub.space,https://www.cheeryhub.space,https://cheerysaaru.github.io"
 NODE_ENV = "production"
 EMAIL_FROM = "Productivity <onboarding@resend.dev>"
 APP_URL = "https://cheeryhub.space"

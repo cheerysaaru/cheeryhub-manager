@@ -290,6 +290,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
         await sleep(retryDelayMs(response, attempts));
         continue;
       }
+      if (import.meta.env.DEV) {
+        const target = new URL(`${API_BASE}${path}`);
+        console.warn('[api] Network request failed', {
+          method,
+          url: `${target.origin}${target.pathname}`,
+          status: response?.status ?? 0,
+          errorName: error instanceof Error ? error.name : typeof error,
+        });
+      }
       throw new ApiError('Cannot reach the server. Please check your connection and try again.', {
         status: 0,
         code: 'NETWORK_ERROR',
