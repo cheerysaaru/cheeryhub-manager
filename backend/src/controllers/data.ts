@@ -1,12 +1,13 @@
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import type { Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
 import { fail, ok } from '../utils/response';
 import { emitToUser } from '../lib/socket';
 import { refreshNotificationsInBackground } from '../lib/notifications';
-import { POINTS, awardPoints } from '../lib/points';
-import { applyHabitDayPoints, revokeHabitDayPoints } from '../lib/habitPoints';
+import { POINTS, awardPoints, planAwardPoints } from '../lib/points';
+import { planHabitDayPoints } from '../lib/habitPoints';
 import { resolveHabitDayKey } from '../lib/habitDay';
 import {
   timezoneOf,
@@ -262,13 +263,24 @@ export async function completeTask(request: AuthRequest, response: Response) {
       dedupeKey = `task:overdue:${task.id}:${day}`;
     }
   }
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.task.update({ where: { id: task.id }, data: { status: 'COMPLETED', completedAt: new Date() } });
-    await awardPoints(tx, { userId: request.userId!, amount, reason, dedupeKey, taskId: task.id });
-    return result;
-  });
+  let xpDelta = 0;
+  for (let attempt = 0; ; attempt += 1) {
+    const points = await planAwardPoints(prisma, { userId: request.userId!, amount, reason, dedupeKey, taskId: task.id });
+    const operations: Prisma.PrismaPromise<unknown>[] = [
+      prisma.task.update({ where: { id: task.id }, data: { status: 'COMPLETED', completedAt: new Date() } }),
+    ];
+    if (points.operation) operations.push(points.operation);
+    try {
+      await prisma.$transaction(operations);
+      xpDelta = points.delta;
+      break;
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'P2002' || attempt > 0) throw error;
+    }
+  }
+  const updated = await prisma.task.findUniqueOrThrow({ where: { id: task.id } });
   emitEvent(request.userId!, 'tasks', 'updated', updated);
-  if (amount) emitToUser(request.userId!, 'xp:updated', { reason, amount });
+  if (xpDelta) emitToUser(request.userId!, 'xp:updated', { reason, amount: xpDelta });
   return ok(response, updated);
 }
 async function getUserTodayFor(userId: string): Promise<Date> {
@@ -328,7 +340,7 @@ async function habitDayPayload(habit: { id: string; completions?: Array<{ date: 
   };
 }
 
-async function setHabitDayStatus(request: AuthRequest, response: Response, status: HabitDayStatus) {
+async function setHabitDayStatus(request: AuthRequest, response: Response, status: HabitDayStatus, retry = 0) {
   const habitId = String(request.params.id);
   const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: request.userId!, deletedAt: null } });
   if (!habit) return fail(response, 'Habit not found', 404);
@@ -338,42 +350,48 @@ async function setHabitDayStatus(request: AuthRequest, response: Response, statu
   if (!target.ok) return fail(response, target.error, 400);
   const date = target.date;
   const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
-  let xpDelta = 0;
-  let xpReason = '';
-  const completion = await prisma.$transaction(async (tx) => {
-    const previous = await tx.habitCompletion.findUnique({
-      where: { habitId_date: { habitId: habit.id, date } },
-      select: { status: true },
-    });
-    const row = await tx.habitCompletion.upsert({
+  const previous = await prisma.habitCompletion.findUnique({
+    where: { habitId_date: { habitId: habit.id, date } },
+    select: { status: true },
+  });
+  const points = await planHabitDayPoints(prisma, {
+    userId: request.userId!,
+    habitId: habit.id,
+    dayKey: dayKey(date),
+    status,
+  });
+  const operations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.habitCompletion.upsert({
       where: { habitId_date: { habitId: habit.id, date } },
       update: { status, completedAt: new Date() },
       create: { habitId: habit.id, userId: request.userId!, date, status },
-    });
-    const points = await applyHabitDayPoints(tx, {
-      userId: request.userId!,
-      habitId: habit.id,
-      dayKey: dayKey(date),
-      status,
-    });
-    xpDelta = points.delta;
-    xpReason = points.reason;
-    // Append-only audit trail: never rewrites an earlier event.
-    await tx.habitDayEvent.create({
+    }),
+    ...points.operations,
+    prisma.habitDayEvent.create({
       data: {
         userId: request.userId!,
         habitId: habit.id,
         date,
         fromStatus: previous?.status ?? null,
         toStatus: status,
-        pointsDelta: xpDelta,
+        pointsDelta: points.delta,
       },
-    });
-    return row;
+    }),
+  ];
+  try {
+    await prisma.$transaction(operations);
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2002' && retry === 0) {
+      return setHabitDayStatus(request, response, status, retry + 1);
+    }
+    throw error;
+  }
+  const completion = await prisma.habitCompletion.findUniqueOrThrow({
+    where: { habitId_date: { habitId: habit.id, date } },
   });
   const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
   emitEvent(request.userId!, 'habits', 'updated', payload);
-  if (xpDelta) emitToUser(request.userId!, 'xp:updated', { reason: xpReason, amount: xpDelta });
+  if (points.delta) emitToUser(request.userId!, 'xp:updated', { reason: points.reason, amount: points.delta });
   if (status === 'COMPLETED') {
     return ok(response, { ...payload, ...completion, dayKey: dayKey(date), weekCompletedDays: payload.weekCompletedDays, weekComplete: payload.weekCompletedDays === 7 }, 201);
   }
@@ -411,6 +429,10 @@ export async function stopTaskTimer(request: AuthRequest, response: Response) {
   return ok(response, await prisma.task.update({ where: { id: task.id }, data: { timerStartedAt: null } }));
 }
 export async function clearHabitToday(request: AuthRequest, response: Response) {
+  return clearHabitDay(request, response, 0);
+}
+
+async function clearHabitDay(request: AuthRequest, response: Response, retry: number) {
   const habitId = String(request.params.id); const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: request.userId!, deletedAt: null } }); if (!habit) return fail(response, 'Habit not found', 404);
   const parsed = habitDaySchema.safeParse(request.body ?? {});
   if (!parsed.success) return fail(response, 'Invalid date');
@@ -418,19 +440,20 @@ export async function clearHabitToday(request: AuthRequest, response: Response) 
   if (!target.ok) return fail(response, target.error, 400);
   const todayDate = (await resolveHabitDay(request.userId!, undefined)) as { ok: true; date: Date };
   const targetKey = dayKey(target.date);
-  const revoked = await prisma.$transaction(async (tx) => {
-    const previous = await tx.habitCompletion.findUnique({
-      where: { habitId_date: { habitId, date: target.date } },
-      select: { status: true },
-    });
-    await tx.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date: target.date } });
-    const points = await revokeHabitDayPoints(tx, {
-      userId: request.userId!,
-      habitId,
-      dayKey: targetKey,
-    });
-    // Append-only audit trail for the undo; the commitment itself is untouched.
-    await tx.habitDayEvent.create({
+  const previous = await prisma.habitCompletion.findUnique({
+    where: { habitId_date: { habitId, date: target.date } },
+    select: { status: true },
+  });
+  const points = await planHabitDayPoints(prisma, {
+    userId: request.userId!,
+    habitId,
+    dayKey: targetKey,
+    status: 'SKIPPED',
+  });
+  const operations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.habitCompletion.deleteMany({ where: { habitId, userId: request.userId!, date: target.date } }),
+    ...points.operations,
+    prisma.habitDayEvent.create({
       data: {
         userId: request.userId!,
         habitId,
@@ -439,12 +462,19 @@ export async function clearHabitToday(request: AuthRequest, response: Response) 
         toStatus: CLEARED_STATUS,
         pointsDelta: points.delta,
       },
-    });
-    return points.delta;
-  });
+    }),
+  ];
+  try {
+    await prisma.$transaction(operations);
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2002' && retry === 0) {
+      return clearHabitDay(request, response, retry + 1);
+    }
+    throw error;
+  }
   const payload = await habitDayPayload(habit, request.userId!, todayDate.date);
   emitEvent(request.userId!, 'habits', 'updated', payload);
-  if (revoked) emitToUser(request.userId!, 'xp:updated', { reason: 'Commitment status cleared', amount: revoked });
+  if (points.delta) emitToUser(request.userId!, 'xp:updated', { reason: 'Commitment status cleared', amount: points.delta });
   return ok(response, { cleared: true, dayKey: targetKey });
 }
 
@@ -497,22 +527,33 @@ export async function purgeTask(request: AuthRequest, response: Response) {
 export async function markNotCompleted(request: AuthRequest, response: Response) {
   const task = await findOwnTask(request, response);
   if (!task) return;
-  const updated = await prisma.$transaction(async (tx) => {
-    const row = await tx.task.update({
-      where: { id: task.id },
-      data: { status: 'NOT_COMPLETED', completedAt: null, deletedAt: new Date() },
-    });
-    await awardPoints(tx, {
-      userId: request.userId!,
-      amount: POINTS.TASK_MISSED,
-      reason: 'Task marked as not completed',
-      dedupeKey: `task:missed:${task.id}`,
-      taskId: task.id,
-    });
-    return row;
-  });
+  let xpDelta = 0;
+  for (let attempt = 0; ; attempt += 1) {
+    const points = await planAwardPoints(prisma, {
+        userId: request.userId!,
+        amount: POINTS.TASK_MISSED,
+        reason: 'Task marked as not completed',
+        dedupeKey: `task:missed:${task.id}`,
+        taskId: task.id,
+      });
+    const operations: Prisma.PrismaPromise<unknown>[] = [
+      prisma.task.update({
+        where: { id: task.id },
+        data: { status: 'NOT_COMPLETED', completedAt: null, deletedAt: new Date() },
+      }),
+    ];
+    if (points.operation) operations.push(points.operation);
+    try {
+      await prisma.$transaction(operations);
+      xpDelta = points.delta;
+      break;
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'P2002' || attempt > 0) throw error;
+    }
+  }
+  const updated = await prisma.task.findUniqueOrThrow({ where: { id: task.id } });
   emitToUser(request.userId!, 'task:deleted', { id: task.id });
-  emitToUser(request.userId!, 'xp:updated', { reason: 'Task marked as not completed', amount: POINTS.TASK_MISSED });
+  if (xpDelta) emitToUser(request.userId!, 'xp:updated', { reason: 'Task marked as not completed', amount: xpDelta });
   queueNotificationRefresh(request);
   return ok(response, updated);
 }

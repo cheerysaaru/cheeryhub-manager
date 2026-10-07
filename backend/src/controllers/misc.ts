@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import type { Response } from 'express';
 import type { AuthRequest } from '../utils/auth';
 import { prisma } from '../lib/prisma';
@@ -16,7 +17,40 @@ export async function journalList(request: AuthRequest, response: Response) { re
 export async function journalByDate(request: AuthRequest, response: Response) { const raw = String(request.params.date ?? ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return fail(response, 'Invalid journal date', 400); const date = new Date(`${raw}T00:00:00.000Z`); if (Number.isNaN(date.getTime())) return fail(response, 'Invalid journal date', 400); return ok(response, await prisma.journalEntry.findUnique({ where: { userId_date: { userId: request.userId!, date } } })); }
 export async function journalSave(request: AuthRequest, response: Response) { const parsed = journalSchema.safeParse(request.body); if (!parsed.success) return fail(response, 'Invalid journal entry'); const existing = await prisma.journalEntry.findUnique({ where: { userId_date: { userId: request.userId!, date: parsed.data.date } } }); const entry = await prisma.journalEntry.upsert({ where: { userId_date: { userId: request.userId!, date: parsed.data.date } }, update: parsed.data, create: { ...parsed.data, userId: request.userId! } }); emitToUser(request.userId!, existing ? 'journal:updated' : 'journal:created', entry); return ok(response, entry, 201); }
 export async function xp(request: AuthRequest, response: Response) { const history = await prisma.xPTransaction.findMany({ where: { userId: request.userId }, orderBy: { createdAt: 'desc' } }); return ok(response, { total: history.reduce((sum, item) => sum + item.amount, 0), history }); }
-export async function importBackup(request: AuthRequest, response: Response) { const input = z.object({ version: z.number(), tasks: z.array(z.object({ title: z.string().min(1).max(200), description: z.string().optional(), priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional() })).optional(), habits: z.array(z.object({ name: z.string().min(1).max(200), frequency: z.string().max(100) })).optional() }).safeParse(request.body); if (!input.success) return fail(response, 'Backup format is invalid'); const data = input.data; const result = await prisma.$transaction(async (tx) => { const tasks = data.tasks?.length ? await tx.task.createMany({ data: data.tasks.map((task) => ({ ...task, userId: request.userId! })) }) : { count: 0 }; const habits = data.habits?.length ? await tx.habit.createMany({ data: data.habits.map((habit) => ({ ...habit, userId: request.userId! })) }) : { count: 0 }; return { tasks: tasks.count, habits: habits.count }; }); return ok(response, result, 201); }
+export async function importBackup(request: AuthRequest, response: Response) {
+  const input = z.object({
+    version: z.number(),
+    tasks: z.array(z.object({
+      title: z.string().min(1).max(200),
+      description: z.string().optional(),
+      priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+    })).optional(),
+    habits: z.array(z.object({
+      name: z.string().min(1).max(200),
+      frequency: z.string().max(100),
+    })).optional(),
+  }).safeParse(request.body);
+  if (!input.success) return fail(response, 'Backup format is invalid');
+
+  const data = input.data;
+  const operations: Prisma.PrismaPromise<unknown>[] = [];
+  if (data.tasks?.length) {
+    operations.push(prisma.task.createMany({
+      data: data.tasks.map((task) => ({ ...task, userId: request.userId! })),
+    }));
+  }
+  if (data.habits?.length) {
+    operations.push(prisma.habit.createMany({
+      data: data.habits.map((habit) => ({ ...habit, userId: request.userId! })),
+    }));
+  }
+  if (operations.length) await prisma.$transaction(operations);
+
+  return ok(response, {
+    tasks: data.tasks?.length ?? 0,
+    habits: data.habits?.length ?? 0,
+  }, 201);
+}
 export async function unlockAchievement(request: AuthRequest, response: Response) {
   const parsed = z.object({ id: z.string().min(1).max(120), title: z.string().min(1).max(200) }).safeParse(request.body);
   if (!parsed.success) return fail(response, 'Invalid achievement');

@@ -29,6 +29,11 @@ interface AwardInput {
   habitId?: string;
 }
 
+export interface PointMutationPlan {
+  operation: Prisma.PrismaPromise<unknown> | null;
+  delta: number;
+}
+
 /**
  * Append-only ledger.
  *
@@ -66,46 +71,45 @@ function nthAwardKey(key: string, index: number): string {
   return index <= 1 ? key : `${key}#g${index}`;
 }
 
+export async function planAwardPoints(db: Db, input: AwardInput): Promise<PointMutationPlan> {
+  if (!input.amount) return { operation: null, delta: 0 };
+  let dedupeKey: string | null = null;
+  if (input.dedupeKey) {
+    const { awards, reversals } = await chainState(db, input.userId, input.dedupeKey);
+    if (awards > reversals) return { operation: null, delta: 0 };
+    dedupeKey = nthAwardKey(input.dedupeKey, awards + 1);
+  }
+
+  return {
+    operation: db.xPTransaction.create({
+      data: {
+        userId: input.userId,
+        amount: input.amount,
+        reason: input.reason,
+        dedupeKey,
+        taskId: input.taskId ?? null,
+        habitId: input.habitId ?? null,
+      },
+    }),
+    delta: input.amount,
+  };
+}
+
 /**
  * Writes one points transaction. Returns the amount actually applied
  * (0 when the amount is zero or the award is already active for this key).
  */
 export async function awardPoints(db: Db, input: AwardInput): Promise<number> {
-  if (!input.amount) return 0;
-  if (input.dedupeKey) {
-    const { awards, reversals } = await chainState(db, input.userId, input.dedupeKey);
-    // Still active from an earlier award: never double-count.
-    if (awards > reversals) return 0;
-    const dedupeKey = nthAwardKey(input.dedupeKey, awards + 1);
-    try {
-      await db.xPTransaction.create({
-        data: {
-          userId: input.userId,
-          amount: input.amount,
-          reason: input.reason,
-          dedupeKey,
-          taskId: input.taskId ?? null,
-          habitId: input.habitId ?? null,
-        },
-      });
-      return input.amount;
-    } catch (error) {
-      // Unique race on (userId, dedupeKey): someone else recorded it first.
-      if ((error as { code?: string }).code === 'P2002') return 0;
-      throw error;
-    }
+  const plan = await planAwardPoints(db, input);
+  if (!plan.operation) return 0;
+  try {
+    await plan.operation;
+    return plan.delta;
+  } catch (error) {
+    // Unique race on (userId, dedupeKey): someone else recorded it first.
+    if ((error as { code?: string }).code === 'P2002') return 0;
+    throw error;
   }
-  await db.xPTransaction.create({
-    data: {
-      userId: input.userId,
-      amount: input.amount,
-      reason: input.reason,
-      dedupeKey: null,
-      taskId: input.taskId ?? null,
-      habitId: input.habitId ?? null,
-    },
-  });
-  return input.amount;
 }
 
 /**
@@ -115,14 +119,30 @@ export async function awardPoints(db: Db, input: AwardInput): Promise<number> {
  * not active).
  */
 export async function revokePoints(db: Db, userId: string, dedupeKey: string): Promise<number> {
+  const plan = await planRevokePoints(db, userId, dedupeKey);
+  if (!plan.operation) return 0;
+  try {
+    await plan.operation;
+    return plan.delta;
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2002') return 0;
+    throw error;
+  }
+}
+
+export async function planRevokePoints(
+  db: Db,
+  userId: string,
+  dedupeKey: string
+): Promise<PointMutationPlan> {
   const { awards, reversals } = await chainState(db, userId, dedupeKey);
-  if (awards <= reversals) return 0;
+  if (awards <= reversals) return { operation: null, delta: 0 };
   const active = await db.xPTransaction.findUnique({
     where: { userId_dedupeKey: { userId, dedupeKey: nthAwardKey(dedupeKey, awards) } },
   });
-  if (!active) return 0;
-  try {
-    await db.xPTransaction.create({
+  if (!active) return { operation: null, delta: 0 };
+  return {
+    operation: db.xPTransaction.create({
       data: {
         userId,
         amount: -active.amount,
@@ -131,10 +151,7 @@ export async function revokePoints(db: Db, userId: string, dedupeKey: string): P
         taskId: active.taskId ?? null,
         habitId: active.habitId ?? null,
       },
-    });
-  } catch (error) {
-    if ((error as { code?: string }).code === 'P2002') return 0;
-    throw error;
-  }
-  return -active.amount;
+    }),
+    delta: -active.amount,
+  };
 }
