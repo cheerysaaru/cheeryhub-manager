@@ -30,7 +30,7 @@ export async function listSkills(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const skills = await db.all<Skill>(
-    'SELECT * FROM "Skill" WHERE userId = ?1 ORDER BY createdAt DESC',
+    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE userId = ?1 ORDER BY createdAt DESC',
     [req.user.id],
   );
 
@@ -73,9 +73,10 @@ export async function createSkill(req: AppRequest): Promise<Response> {
     [skillId, req.user.id, name, level || 1, description, now, now],
   );
 
-  const skill = await db.first<Skill>('SELECT * FROM "Skill" WHERE id = ?1', [
-    skillId,
-  ]);
+  const skill = await db.first<Skill>(
+    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1',
+    [skillId],
+  );
 
   return new Response(JSON.stringify({ data: skill }), {
     status: 201,
@@ -98,7 +99,7 @@ export async function deleteSkill(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const skill = await db.first<Skill>(
-    'SELECT * FROM "Skill" WHERE id = ?1 AND userId = ?2',
+    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
   );
 
@@ -136,7 +137,7 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const skill = await db.first<Skill>(
-    'SELECT * FROM "Skill" WHERE id = ?1 AND userId = ?2',
+    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
   );
 
@@ -191,9 +192,10 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
     values,
   );
 
-  const updated = await db.first<Skill>('SELECT * FROM "Skill" WHERE id = ?1', [
-    id,
-  ]);
+  const updated = await db.first<Skill>(
+    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1',
+    [id],
+  );
 
   return new Response(JSON.stringify({ data: updated }), {
     status: 200,

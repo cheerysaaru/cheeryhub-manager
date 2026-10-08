@@ -17,6 +17,7 @@ export default tseslint.config(
       "backups/**",
       "deploy/**",
       "scripts/**",
+      "backend/.wrangler/**",
     ],
   },
   js.configs.recommended,

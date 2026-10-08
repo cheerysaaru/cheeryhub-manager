@@ -31,7 +31,7 @@ export async function listGoals(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const goals = await db.all<Goal>(
-    'SELECT * FROM "Goal" WHERE userId = ?1 ORDER BY createdAt DESC',
+    'SELECT id, userId, title, description, deadline as targetDate, progress, status, createdAt, updatedAt FROM "Goal" WHERE userId = ?1 ORDER BY createdAt DESC',
     [req.user.id],
   );
 
@@ -74,9 +74,10 @@ export async function createGoal(req: AppRequest): Promise<Response> {
     [goalId, req.user.id, title, description, targetDate, "active", now, now],
   );
 
-  const goal = await db.first<Goal>('SELECT * FROM "Goal" WHERE id = ?1', [
-    goalId,
-  ]);
+  const goal = await db.first<Goal>(
+    'SELECT id, userId, title, description, deadline as targetDate, progress, status, createdAt, updatedAt FROM "Goal" WHERE id = ?1',
+    [goalId],
+  );
 
   return new Response(JSON.stringify({ data: goal }), {
     status: 201,
@@ -100,7 +101,7 @@ export async function updateGoal(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const goal = await db.first<Goal>(
-    'SELECT * FROM "Goal" WHERE id = ?1 AND userId = ?2',
+    'SELECT id, userId, title, description, deadline as targetDate, progress, status, createdAt, updatedAt FROM "Goal" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
   );
 
@@ -129,9 +130,10 @@ export async function updateGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const updated = await db.first<Goal>('SELECT * FROM "Goal" WHERE id = ?1', [
-    id,
-  ]);
+  const updated = await db.first<Goal>(
+    'SELECT id, userId, title, description, deadline as targetDate, progress, status, createdAt, updatedAt FROM "Goal" WHERE id = ?1',
+    [id],
+  );
 
   return new Response(JSON.stringify({ data: updated }), {
     status: 200,
@@ -154,7 +156,7 @@ export async function deleteGoal(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const goal = await db.first<Goal>(
-    'SELECT * FROM "Goal" WHERE id = ?1 AND userId = ?2',
+    'SELECT id, userId, title, description, deadline as targetDate, progress, status, createdAt, updatedAt FROM "Goal" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
   );
 

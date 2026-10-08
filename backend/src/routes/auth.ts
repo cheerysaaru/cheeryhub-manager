@@ -357,7 +357,7 @@ export async function refresh(req: AppRequest): Promise<Response> {
       );
     }
 
-    const payload = verify(token, (req.env.JWT_SECRET || "secret") as string);
+    const payload = verify(token, req.env.JWT_SECRET || "secret");
     if (!payload) {
       return new Response(
         JSON.stringify({
@@ -369,7 +369,17 @@ export async function refresh(req: AppRequest): Promise<Response> {
     }
 
     const db = new Database(req.env.DB);
-    const user = await db.getUserById(payload.userId as string);
+    const userId = payload.userId || payload.id;
+    if (!userId) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid token payload",
+          code: "SESSION_EXPIRED",
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    const user = await db.getUserById(userId as string);
     if (!user) {
       return new Response(
         JSON.stringify({
@@ -381,8 +391,8 @@ export async function refresh(req: AppRequest): Promise<Response> {
     }
 
     const newToken = sign(
-      { userId: user.id, email: user.email },
-      (req.env.JWT_SECRET || "secret") as string,
+      { id: user.id, email: user.email },
+      req.env.JWT_SECRET || "secret",
     );
 
     return new Response(
@@ -401,7 +411,7 @@ export async function refresh(req: AppRequest): Promise<Response> {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Set-Cookie": `auth=${newToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+          "Set-Cookie": `auth_token=${newToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
         },
       },
     );

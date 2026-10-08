@@ -114,6 +114,8 @@ async function handleRequest(
       response = await authRoutes.login(appReq);
     } else if (pathname === "/api/auth/logout" && request.method === "POST") {
       response = await authRoutes.logout(appReq);
+    } else if (pathname === "/api/auth/refresh" && request.method === "POST") {
+      response = await authRoutes.refresh(appReq);
     } else if (pathname === "/api/auth/me" && request.method === "GET") {
       // Me endpoint - check auth first
       const authResult = await verifyAuth(appReq);
