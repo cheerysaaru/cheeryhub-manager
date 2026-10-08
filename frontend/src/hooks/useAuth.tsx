@@ -21,6 +21,7 @@ interface AuthContextValue {
   loading: boolean;
   authError: string | null;
   login: (email: string, password: string) => Promise<User>;
+  adminLogin: (username: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<User>;
   forgotPassword: (email: string) => Promise<string>;
   resetPassword: (token: string, newPassword: string) => Promise<string>;
@@ -96,15 +97,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return api<{ user: User }>("/auth/me")
       .then((result) => adoptUser(requireUser(result, "continue")))
       .catch((caught: unknown) => {
-        if (caught instanceof ApiError && caught.status === 401) {
+        // A missing/expired session is a normal "logged out" state: send the
+        // user to the login screen, never to an error page. An unexpected
+        // server error on the session check is handled the same way so the
+        // dashboard is never trapped on an error screen. Only a genuine
+        // network failure (can't reach the API at all) keeps the Retry UI.
+        const is401 = caught instanceof ApiError && caught.status === 401;
+        const isNetwork =
+          caught instanceof ApiError &&
+          (caught.status === 0 || caught.code === "NETWORK_ERROR");
+        if (is401 || (!isNetwork && !(caught instanceof ApiError))) {
           setUser(null);
           syncedUser.current = null;
-        } else {
+          setAuthError(null);
+        } else if (isNetwork) {
           setAuthError(
             caught instanceof Error
               ? caught.message
-              : "Could not verify your session.",
+              : "Cannot reach the server. Please check your connection and try again.",
           );
+        } else {
+          // HTTP error that is not 401/network: treat as logged out.
+          setUser(null);
+          syncedUser.current = null;
+          setAuthError(null);
         }
       })
       .finally(() => {
@@ -136,6 +152,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await api<{ user: User }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password, timezone: browserTimezone() }),
+      });
+      return adoptUser(requireUser(result, "continue"));
+    },
+    [adoptUser],
+  );
+
+  const adminLogin = useCallback(
+    async (username: string, password: string) => {
+      const result = await api<{ user: User }>("/auth/admin-login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
       });
       return adoptUser(requireUser(result, "continue"));
     },
@@ -193,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       authError,
       login,
+      adminLogin,
       register,
       forgotPassword,
       resetPassword,
@@ -204,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       authError,
       login,
+      adminLogin,
       register,
       forgotPassword,
       resetPassword,

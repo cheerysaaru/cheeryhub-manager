@@ -8,6 +8,8 @@ export interface AppEnv {
   EMAIL_API_KEY?: string;
   EMAIL_FROM?: string;
   APP_URL?: string;
+  ADMIN_USERNAME?: string;
+  ADMIN_PASSWORD?: string;
 }
 
 // Alias for backward compatibility with routes importing 'Env'
@@ -17,6 +19,8 @@ export interface AppUser {
   id: string;
   email: string;
   userId?: string; // Backward compat - same as id
+  role?: string;
+  admin?: boolean; // env-admin session, not backed by a User row
 }
 
 export interface DbUser {

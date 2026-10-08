@@ -97,7 +97,7 @@ export async function createFocusSession(req: AppRequest): Promise<Response> {
     [
       sessionId,
       req.user.id,
-      taskId,
+      taskId ?? null,
       durationMinutes,
       now,
       status || "RUNNING",

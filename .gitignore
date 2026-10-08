@@ -21,3 +21,6 @@ frontend/index.zip
 
 # Timestamped SQLite backups (never committed)
 backups/
+
+test-results/
+playwright-report/

@@ -39,3 +39,55 @@ export class AppErrorBoundary extends Component<
     return this.props.children;
   }
 }
+
+type TabState = { hasError: boolean; nonce: number };
+
+/**
+ * Isolates a single tab so a crash there shows a local fallback instead of
+ * breaking the whole dashboard. "Reload this tab" remounts just this route.
+ */
+export class TabErrorBoundary extends Component<
+  { children: ReactNode; name: string },
+  TabState
+> {
+  state: TabState = { hasError: false, nonce: 0 };
+
+  static getDerivedStateFromError(): Partial<TabState> {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(
+      `[tab] ${this.props.name} crashed`,
+      error,
+      info.componentStack,
+    );
+  }
+
+  private reload = () => {
+    this.setState((prev) => ({ hasError: false, nonce: prev.nonce + 1 }));
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="page" role="alert">
+          <div className="page-header">
+            <div>
+              <p className="eyebrow">Something went wrong</p>
+              <h1>This tab could not be displayed</h1>
+              <p className="muted">
+                The rest of the dashboard keeps working. Reload this tab to try
+                again.
+              </p>
+              <Button type="button" onClick={this.reload}>
+                Reload this tab
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return <div key={this.state.nonce}>{this.props.children}</div>;
+  }
+}

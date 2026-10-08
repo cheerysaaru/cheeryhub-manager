@@ -94,7 +94,7 @@ export async function register(req: AppRequest): Promise<Response> {
     let token: string;
     try {
       token = sign(
-        { id: user.id, email: user.email },
+        { id: user.id, email: user.email, role: user.role ?? "USER" },
         (req.env.JWT_SECRET || "secret") as string,
       );
     } catch (signError) {
@@ -203,7 +203,7 @@ export async function login(req: AppRequest): Promise<Response> {
     let token: string;
     try {
       token = sign(
-        { id: user.id, email: user.email },
+        { id: user.id, email: user.email, role: user.role ?? "USER" },
         (req.env.JWT_SECRET || "secret") as string,
       );
     } catch (signError) {
@@ -291,16 +291,46 @@ export async function me(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env.DB);
-    const user = await db.getUserById(req.user.id);
-
-    if (!user) {
+    // Env-based admin session: no User row, synthesize the profile.
+    if (req.user.admin) {
       return new Response(
         JSON.stringify({
-          error: "User not found",
-          code: "INVALID_REQUEST",
+          data: {
+            id: req.user.id,
+            name: "Admin",
+            email: req.user.email,
+            timezone: "UTC",
+            role: "ADMIN",
+            admin: true,
+            xp: 0,
+            emailNotifications: true,
+            pushNotifications: true,
+          },
         }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    const db = new Database(req.env.DB);
+    let user;
+    try {
+      user = await db.getUserById(req.user.id);
+    } catch (error) {
+      console.error("[auth.me] getUserById failed:", error);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!user) {
+      // A valid token for a user that no longer exists is an invalid session.
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized",
+          code: "AUTH_REQUIRED",
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -315,6 +345,7 @@ export async function me(req: AppRequest): Promise<Response> {
           avatar: user.avatar,
           bio: user.bio,
           xp: user.xp || 0,
+          role: user.role ?? "USER",
           emailNotifications: user.emailNotifications !== false,
           pushNotifications: user.pushNotifications !== false,
         },
@@ -391,7 +422,7 @@ export async function refresh(req: AppRequest): Promise<Response> {
     }
 
     const newToken = sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, role: user.role ?? "USER" },
       req.env.JWT_SECRET || "secret",
     );
 

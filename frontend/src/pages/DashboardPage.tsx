@@ -282,9 +282,9 @@ export default function DashboardPage() {
   const handleAddHabit = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = habitForm.name.trim();
-    if (!name) return;
+    if (!name || creatingHabit) return;
     try {
-      await createHabit({ name, frequency: "Daily" });
+      await createHabit({ name, frequency: "daily" });
       setHabitForm({ name: "" });
       toast({ type: "success", title: "Commitment added", message: name });
     } catch (error) {

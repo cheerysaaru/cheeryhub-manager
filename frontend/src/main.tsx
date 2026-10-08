@@ -6,7 +6,10 @@ import { useAuth, AuthProvider } from "./hooks/useAuth";
 import { useSocket } from "./hooks/useSocket";
 import { syncPendingWrites } from "./services/api";
 import { Layout } from "./components/Layout";
-import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import {
+  AppErrorBoundary,
+  TabErrorBoundary,
+} from "./components/AppErrorBoundary";
 import { Button } from "./components/Button";
 import { ToastProvider } from "./components/Toast";
 import { getTheme, applyTheme } from "./utils/theme";
@@ -97,7 +100,7 @@ function App() {
     if (authError) {
       return (
         <main role="alert" className="app-error-screen">
-          <h1>Could not verify your session</h1>
+          <h1>Can't reach the server</h1>
           <p>{authError}</p>
           <Button type="button" onClick={() => void refreshUser()}>
             Retry
@@ -119,30 +122,128 @@ function App() {
       <Routes>
         <Route path="/reset" element={<ResetPage />} />
         <Route element={<Layout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/tasks" element={<TasksPage />} />
+          <Route
+            path="/"
+            element={
+              <TabErrorBoundary name="Dashboard">
+                <DashboardPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <TabErrorBoundary name="Tasks">
+                <TasksPage />
+              </TabErrorBoundary>
+            }
+          />
           {/* History is the canonical commitments page; /commitments keeps old
               notification links (and refreshes) working. */}
-          <Route path="/commitments/history" element={<CommitmentsPage />} />
+          <Route
+            path="/commitments/history"
+            element={
+              <TabErrorBoundary name="Commitments">
+                <CommitmentsPage />
+              </TabErrorBoundary>
+            }
+          />
           <Route
             path="/commitments"
             element={<Navigate to="/commitments/history" replace />}
           />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/skills" element={<SkillsPage />} />
-          <Route path="/achievements" element={<ArchivedmentsPage />} />
+          <Route
+            path="/goals"
+            element={
+              <TabErrorBoundary name="Goals">
+                <GoalsPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/skills"
+            element={
+              <TabErrorBoundary name="Skills">
+                <SkillsPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/achievements"
+            element={
+              <TabErrorBoundary name="Achievements">
+                <ArchivedmentsPage />
+              </TabErrorBoundary>
+            }
+          />
           <Route
             path="/archivedments"
             element={<Navigate to="/achievements" replace />}
           />
-          <Route path="/focus" element={<FocusPage />} />
-          <Route path="/journal" element={<JournalPage />} />
-          <Route path="/reminders" element={<RemindersPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/brand" element={<BrandPage />} />
-          <Route path="/finance" element={<FinancePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin" element={<AdminRoute />} />
+          <Route
+            path="/focus"
+            element={
+              <TabErrorBoundary name="Focus">
+                <FocusPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/journal"
+            element={
+              <TabErrorBoundary name="Journal">
+                <JournalPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/reminders"
+            element={
+              <TabErrorBoundary name="Reminders">
+                <RemindersPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <TabErrorBoundary name="Analytics">
+                <AnalyticsPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/brand"
+            element={
+              <TabErrorBoundary name="Brand">
+                <BrandPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/finance"
+            element={
+              <TabErrorBoundary name="Finance">
+                <FinancePage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <TabErrorBoundary name="Settings">
+                <SettingsPage />
+              </TabErrorBoundary>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <TabErrorBoundary name="Admin">
+                <AdminRoute />
+              </TabErrorBoundary>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

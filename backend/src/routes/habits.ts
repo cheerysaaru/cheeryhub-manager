@@ -1,13 +1,18 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
+// The Habit contract is defined by the Prisma model + the frontend `Habit`
+// type: the canonical field is `name`. The `title` column (added in migration
+// 0006) is kept mirrored for any consumer that still reads it, but the API
+// speaks `name` so the shared field name always matches on both sides.
 interface Habit {
   id: string;
   userId: string;
-  title: string;
+  name: string;
   description?: string;
   frequency: string;
   targetDays: number;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -17,11 +22,12 @@ interface HabitCompletion {
   habitId: string;
   date: string;
   status: string;
-  createdAt: string;
+  completedAt: string;
 }
 
 interface HabitPayload {
-  title?: string;
+  name?: string;
+  title?: string; // tolerated alias for `name`
   description?: string;
   frequency?: string;
   targetDays?: number;
@@ -31,19 +37,21 @@ interface CompleteHabitPayload {
   date?: string;
 }
 
+const HABIT_COLUMNS =
+  "id, userId, name, description, frequency, targetDays, active, createdAt, updatedAt";
+
+function unauthorized(): Response {
+  return new Response(
+    JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+    { status: 401, headers: { "Content-Type": "application/json" } },
+  );
+}
+
 export async function listHabits(req: AppRequest): Promise<Response> {
-  if (!req.user) {
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        code: "AUTH_REQUIRED",
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  if (!req.user) return unauthorized();
   const db = new Database(req.env.DB);
   const habits = await db.all<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE userId = ?1 AND deletedAt IS NULL ORDER BY createdAt DESC',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE userId = ?1 AND deletedAt IS NULL ORDER BY createdAt DESC`,
     [req.user.id],
   );
   return new Response(JSON.stringify({ data: habits }), {
@@ -53,27 +61,16 @@ export async function listHabits(req: AppRequest): Promise<Response> {
 }
 
 export async function getHabit(req: AppRequest): Promise<Response> {
-  if (!req.user) {
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        code: "AUTH_REQUIRED",
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  if (!req.user) return unauthorized();
   const { id } = req.params as Record<string, string>;
   const db = new Database(req.env.DB);
   const habit = await db.first<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE id = ?1 AND userId = ?2',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1 AND userId = ?2`,
     [id, req.user.id],
   );
   if (!habit) {
     return new Response(
-      JSON.stringify({
-        error: "Habit not found",
-        code: "NOT_FOUND",
-      }),
+      JSON.stringify({ error: "Habit not found", code: "NOT_FOUND" }),
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -84,21 +81,14 @@ export async function getHabit(req: AppRequest): Promise<Response> {
 }
 
 export async function createHabit(req: AppRequest): Promise<Response> {
-  if (!req.user) {
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        code: "AUTH_REQUIRED",
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
-  const { title, description, frequency, targetDays } =
+  if (!req.user) return unauthorized();
+  const { name, title, description, frequency, targetDays } =
     req.body as HabitPayload;
-  if (!title || !frequency) {
+  const habitName = (name ?? title ?? "").toString().trim();
+  if (!habitName || !frequency) {
     return new Response(
       JSON.stringify({
-        error: "Missing required fields: title, frequency",
+        error: "Missing required fields: name, frequency",
         code: "VALIDATION_ERROR",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } },
@@ -113,9 +103,9 @@ export async function createHabit(req: AppRequest): Promise<Response> {
     [
       habitId,
       req.user.id,
-      title,
-      title,
-      description,
+      habitName,
+      habitName,
+      description ?? null,
       frequency,
       targetDays || 7,
       true,
@@ -124,7 +114,7 @@ export async function createHabit(req: AppRequest): Promise<Response> {
     ],
   );
   const habit = await db.first<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE id = ?1',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1`,
     [habitId],
   );
   return new Response(JSON.stringify({ data: habit }), {
@@ -134,95 +124,95 @@ export async function createHabit(req: AppRequest): Promise<Response> {
 }
 
 export async function completeHabit(req: AppRequest): Promise<Response> {
-  if (!req.user) {
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        code: "AUTH_REQUIRED",
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  if (!req.user) return unauthorized();
   const { id } = req.params;
   const { date } = req.body as CompleteHabitPayload;
   const db = new Database(req.env.DB);
   const habit = await db.first<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE id = ?1 AND userId = ?2',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1 AND userId = ?2`,
     [id, req.user.id],
   );
   if (!habit) {
     return new Response(
-      JSON.stringify({
-        error: "Habit not found",
-        code: "NOT_FOUND",
-      }),
+      JSON.stringify({ error: "Habit not found", code: "NOT_FOUND" }),
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
   const completionDate = date || new Date().toISOString().split("T")[0];
-  const completionId = crypto.randomUUID();
   const now = new Date().toISOString();
   const existing = await db.first(
-    'SELECT * FROM "HabitCompletion" WHERE habitId = ?1 AND date = ?2',
+    'SELECT id FROM "HabitCompletion" WHERE habitId = ?1 AND date = ?2',
     [id, completionDate],
   );
   if (!existing) {
+    // Exactly one check-in per habit per day (HabitCompletion is unique on
+    // habitId+date), so a repeat check-in can never create a second row.
     await db.run(
-      `INSERT INTO "HabitCompletion" (id, habitId, userId, date, status, createdAt)
+      `INSERT INTO "HabitCompletion" (id, habitId, userId, date, status, completedAt)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      [completionId, id, req.user.id, completionDate, "completed", now],
+      [crypto.randomUUID(), id, req.user.id, completionDate, "completed", now],
     );
   }
+
+  const completions = await db.all<HabitCompletion>(
+    'SELECT id, habitId, date, status, completedAt FROM "HabitCompletion" WHERE habitId = ?1 ORDER BY date DESC LIMIT 365',
+    [id],
+  );
+  const completedDates = new Set(completions.map((c) => c.date));
+  let currentStreak = 0;
+  const cursor = new Date(`${completionDate}T00:00:00Z`);
+  for (let i = 0; i < 365; i++) {
+    const key = cursor.toISOString().split("T")[0];
+    if (!completedDates.has(key)) break;
+    currentStreak += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+
   return new Response(
-    JSON.stringify({ data: { message: "Habit completed" } }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    },
+    JSON.stringify({
+      data: {
+        habitId: id,
+        date: completionDate,
+        alreadyCheckedIn: Boolean(existing),
+        currentStreak,
+        totalCompletions: completions.length,
+        message: existing
+          ? `Already checked in for ${completionDate}`
+          : `Checked in for ${completionDate}`,
+      },
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
   );
 }
 
 export async function getHabitStreak(req: AppRequest): Promise<Response> {
-  if (!req.user) {
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        code: "AUTH_REQUIRED",
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  if (!req.user) return unauthorized();
   const { id } = req.params;
   const db = new Database(req.env.DB);
   const habit = await db.first<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE id = ?1 AND userId = ?2',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1 AND userId = ?2`,
     [id, req.user.id],
   );
   if (!habit) {
     return new Response(
-      JSON.stringify({
-        error: "Habit not found",
-        code: "NOT_FOUND",
-      }),
+      JSON.stringify({ error: "Habit not found", code: "NOT_FOUND" }),
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
   const completions = await db.all<HabitCompletion>(
-    'SELECT * FROM "HabitCompletion" WHERE habitId = ?1 ORDER BY date DESC LIMIT 30',
+    'SELECT id, habitId, date, status, completedAt FROM "HabitCompletion" WHERE habitId = ?1 ORDER BY date DESC LIMIT 30',
     [id],
   );
   let currentStreak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const completedDates = new Set(completions.map((c) => c.date));
   for (let i = 0; i < 365; i++) {
     const checkDate = new Date(today);
     checkDate.setDate(checkDate.getDate() - i);
     const dateStr = checkDate.toISOString().split("T")[0];
-    const completed = completions.some((c) => c.date === dateStr);
-    if (completed) {
+    if (completedDates.has(dateStr)) {
       currentStreak++;
-    } else if (i === 0 && !completed) {
-      break;
     } else {
       break;
     }
@@ -236,35 +226,21 @@ export async function getHabitStreak(req: AppRequest): Promise<Response> {
         recentCompletions: completions.slice(0, 7),
       },
     }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    },
+    { status: 200, headers: { "Content-Type": "application/json" } },
   );
 }
 
 export async function deleteHabit(req: AppRequest): Promise<Response> {
-  if (!req.user) {
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        code: "AUTH_REQUIRED",
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  if (!req.user) return unauthorized();
   const { id } = req.params;
   const db = new Database(req.env.DB);
   const habit = await db.first<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE id = ?1 AND userId = ?2',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1 AND userId = ?2`,
     [id, req.user.id],
   );
   if (!habit) {
     return new Response(
-      JSON.stringify({
-        error: "Habit not found",
-        code: "NOT_FOUND",
-      }),
+      JSON.stringify({ error: "Habit not found", code: "NOT_FOUND" }),
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -277,40 +253,30 @@ export async function deleteHabit(req: AppRequest): Promise<Response> {
 }
 
 export async function updateHabit(req: AppRequest): Promise<Response> {
-  if (!req.user) {
-    return new Response(
-      JSON.stringify({
-        error: "Unauthorized",
-        code: "AUTH_REQUIRED",
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  if (!req.user) return unauthorized();
   const { id } = req.params;
-  const { title, description, frequency, targetDays } =
+  const { name, title, description, frequency, targetDays } =
     req.body as HabitPayload;
+  const habitName = name ?? title;
   const db = new Database(req.env.DB);
   const habit = await db.first<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE id = ?1 AND userId = ?2',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1 AND userId = ?2`,
     [id, req.user.id],
   );
   if (!habit) {
     return new Response(
-      JSON.stringify({
-        error: "Habit not found",
-        code: "NOT_FOUND",
-      }),
+      JSON.stringify({ error: "Habit not found", code: "NOT_FOUND" }),
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
-  const updates = [];
-  const values = [];
+  const updates: string[] = [];
+  const values: unknown[] = [];
   let updateIdx = 1;
-  if (title !== undefined) {
+  if (habitName !== undefined) {
     updates.push(`name = ?${updateIdx}`);
     updates.push(`title = ?${updateIdx + 1}`);
-    values.push(title);
-    values.push(title);
+    values.push(habitName);
+    values.push(habitName);
     updateIdx += 2;
   }
   if (description !== undefined) {
@@ -347,7 +313,7 @@ export async function updateHabit(req: AppRequest): Promise<Response> {
     values,
   );
   const updated = await db.first<Habit>(
-    'SELECT id, userId, name as title, description, frequency, targetDays, active, createdAt, updatedAt FROM "Habit" WHERE id = ?1',
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1`,
     [id],
   );
   return new Response(JSON.stringify({ data: updated }), {
