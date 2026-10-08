@@ -26,9 +26,13 @@ if (import.meta.env.PROD && !normalizedApiUrl) {
   );
 }
 
+// In development we go through the Vite dev-server proxy (`server.proxy` for
+// "/api"), so a relative base keeps requests same-origin and lets the session
+// cookie be sent. Set VITE_API_URL to an absolute URL to override (e.g. to hit
+// a deployed or separately-hosted API). In production we fall back to the
+// canonical API origin.
 export const API_BASE: string =
-  normalizedApiUrl ??
-  (import.meta.env.PROD ? PRODUCTION_API_URL : "http://localhost:4000/api");
+  normalizedApiUrl ?? (import.meta.env.PROD ? PRODUCTION_API_URL : "/api");
 
 export function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -217,8 +221,7 @@ function messageFor(
   status: number,
   body: Record<string, unknown> | null,
 ): string {
-  const serverError =
-    typeof body?.error === "string" ? (body.error as string) : null;
+  const serverError = serverMessageOf(body);
   if (status === 429)
     return (
       serverError ?? "Too many requests. Please wait a moment and try again."
@@ -236,7 +239,29 @@ function messageFor(
   return serverError ?? `Request failed (${status})`;
 }
 
+/** Unified server error shape is `{ error: { code, message } }`; legacy
+ *  responses used a top-level `error` string + `code`. Both are accepted. */
+function serverMessageOf(body: Record<string, unknown> | null): string | null {
+  const nested = body?.error;
+  if (
+    nested &&
+    typeof nested === "object" &&
+    typeof (nested as { message?: unknown }).message === "string"
+  ) {
+    return (nested as { message: string }).message;
+  }
+  return typeof body?.error === "string" ? (body.error as string) : null;
+}
+
 function codeOf(body: Record<string, unknown> | null): string | undefined {
+  const nested = body?.error;
+  if (
+    nested &&
+    typeof nested === "object" &&
+    typeof (nested as { code?: unknown }).code === "string"
+  ) {
+    return (nested as { code: string }).code;
+  }
   return typeof body?.code === "string" ? (body.code as string) : undefined;
 }
 

@@ -21,54 +21,72 @@ export async function getAnalytics(req: AppRequest): Promise<Response> {
   }
 
   const userId = req.user.id;
-  const db = new Database(req.env.DB!);
+  const db = new Database(req.env.DB);
 
   try {
     const user = await db.getUserById(userId);
 
-    // Count tasks
     const tasksResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Task WHERE userId = ? AND deletedAt IS NULL`,
       [userId],
     );
 
-    // Count habits
     const habitsResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Habit WHERE userId = ? AND deletedAt IS NULL`,
       [userId],
     );
 
-    // Count goals
     const goalsResult = await db.first<CountRow>(
-      `SELECT COUNT(*) as count FROM Goal WHERE userId = ? AND deletedAt IS NULL`,
+      `SELECT COUNT(*) as count FROM Goal WHERE userId = ?`,
       [userId],
     );
 
-    // Count skills
     const skillsResult = await db.first<CountRow>(
-      `SELECT COUNT(*) as count FROM Skill WHERE userId = ? AND deletedAt IS NULL`,
+      `SELECT COUNT(*) as count FROM Skill WHERE userId = ?`,
       [userId],
     );
 
-    // Get XP data
+    // XP is stored as a signed amount (earn positive, spend negative) on
+    // XPTransaction; there is no separate "type" column.
     const xpResult = await db.first<TotalRow>(
-      `SELECT SUM(CASE WHEN type = 'earn' THEN amount ELSE -amount END) as total
-       FROM XPTransaction WHERE userId = ?`,
+      `SELECT SUM(amount) as total FROM XPTransaction WHERE userId = ?`,
       [userId],
     );
 
-    // Get this week's habit completions
     const now = new Date();
     const weekStart = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate() - now.getDay() + 1,
-    );
+    )
+      .toISOString()
+      .split("T")[0];
+
     const completionsResult = await db.first<CountRow>(
-      `SELECT COUNT(*) as count FROM HabitDayEvent
-       WHERE habitId IN (SELECT id FROM Habit WHERE userId = ? AND deletedAt IS NULL)
-       AND date >= ? AND status = 'checked_in'`,
-      [userId, weekStart.toISOString().split("T")[0]],
+      `SELECT COUNT(*) as count FROM HabitCompletion
+       WHERE userId = ? AND date >= ?`,
+      [userId, weekStart],
+    );
+
+    const today = new Date().toISOString().split("T")[0];
+    const completedHabitsToday = await db.first<CountRow>(
+      `SELECT COUNT(*) as count FROM HabitCompletion
+       WHERE userId = ? AND date = ?`,
+      [userId, today],
+    );
+
+    const completedTasksToday = await db.first<CountRow>(
+      `SELECT COUNT(*) as count FROM Task
+       WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NOT NULL
+       AND DATE(completedAt) = ?`,
+      [userId, today],
+    );
+
+    const overdueTasksResult = await db.first<CountRow>(
+      `SELECT COUNT(*) as count FROM Task
+       WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NULL
+       AND dueAt IS NOT NULL AND dueAt < ?`,
+      [userId, today],
     );
 
     const analytics = {
@@ -86,38 +104,11 @@ export async function getAnalytics(req: AppRequest): Promise<Response> {
         thisWeekCompletions: completionsResult?.count || 0,
       },
       today: {
-        completedHabits: 0,
-        completedTasks: 0,
-        tasksOverdue: 0,
+        completedHabits: completedHabitsToday?.count || 0,
+        completedTasks: completedTasksToday?.count || 0,
+        tasksOverdue: overdueTasksResult?.count || 0,
       },
     };
-
-    // Get today's data
-    const today = new Date().toISOString().split("T")[0];
-    const completedHabitsToday = await db.first<CountRow>(
-      `SELECT COUNT(*) as count FROM HabitDayEvent
-       WHERE habitId IN (SELECT id FROM Habit WHERE userId = ? AND deletedAt IS NULL)
-       AND date = ? AND status = 'checked_in'`,
-      [userId, today],
-    );
-
-    const completedTasksToday = await db.first<CountRow>(
-      `SELECT COUNT(*) as count FROM Task
-       WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NOT NULL
-       AND DATE(completedAt) = ?`,
-      [userId, today],
-    );
-
-    const overdueTasksResult = await db.first<CountRow>(
-      `SELECT COUNT(*) as count FROM Task
-       WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NULL
-       AND dueDate < ?`,
-      [userId, today],
-    );
-
-    analytics.today.completedHabits = completedHabitsToday?.count || 0;
-    analytics.today.completedTasks = completedTasksToday?.count || 0;
-    analytics.today.tasksOverdue = overdueTasksResult?.count || 0;
 
     return new Response(JSON.stringify({ data: analytics }), {
       status: 200,

@@ -1,5 +1,6 @@
 import type { AppRequest } from "../types/index";
 import { verify } from "../utils/jwt";
+import { errorResponse } from "../utils/response";
 
 // Export types and functions
 export type { AppRequest } from "../types/index";
@@ -19,10 +20,7 @@ export async function verifyAuth(
   }
 
   if (!token) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
+    return errorResponse("Unauthorized", 401, "AUTH_REQUIRED");
   }
 
   try {
@@ -35,13 +33,17 @@ export async function verifyAuth(
     ) {
       throw new Error("Invalid token payload");
     }
-    req.user = { id: payload.id as string, email: payload.email as string };
+    const role = typeof payload.role === "string" ? payload.role : undefined;
+    const admin = payload.admin === true;
+    req.user = {
+      id: payload.id as string,
+      email: payload.email as string,
+      role,
+      admin,
+    };
     return req;
   } catch {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
+    return errorResponse("Unauthorized", 401, "AUTH_REQUIRED");
   }
 }
 

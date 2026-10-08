@@ -4,7 +4,10 @@ import { Database } from "../db/client";
 interface CreateReminderPayload {
   title: string;
   description?: string;
-  scheduledFor: string;
+  reminderDate: string;
+  reminderTime?: string;
+  repeatType?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+  enabled?: boolean;
 }
 
 interface ReminderOwnerRow {
@@ -14,8 +17,10 @@ interface ReminderOwnerRow {
 interface UpdateReminderPayload {
   title?: string;
   description?: string;
-  scheduledFor?: string;
-  status?: string;
+  reminderDate?: string;
+  reminderTime?: string;
+  repeatType?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+  enabled?: boolean;
 }
 
 export async function listReminders(req: AppRequest): Promise<Response> {
@@ -32,9 +37,9 @@ export async function listReminders(req: AppRequest): Promise<Response> {
   try {
     const db = new Database(req.env.DB);
     const reminders = await db.all(
-      `SELECT id, userId, title, description, scheduledFor, status, createdAt, updatedAt
-       FROM Reminder WHERE userId = ?1 AND deletedAt IS NULL
-       ORDER BY scheduledFor ASC`,
+      `SELECT id, userId, title, description, reminderDate, reminderTime, repeatType, enabled, createdAt, updatedAt
+       FROM Reminder WHERE userId = ?1
+       ORDER BY reminderDate ASC`,
       [req.user.id],
     );
 
@@ -68,13 +73,19 @@ export async function createReminder(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { title, description, scheduledFor } =
-    req.body as CreateReminderPayload;
+  const {
+    title,
+    description,
+    reminderDate,
+    reminderTime,
+    repeatType,
+    enabled,
+  } = req.body as CreateReminderPayload;
 
-  if (!title || !scheduledFor) {
+  if (!title || !reminderDate) {
     return new Response(
       JSON.stringify({
-        error: "title and scheduledFor are required",
+        error: "title and reminderDate are required",
         code: "VALIDATION_ERROR",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } },
@@ -87,22 +98,24 @@ export async function createReminder(req: AppRequest): Promise<Response> {
     const now = new Date().toISOString();
 
     await db.run(
-      `INSERT INTO Reminder (id, userId, title, description, scheduledFor, status, createdAt, updatedAt)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+      `INSERT INTO Reminder (id, userId, title, description, reminderDate, reminderTime, repeatType, enabled, createdAt, updatedAt)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
       [
         id,
         req.user.id,
         title,
         description || null,
-        scheduledFor,
-        "pending",
+        reminderDate,
+        reminderTime || null,
+        repeatType || "NONE",
+        enabled !== false,
         now,
         now,
       ],
     );
 
     const reminder = await db.first(
-      "SELECT id, userId, title, description, scheduledFor, status, createdAt, updatedAt FROM Reminder WHERE id = ?1",
+      "SELECT id, userId, title, description, reminderDate, reminderTime, repeatType, enabled, createdAt, updatedAt FROM Reminder WHERE id = ?1",
       [id],
     );
 
@@ -137,8 +150,14 @@ export async function updateReminder(req: AppRequest): Promise<Response> {
   }
 
   const id = req.params?.id;
-  const { title, description, scheduledFor, status } =
-    req.body as UpdateReminderPayload;
+  const {
+    title,
+    description,
+    reminderDate,
+    reminderTime,
+    repeatType,
+    enabled,
+  } = req.body as UpdateReminderPayload;
 
   try {
     if (!id) {
@@ -153,7 +172,7 @@ export async function updateReminder(req: AppRequest): Promise<Response> {
 
     const db = new Database(req.env.DB);
     const existing = await db.first<ReminderOwnerRow>(
-      "SELECT userId FROM Reminder WHERE id = ?1 AND deletedAt IS NULL",
+      "SELECT userId FROM Reminder WHERE id = ?1",
       [id],
     );
 
@@ -188,13 +207,25 @@ export async function updateReminder(req: AppRequest): Promise<Response> {
       updates.push("description = ?2");
       values.push(description);
     }
-    if (scheduledFor !== undefined) {
-      updates.push("scheduledFor = ?3");
-      values.push(scheduledFor);
+    if (reminderDate !== undefined) {
+      updates.push("reminderDate = ?3");
+      values.push(reminderDate);
     }
-    if (status !== undefined) {
-      updates.push("status = ?4");
-      values.push(status);
+    if (reminderTime !== undefined) {
+      updates.push("reminderTime = ?4");
+      values.push(reminderTime);
+    }
+    if (reminderTime !== undefined) {
+      updates.push("reminderTime = ?4");
+      values.push(reminderTime);
+    }
+    if (repeatType !== undefined) {
+      updates.push("repeatType = ?5");
+      values.push(repeatType);
+    }
+    if (enabled !== undefined) {
+      updates.push("enabled = ?6");
+      values.push(enabled);
     }
 
     if (updates.length === 0) {
@@ -217,7 +248,7 @@ export async function updateReminder(req: AppRequest): Promise<Response> {
     );
 
     const updated = await db.first(
-      "SELECT id, userId, title, description, scheduledFor, status, createdAt, updatedAt FROM Reminder WHERE id = ?1",
+      "SELECT id, userId, title, description, reminderDate, reminderTime, repeatType, enabled, createdAt, updatedAt FROM Reminder WHERE id = ?1",
       [id],
     );
 
@@ -266,7 +297,7 @@ export async function deleteReminder(req: AppRequest): Promise<Response> {
 
     const db = new Database(req.env.DB);
     const existing = await db.first<ReminderOwnerRow>(
-      "SELECT userId FROM Reminder WHERE id = ?1 AND deletedAt IS NULL",
+      "SELECT userId FROM Reminder WHERE id = ?1",
       [id],
     );
 
@@ -290,10 +321,7 @@ export async function deleteReminder(req: AppRequest): Promise<Response> {
       );
     }
 
-    await db.run("UPDATE Reminder SET deletedAt = ?1 WHERE id = ?2", [
-      new Date().toISOString(),
-      id,
-    ]);
+    await db.run("DELETE FROM Reminder WHERE id = ?1", [id]);
 
     return new Response(JSON.stringify({ data: { id } }), {
       status: 200,

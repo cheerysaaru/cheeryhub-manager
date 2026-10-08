@@ -11,3 +11,6 @@ package-lock.json
 *.tsbuildinfo
 backend/worker-configuration.d.ts
 frontend/public/sw.js
+
+test-results/
+playwright-report/

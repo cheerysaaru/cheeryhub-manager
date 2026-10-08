@@ -16,6 +16,7 @@ interface CreateGoalPayload {
   title: string;
   description?: string;
   targetDate?: string;
+  deadline?: string;
 }
 
 export async function listGoals(req: AppRequest): Promise<Response> {
@@ -52,7 +53,8 @@ export async function createGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { title, description, targetDate } = req.body as CreateGoalPayload;
+  const { title, description, targetDate, deadline } =
+    req.body as CreateGoalPayload;
 
   if (!title) {
     return new Response(
@@ -64,14 +66,25 @@ export async function createGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env.DB!);
+  const due = targetDate ?? deadline ?? null;
+  const db = new Database(req.env.DB);
   const goalId = crypto.randomUUID();
   const now = new Date().toISOString();
 
   await db.run(
-    `INSERT INTO "Goal" (id, userId, title, description, targetDate, status, createdAt, updatedAt)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    [goalId, req.user.id, title, description, targetDate, "active", now, now],
+    `INSERT INTO "Goal" (id, userId, title, description, targetDate, deadline, status, createdAt, updatedAt)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+    [
+      goalId,
+      req.user.id,
+      title,
+      description ?? null,
+      due,
+      due,
+      "active",
+      now,
+      now,
+    ],
   );
 
   const goal = await db.first<Goal>(
@@ -115,17 +128,27 @@ export async function updateGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const sets = Object.keys(updates)
-    .map((k, i) => `"${k}" = ?${i + 1}`)
-    .join(", ");
+  const updatable = Object.entries(updates).filter(
+    ([, value]) => value !== undefined,
+  );
 
-  if (sets) {
-    const values = Object.values(updates);
-    values.push(new Date().toISOString());
+  if (updatable.length > 0) {
+    const values: unknown[] = [];
+    let idx = 1;
+    const sqlSets = updatable
+      .map(([key, value]) => {
+        if (key === "deadline" || key === "targetDate") {
+          values.push(value ?? null, value ?? null);
+          return `"targetDate" = ?${idx++}, "deadline" = ?${idx++}`;
+        }
+        values.push(value ?? null);
+        return `"${key}" = ?${idx++}`;
+      })
+      .join(", ");
+    values.push(new Date().toISOString()); // updatedAt
     values.push(id);
-
     await db.run(
-      `UPDATE "Goal" SET ${sets}, "updatedAt" = ?${values.length - 1} WHERE id = ?${values.length}`,
+      `UPDATE "Goal" SET ${sqlSets}, "updatedAt" = ?${idx} WHERE id = ?${idx + 1}`,
       values,
     );
   }

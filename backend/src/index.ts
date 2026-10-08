@@ -2,6 +2,7 @@ import type { AppRequest, AppEnv } from "./types/index";
 import { verifyAuth } from "./middleware/auth";
 import * as authRoutes from "./routes/auth";
 import * as authPasswordRoutes from "./routes/auth-password";
+import * as adminAuthRoutes from "./routes/admin-auth";
 import * as healthRoutes from "./routes/health";
 import * as tasksRoutes from "./routes/tasks";
 import * as habitsRoutes from "./routes/habits";
@@ -122,6 +123,11 @@ async function handleRequest(
       response = await authRoutes.logout(appReq);
     } else if (pathname === "/api/auth/refresh" && request.method === "POST") {
       response = await authRoutes.refresh(appReq);
+    } else if (
+      pathname === "/api/auth/admin-login" &&
+      request.method === "POST"
+    ) {
+      response = await adminAuthRoutes.adminLogin(appReq);
     } else if (pathname === "/api/auth/me" && request.method === "GET") {
       // Me endpoint - check auth first
       const authResult = await verifyAuth(appReq);
@@ -328,6 +334,30 @@ async function handleRequest(
         request.method === "POST"
       ) {
         response = await transactionsRoutes.createTransaction(appReq);
+      } else if (
+        pathname === "/api/transactions/report/weekly" &&
+        request.method === "GET"
+      ) {
+        response = await transactionsRoutes.weeklyReport(appReq);
+      } else if (
+        pathname === "/api/transactions/report/monthly" &&
+        request.method === "GET"
+      ) {
+        response = await transactionsRoutes.monthlyReport(appReq);
+      } else if (
+        pathname.match(/^\/api\/transactions\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await transactionsRoutes.updateTransaction(appReq);
+      } else if (
+        pathname.match(/^\/api\/transactions\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await transactionsRoutes.deleteTransaction(appReq);
       } else if (pathname === "/api/reminders" && request.method === "GET") {
         response = await remindersRoutes.listReminders(appReq);
       } else if (pathname === "/api/reminders" && request.method === "POST") {
@@ -347,9 +377,41 @@ async function handleRequest(
         appReq.params.id = id;
         response = await remindersRoutes.deleteReminder(appReq);
       } else if (pathname === "/api/brand" && request.method === "GET") {
-        response = await brandRoutes.getBrand(appReq);
-      } else if (pathname === "/api/brand" && request.method === "PUT") {
-        response = await brandRoutes.updateBrand(appReq);
+        response = await brandRoutes.listBrandProjects(appReq);
+      } else if (pathname === "/api/brand" && request.method === "POST") {
+        response = await brandRoutes.createBrandProject(appReq);
+      } else if (
+        pathname.match(/^\/api\/brand\/[^/]+\/milestones$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.projectId = pathname.split("/")[3];
+        response = await brandRoutes.createBrandMilestone(appReq);
+      } else if (
+        pathname.match(/^\/api\/brand\/[^/]+\/milestones\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        appReq.params.projectId = pathname.split("/")[3];
+        appReq.params.milestoneId = pathname.split("/")[5];
+        response = await brandRoutes.updateBrandMilestone(appReq);
+      } else if (
+        pathname.match(/^\/api\/brand\/[^/]+\/milestones\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        appReq.params.projectId = pathname.split("/")[3];
+        appReq.params.milestoneId = pathname.split("/")[5];
+        response = await brandRoutes.deleteBrandMilestone(appReq);
+      } else if (
+        pathname.match(/^\/api\/brand\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await brandRoutes.updateBrandProject(appReq);
+      } else if (
+        pathname.match(/^\/api\/brand\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await brandRoutes.deleteBrandProject(appReq);
       } else if (
         pathname === "/api/backup/export" &&
         request.method === "POST"
@@ -423,6 +485,26 @@ async function handleRequest(
         response = await xpRoutes.getXpChartData(appReq);
       } else if (pathname === "/api/admin/users" && request.method === "GET") {
         response = await adminRoutes.listUsers(appReq);
+      } else if (pathname === "/api/admin/users" && request.method === "POST") {
+        response = await adminRoutes.createUser(appReq);
+      } else if (
+        pathname.match(/^\/api\/admin\/users\/[^/]+\/reset-password$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[4];
+        response = await adminRoutes.resetUserPassword(appReq);
+      } else if (
+        pathname.match(/^\/api\/admin\/users\/[^/]+\/disable$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[4];
+        response = await adminRoutes.disableUser(appReq);
+      } else if (
+        pathname.match(/^\/api\/admin\/users\/[^/]+\/enable$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[4];
+        response = await adminRoutes.enableUser(appReq);
       } else if (
         pathname.match(/^\/api\/admin\/users\/[^/]+$/) &&
         request.method === "GET"
@@ -437,6 +519,13 @@ async function handleRequest(
         const id = pathname.split("/")[4];
         appReq.params.id = id;
         response = await adminRoutes.updateUserRole(appReq);
+      } else if (
+        pathname.match(/^\/api\/admin\/users\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        const id = pathname.split("/")[4];
+        appReq.params.id = id;
+        response = await adminRoutes.deleteUser(appReq);
       } else if (pathname === "/api/admin/stats" && request.method === "GET") {
         response = await adminRoutes.getSystemStats(appReq);
       } else if (pathname === "/api/achievements" && request.method === "GET") {
@@ -486,6 +575,58 @@ async function handleRequest(
   }
 }
 
+/**
+ * Guarantees the single API error shape `{ error: { code, message } }` for
+ * every error response, regardless of how the individual handler wrote it.
+ * Legacy bodies (`{ error: "msg", code }`) are upgraded in place.
+ */
+async function normalizeErrorResponse(response: Response): Promise<Response> {
+  if (response.status < 400) return response;
+  const headers = new Headers(response.headers);
+  if (!headers.get("Content-Type")?.includes("application/json")) {
+    return response;
+  }
+  let text: string;
+  try {
+    text = await response.text();
+  } catch {
+    return response;
+  }
+  if (!text) {
+    headers.set("Content-Type", "application/json");
+    return new Response(
+      JSON.stringify({
+        error: { code: `HTTP_${response.status}`, message: "Request failed" },
+        code: `HTTP_${response.status}`,
+      }),
+      { status: response.status, headers },
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return new Response(text, { status: response.status, headers });
+  }
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    "error" in parsed &&
+    (!("error" in (parsed as Record<string, unknown>)) ||
+      typeof (parsed as { error: unknown }).error === "string")
+  ) {
+    const body = parsed as { error: string; code?: string };
+    const code = body.code ?? `HTTP_${response.status}`;
+    const message = body.error;
+    headers.set("Content-Type", "application/json");
+    return new Response(JSON.stringify({ error: { code, message }, code }), {
+      status: response.status,
+      headers,
+    });
+  }
+  return new Response(text, { status: response.status, headers });
+}
+
 export default {
   async fetch(
     request: Request,
@@ -493,11 +634,16 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     try {
-      return await handleRequest(request, env, ctx);
+      return await normalizeErrorResponse(
+        await handleRequest(request, env, ctx),
+      );
     } catch (error) {
       console.error("[fetch]", error);
       return new Response(
-        JSON.stringify({ error: "Worker Error", code: "WORKER_ERROR" }),
+        JSON.stringify({
+          error: { code: "WORKER_ERROR", message: "Worker Error" },
+          code: "WORKER_ERROR",
+        }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }
