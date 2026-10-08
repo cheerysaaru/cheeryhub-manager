@@ -39,14 +39,25 @@ export default function JournalPage() {
   const [passionScore, setPassionScore] = useState(5);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [loadingEntry, setLoadingEntry] = useState(false);
+  const [loadingEntry, setLoadingEntry] = useState(true);
   const [entryError, setEntryError] = useState<string | null>(null);
   const [entryRetry, setEntryRetry] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const [prevEntryQuery, setPrevEntryQuery] = useState({
+    selectedDate,
+    entryRetry,
+  });
+  if (
+    selectedDate !== prevEntryQuery.selectedDate ||
+    entryRetry !== prevEntryQuery.entryRetry
+  ) {
+    setPrevEntryQuery({ selectedDate, entryRetry });
     setLoadingEntry(true);
     setEntryError(null);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
     getByDate(selectedDate)
       .then((entry) => {
         if (cancelled) return;
@@ -107,8 +118,6 @@ export default function JournalPage() {
     const next = shiftLocalDate(selectedDate, delta);
     if (next <= todayISO()) setSelectedDate(next);
   }
-
-  const entryDates = new Set(entries.map((e) => e.date.slice(0, 10)));
 
   return (
     <div className="page">

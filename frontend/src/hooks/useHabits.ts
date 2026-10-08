@@ -133,34 +133,47 @@ export function useHabits(userId: string | null, timeZone?: string) {
     [pendingIds],
   );
 
-  const fetchHabits = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await dedupe("habits:list", () => api<Habit[]>("/habits"));
-      setHabits(
-        asArray<Habit>(data)
-          .filter((habit): habit is Habit =>
-            Boolean(
-              habit &&
-              typeof habit === "object" &&
-              typeof habit.id === "string" &&
-              typeof habit.name === "string",
-            ),
-          )
-          .map((habit) => normalizeHabit(habit, timeZone)),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load habits.",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const loadHabits = useCallback(() => {
+    return dedupe("habits:list", () => api<Habit[]>("/habits"))
+      .then((data) => {
+        setHabits(
+          asArray<Habit>(data)
+            .filter((habit): habit is Habit =>
+              Boolean(
+                habit &&
+                typeof habit === "object" &&
+                typeof habit.id === "string" &&
+                typeof habit.name === "string",
+              ),
+            )
+            .map((habit) => normalizeHabit(habit, timeZone)),
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load habits.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [timeZone]);
 
+  const fetchHabits = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadHabits();
+  }, [loadHabits]);
+
+  const [prevTimeZone, setPrevTimeZone] = useState(timeZone);
+  if (timeZone !== prevTimeZone) {
+    setPrevTimeZone(timeZone);
+    setLoading(true);
+    setError(null);
+  }
+
   useEffect(() => {
-    fetchHabits();
+    loadHabits();
     const cleanup = on<Habit>("habit:created", (habit) => {
       setHabits((prev) => prependUnique(prev, normalizeHabit(habit, timeZone)));
     });
@@ -187,7 +200,7 @@ export function useHabits(userId: string | null, timeZone?: string) {
       cleanup3();
       cleanup4();
     };
-  }, [fetchHabits, on, timeZone]);
+  }, [loadHabits, on, timeZone]);
 
   const create = useCallback(
     async (data: Partial<Habit>) => {

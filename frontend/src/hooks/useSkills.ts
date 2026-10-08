@@ -9,32 +9,38 @@ export function useSkills(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchSkills = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const data = await api<Skill[]>("/skills");
-      setSkills(
-        asArray<Skill>(data).filter((skill): skill is Skill =>
-          Boolean(
-            skill &&
-            typeof skill === "object" &&
-            typeof skill.id === "string" &&
-            typeof skill.name === "string",
+  const loadSkills = useCallback(() => {
+    return api<Skill[]>("/skills")
+      .then((data) => {
+        setSkills(
+          asArray<Skill>(data).filter((skill): skill is Skill =>
+            Boolean(
+              skill &&
+              typeof skill === "object" &&
+              typeof skill.id === "string" &&
+              typeof skill.name === "string",
+            ),
           ),
-        ),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load skills.",
-      );
-    } finally {
-      setLoading(false);
-    }
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load skills.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchSkills = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    return loadSkills();
+  }, [loadSkills]);
+
   useEffect(() => {
-    fetchSkills();
+    loadSkills();
     const cleanup = on<Skill>("skill:created", (skill) => {
       setSkills((prev) =>
         prev.some((s) => s.id === skill.id) ? prev : [skill, ...prev],
@@ -51,7 +57,7 @@ export function useSkills(userId: string | null) {
       cleanup2();
       cleanup3();
     };
-  }, [fetchSkills, on]);
+  }, [loadSkills, on]);
 
   const create = useCallback(async (data: Partial<Skill>) => {
     const skill = await api<Skill>("/skills", {

@@ -1,4 +1,4 @@
-import { Fragment, ReactNode } from "react";
+import { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "./Button";
@@ -30,10 +30,6 @@ export function Modal({
     lg: "modal-lg",
     xl: "modal-xl",
     full: "modal-full",
-  };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") onClose();
   };
 
   const modalContent = (

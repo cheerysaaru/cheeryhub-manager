@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const LONG_PRESS_MS = 600;
 
@@ -18,7 +18,9 @@ export function useLongPress(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firedRef = useRef(false);
   const callbackRef = useRef(onLongPress);
-  callbackRef.current = onLongPress;
+  useEffect(() => {
+    callbackRef.current = onLongPress;
+  });
 
   const clear = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);

@@ -16,36 +16,42 @@ export function useBrand(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api<BrandProject[]>("/brand");
-      setProjects(
-        asArray<BrandProject>(data)
-          .filter((project): project is BrandProject =>
-            Boolean(
-              project &&
-              typeof project === "object" &&
-              typeof project.id === "string" &&
-              typeof project.title === "string",
-            ),
-          )
-          .map(normalizeProject),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not load brand projects.",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const loadProjects = useCallback(() => {
+    return api<BrandProject[]>("/brand")
+      .then((data) => {
+        setProjects(
+          asArray<BrandProject>(data)
+            .filter((project): project is BrandProject =>
+              Boolean(
+                project &&
+                typeof project === "object" &&
+                typeof project.id === "string" &&
+                typeof project.title === "string",
+              ),
+            )
+            .map(normalizeProject),
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not load brand projects.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchProjects = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadProjects();
+  }, [loadProjects]);
+
   useEffect(() => {
-    fetchProjects();
+    loadProjects();
     const cleanup = on<BrandProject>("brand:created", (project) => {
       const normalized = normalizeProject(project);
       setProjects((prev) =>
@@ -66,7 +72,7 @@ export function useBrand(userId: string | null) {
       cleanup2();
       cleanup3();
     };
-  }, [fetchProjects, on]);
+  }, [loadProjects, on]);
 
   const create = useCallback(async (data: Partial<BrandProject>) => {
     const project = normalizeProject(

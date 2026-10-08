@@ -4,8 +4,6 @@ import {
   Trash2,
   Pencil,
   Download,
-  BarChart2,
-  PieChart,
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
@@ -22,7 +20,7 @@ import { ContextMenu, useContextMenu } from "../components/ContextMenu";
 import { Input } from "../components/Input";
 import { ApiLoadError } from "../components/ApiLoadError";
 import { asArray } from "../services/api";
-import type { Transaction, WeeklyReport, MonthlyReport } from "../types";
+import type { Transaction, MonthlyReport } from "../types";
 import { formatShortDate, parseLocalDate, todayISO } from "../utils/date";
 import { downloadJson } from "../utils/misc";
 

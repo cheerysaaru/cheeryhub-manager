@@ -9,35 +9,42 @@ export function useFocus(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api<FocusSession[]>("/focus/history");
-      setSessions(
-        asArray<FocusSession>(data).filter((session): session is FocusSession =>
-          Boolean(
-            session &&
-            typeof session === "object" &&
-            typeof session.id === "string" &&
-            typeof session.status === "string" &&
-            typeof session.startedAt === "string",
+  const loadSessions = useCallback(() => {
+    return api<FocusSession[]>("/focus/history")
+      .then((data) => {
+        setSessions(
+          asArray<FocusSession>(data).filter(
+            (session): session is FocusSession =>
+              Boolean(
+                session &&
+                typeof session === "object" &&
+                typeof session.id === "string" &&
+                typeof session.status === "string" &&
+                typeof session.startedAt === "string",
+              ),
           ),
-        ),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not load focus sessions.",
-      );
-    } finally {
-      setLoading(false);
-    }
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not load focus sessions.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchSessions = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadSessions();
+  }, [loadSessions]);
+
   useEffect(() => {
-    fetchSessions();
+    loadSessions();
     const cleanup = on<FocusSession>("focus:created", (session) => {
       setSessions((prev) =>
         prev.some((s) => s.id === session.id) ? prev : [session, ...prev],
@@ -52,7 +59,7 @@ export function useFocus(userId: string | null) {
       cleanup();
       cleanup2();
     };
-  }, [fetchSessions, on]);
+  }, [loadSessions, on]);
 
   const start = useCallback(
     async (durationMinutes: number, taskId?: string) => {

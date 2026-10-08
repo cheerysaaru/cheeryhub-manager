@@ -1,20 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Bell,
-  BellRing,
   Check,
   CheckCircle2,
   Circle,
   Clock3,
   LogOut,
   Pause,
-  Play,
   Plus,
   ShieldCheck,
-  Trash2,
-  Wifi,
-  WifiOff,
   X,
   DollarSign,
   AlertTriangle,
@@ -168,11 +162,10 @@ export default function TaskBoard({
   onLogout: () => void;
   api: Api;
 }) {
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [offline, setOffline] = useState(!navigator.onLine);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [celebration, setCelebration] = useState("");
   const [notice, setNotice] = useState("");
   const [timerPosition, setTimerPosition] = useState<{
@@ -230,32 +223,31 @@ export default function TaskBoard({
     });
     return () => document.removeEventListener("input", correctInput, true);
   }, []);
-  async function refresh() {
-    try {
-      const [loadedTasks, loadedHabits] = await Promise.all([
-        api<Task[]>("/tasks"),
-        api<Habit[]>("/habits"),
-      ]);
-      setTasks(asArray<Task>(loadedTasks));
-      setHabits(
-        asArray<Habit>(loadedHabits).map((habit) => ({
-          ...habit,
-          weekDates: asArray<string>(habit.weekDates),
-          completedDates: asArray<string>(habit.completedDates),
-        })),
-      );
-      setOffline(false);
-    } catch {
-      setOffline(true);
-    }
-  }
+  const refresh = useCallback(() => {
+    return Promise.all([api<Task[]>("/tasks"), api<Habit[]>("/habits")])
+      .then(([loadedTasks, loadedHabits]) => {
+        setTasks(asArray<Task>(loadedTasks));
+        setHabits(
+          asArray<Habit>(loadedHabits).map((habit) => ({
+            ...habit,
+            weekDates: asArray<string>(habit.weekDates),
+            completedDates: asArray<string>(habit.completedDates),
+          })),
+        );
+        setOffline(false);
+      })
+      .catch(() => {
+        setOffline(true);
+      });
+  }, [api]);
+
   useEffect(() => {
-    refresh();
+    void refresh();
     if ("Notification" in window && Notification.permission === "default")
       void Notification.requestPermission();
     const online = () => {
       setOffline(false);
-      refresh();
+      void refresh();
     };
     const down = () => setOffline(true);
     addEventListener("online", online);
@@ -264,7 +256,7 @@ export default function TaskBoard({
       removeEventListener("online", online);
       removeEventListener("offline", down);
     };
-  }, []);
+  }, [refresh]);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -427,32 +419,6 @@ export default function TaskBoard({
     handle.addEventListener("pointermove", move);
     handle.addEventListener("pointerup", stop);
     handle.addEventListener("pointercancel", stop);
-  }
-  function moveTimerDrag(event: React.PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const card = event.currentTarget.getBoundingClientRect();
-    const x = Math.max(
-      8,
-      Math.min(
-        window.innerWidth - card.width - 8,
-        event.clientX - drag.offsetX,
-      ),
-    );
-    const y = Math.max(
-      8,
-      Math.min(
-        window.innerHeight - card.height - 8,
-        event.clientY - drag.offsetY,
-      ),
-    );
-    setTimerPosition({ x, y });
-  }
-  function stopTimerDrag(event: React.PointerEvent<HTMLDivElement>) {
-    if (dragRef.current?.pointerId === event.pointerId) {
-      dragRef.current = null;
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
   }
   function remaining(task: Task) {
     if (!task.timerStartedAt || !task.deadlineTime) return "";

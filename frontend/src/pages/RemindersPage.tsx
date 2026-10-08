@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Bell, Trash2, Pencil, X, Check } from "lucide-react";
+import { Plus, Bell, Trash2, Pencil } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useReminders } from "../hooks/useReminders";
 import { Button } from "../components/Button";

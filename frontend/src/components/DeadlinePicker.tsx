@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
@@ -38,19 +38,24 @@ export function DeadlinePicker({
   );
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const source = initial ? new Date(initial) : null;
-    setDate(
-      source && !Number.isNaN(source.getTime())
-        ? toDateInput(source)
-        : toDateInput(new Date()),
-    );
-    setTime(
-      source && !Number.isNaN(source.getTime()) ? toTimeInput(source) : "23:59",
-    );
-    setError("");
-  }, [isOpen, initial]);
+  const [prevProps, setPrevProps] = useState({ isOpen, initial });
+  if (isOpen !== prevProps.isOpen || initial !== prevProps.initial) {
+    setPrevProps({ isOpen, initial });
+    if (isOpen) {
+      const source = initial ? new Date(initial) : null;
+      setDate(
+        source && !Number.isNaN(source.getTime())
+          ? toDateInput(source)
+          : toDateInput(new Date()),
+      );
+      setTime(
+        source && !Number.isNaN(source.getTime())
+          ? toTimeInput(source)
+          : "23:59",
+      );
+      setError("");
+    }
+  }
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();

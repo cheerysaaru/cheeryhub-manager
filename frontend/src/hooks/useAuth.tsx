@@ -92,31 +92,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return next;
   }, []);
 
+  const loadUser = useCallback(() => {
+    return api<{ user: User }>("/auth/me")
+      .then((result) => adoptUser(requireUser(result, "continue")))
+      .catch((caught: unknown) => {
+        if (caught instanceof ApiError && caught.status === 401) {
+          setUser(null);
+          syncedUser.current = null;
+        } else {
+          setAuthError(
+            caught instanceof Error
+              ? caught.message
+              : "Could not verify your session.",
+          );
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [adoptUser]);
+
   const fetchUser = useCallback(async () => {
     setLoading(true);
     setAuthError(null);
-    try {
-      const result = await api<{ user: User }>("/auth/me");
-      await adoptUser(requireUser(result, "continue"));
-    } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        setUser(null);
-        syncedUser.current = null;
-      } else {
-        setAuthError(
-          caught instanceof Error
-            ? caught.message
-            : "Could not verify your session.",
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [adoptUser]);
+    await loadUser();
+  }, [loadUser]);
 
   useEffect(() => {
     clearAppStorage();
-    fetchUser();
+    void loadUser();
     const sync = () => {
       void syncPendingWrites().catch((error: unknown) => {
         console.error("[api] Could not sync pending writes:", error);
@@ -125,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sync();
     window.addEventListener("online", sync);
     return () => window.removeEventListener("online", sync);
-  }, [fetchUser]);
+  }, [loadUser]);
 
   const login = useCallback(
     async (email: string, password: string) => {

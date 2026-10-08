@@ -22,9 +22,17 @@ export function Layout() {
   );
   const [profilePic, setProfilePic] = useState(() => getProfilePic());
 
-  useEffect(() => {
+  const [prevUserName, setPrevUserName] = useState(user?.name);
+  if (user?.name !== prevUserName) {
+    setPrevUserName(user?.name);
     setProfileName(getDisplayName(user?.name ?? ""));
+  }
+
+  useEffect(() => {
     initAvatar();
+  }, [user]);
+
+  useEffect(() => {
     const onProfileUpdated = () => {
       setProfileName(getDisplayName(user?.name ?? ""));
       setProfilePic(getProfilePic());

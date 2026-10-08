@@ -14,13 +14,13 @@ export function useSocket(userId: string | null) {
   useEffect(() => {
     if (!userId) {
       disconnectSocket();
-      setConnected(false);
+      void Promise.resolve().then(() => setConnected(false));
       return;
     }
 
     const socket = connectSocket(userId);
     if (!socket) {
-      setConnected(false);
+      void Promise.resolve().then(() => setConnected(false));
       return;
     }
 
@@ -29,7 +29,7 @@ export function useSocket(userId: string | null) {
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
-    if (socket.connected) setConnected(true);
+    if (socket.connected) void Promise.resolve().then(() => setConnected(true));
 
     return () => {
       socket.off("connect", onConnect);

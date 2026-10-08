@@ -165,7 +165,7 @@ export default function DashboardPage() {
   const totalXP = xp?.total ?? 0;
   const level = levelFor(totalXP);
   const xpInLevel = pointsIntoLevel(totalXP);
-  const xpHistory = xp?.history ?? [];
+  const xpHistory = useMemo(() => xp?.history ?? [], [xp]);
   const pointsBreakdown = useMemo(() => xpBreakdown(xpHistory), [xpHistory]);
   const pointsEarnedSpent = useMemo(
     () => xpEarnedSpent(xpHistory),

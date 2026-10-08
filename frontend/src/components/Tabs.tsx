@@ -7,7 +7,7 @@ export interface TabsProps extends HTMLAttributes<HTMLDivElement> {
   onValueChange?: (value: string) => void;
 }
 
-export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {}
+export type TabsListProps = HTMLAttributes<HTMLDivElement>;
 
 export interface TabsTriggerProps extends HTMLAttributes<HTMLButtonElement> {
   value: string;

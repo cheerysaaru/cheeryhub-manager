@@ -9,32 +9,40 @@ export function useReminders(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchReminders = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await api<Reminder[]>("/reminders");
-      setReminders(
-        asArray<Reminder>(data).filter((reminder): reminder is Reminder =>
-          Boolean(
-            reminder &&
-            typeof reminder === "object" &&
-            typeof reminder.id === "string" &&
-            typeof reminder.title === "string" &&
-            typeof reminder.reminderDate === "string",
+  const loadReminders = useCallback(() => {
+    return api<Reminder[]>("/reminders")
+      .then((data) => {
+        setReminders(
+          asArray<Reminder>(data).filter((reminder): reminder is Reminder =>
+            Boolean(
+              reminder &&
+              typeof reminder === "object" &&
+              typeof reminder.id === "string" &&
+              typeof reminder.title === "string" &&
+              typeof reminder.reminderDate === "string",
+            ),
           ),
-        ),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load reminders.",
-      );
-    } finally {
-      setLoading(false);
-    }
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not load reminders.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchReminders = useCallback(() => {
+    setError(null);
+    return loadReminders();
+  }, [loadReminders]);
+
   useEffect(() => {
-    fetchReminders();
+    loadReminders();
     const cleanup = on<Reminder>("reminder:created", (reminder) => {
       setReminders((prev) =>
         prev.some((r) => r.id === reminder.id) ? prev : [reminder, ...prev],
@@ -53,7 +61,7 @@ export function useReminders(userId: string | null) {
       cleanup2();
       cleanup3();
     };
-  }, [fetchReminders, on]);
+  }, [loadReminders, on]);
 
   const create = useCallback(async (data: Partial<Reminder>) => {
     const reminder = await api<Reminder>("/reminders", {

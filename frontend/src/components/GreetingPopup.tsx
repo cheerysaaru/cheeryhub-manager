@@ -104,9 +104,7 @@ function dayOfYear(date: Date): number {
 }
 
 export function GreetingPopup({ username }: { username: string }) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
+  const [visible, setVisible] = useState(() => {
     const today = new Date().toDateString();
     let lastGreeted = "";
     try {
@@ -114,15 +112,17 @@ export function GreetingPopup({ username }: { username: string }) {
     } catch {
       /* Storage may be unavailable. */
     }
-    if (lastGreeted !== today) {
-      setVisible(true);
-      try {
-        localStorage.setItem("lastGreetedDate", today);
-      } catch {
-        /* Storage may be unavailable. */
-      }
+    return lastGreeted !== today;
+  });
+
+  useEffect(() => {
+    if (!visible) return;
+    try {
+      localStorage.setItem("lastGreetedDate", new Date().toDateString());
+    } catch {
+      /* Storage may be unavailable. */
     }
-  }, []);
+  }, [visible]);
 
   if (!visible) return null;
 

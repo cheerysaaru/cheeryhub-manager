@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trophy, Trash2, TrendingUp, Pencil, X } from "lucide-react";
+import { Plus, Trophy, Trash2, TrendingUp, Pencil } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useSkills } from "../hooks/useSkills";
 import { Button } from "../components/Button";
@@ -53,9 +53,8 @@ export default function SkillsPage() {
 
   async function adjustProgress(skill: Skill, delta: number) {
     const newProgress = Math.max(0, Math.min(100, skill.progress + delta));
-    let newLevel = skill.currentLevel;
     if (newProgress >= 100 && skill.currentLevel < skill.targetLevel) {
-      newLevel = skill.currentLevel + 1;
+      const newLevel = skill.currentLevel + 1;
       await update(skill.id, { progress: 0, currentLevel: newLevel });
     } else {
       await update(skill.id, { progress: newProgress });

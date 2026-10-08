@@ -24,66 +24,84 @@ export function useTransactions(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchTransactions = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await api<Transaction[]>("/transactions");
-      const validTransactions = asArray<Transaction>(data).filter(
-        (transaction): transaction is Transaction =>
-          Boolean(
-            transaction &&
-            typeof transaction === "object" &&
-            typeof transaction.id === "string" &&
-            typeof transaction.type === "string" &&
-            typeof transaction.category === "string" &&
-            typeof transaction.amount === "number" &&
-            typeof transaction.date === "string",
-          ),
-      );
-      const unique = Array.from(
-        new Map(
-          validTransactions.map((transaction) => [transaction.id, transaction]),
-        ).values(),
-      );
-      setTransactions(unique);
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not load transactions.",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const loadTransactions = useCallback(() => {
+    return api<Transaction[]>("/transactions")
+      .then((data) => {
+        const validTransactions = asArray<Transaction>(data).filter(
+          (transaction): transaction is Transaction =>
+            Boolean(
+              transaction &&
+              typeof transaction === "object" &&
+              typeof transaction.id === "string" &&
+              typeof transaction.type === "string" &&
+              typeof transaction.category === "string" &&
+              typeof transaction.amount === "number" &&
+              typeof transaction.date === "string",
+            ),
+        );
+        const unique = Array.from(
+          new Map(
+            validTransactions.map((transaction) => [
+              transaction.id,
+              transaction,
+            ]),
+          ).values(),
+        );
+        setTransactions(unique);
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not load transactions.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const fetchReports = useCallback(async (year?: number, month?: number) => {
+  const fetchTransactions = useCallback(() => {
     setError(null);
-    try {
-      const [weekly, monthly] = await Promise.all([
-        api<WeeklyReport>("/transactions/report/weekly"),
-        api<MonthlyReport>(
-          `/transactions/report/monthly?year=${year ?? new Date().getFullYear()}&month=${month ?? new Date().getMonth() + 1}`,
-        ),
-      ]);
-      setWeeklyReport(weekly);
-      setMonthlyReport(monthly);
-    } catch (caught) {
-      setWeeklyReport(null);
-      setMonthlyReport(null);
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not load transaction reports.",
-      );
-    } finally {
-      setLoading(false);
-    }
+    return loadTransactions();
+  }, [loadTransactions]);
+
+  const loadReports = useCallback((year?: number, month?: number) => {
+    return Promise.all([
+      api<WeeklyReport>("/transactions/report/weekly"),
+      api<MonthlyReport>(
+        `/transactions/report/monthly?year=${year ?? new Date().getFullYear()}&month=${month ?? new Date().getMonth() + 1}`,
+      ),
+    ])
+      .then(([weekly, monthly]) => {
+        setWeeklyReport(weekly);
+        setMonthlyReport(monthly);
+      })
+      .catch((caught: unknown) => {
+        setWeeklyReport(null);
+        setMonthlyReport(null);
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not load transaction reports.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
+
+  const fetchReports = useCallback(
+    (year?: number, month?: number) => {
+      setError(null);
+      return loadReports(year, month);
+    },
+    [loadReports],
+  );
 
   useEffect(() => {
-    fetchTransactions();
-    fetchReports();
+    loadTransactions();
+    loadReports();
     const cleanup = on<Transaction>("transaction:created", (tx) => {
       setTransactions((prev) => upsertTransaction(prev, tx));
     });
@@ -98,7 +116,7 @@ export function useTransactions(userId: string | null) {
       cleanup2();
       cleanup3();
     };
-  }, [fetchTransactions, fetchReports, on]);
+  }, [loadTransactions, loadReports, on]);
 
   const create = useCallback(
     async (data: Partial<Transaction>) => {

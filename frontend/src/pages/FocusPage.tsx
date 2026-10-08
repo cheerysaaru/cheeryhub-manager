@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Square, CheckCircle2, Clock, Brain } from "lucide-react";
+import { Play, Pause, CheckCircle2, Clock, Brain } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useFocus } from "../hooks/useFocus";
 import { useTasks } from "../hooks/useTasks";
@@ -32,20 +32,23 @@ export default function FocusPage() {
 
   useEffect(() => {
     if (runningSession && runningSession.status === "RUNNING") {
-      const elapsed = Math.floor(
-        (Date.now() - new Date(runningSession.startedAt).getTime()) / 1000,
-      );
-      const total = runningSession.durationMinutes * 60;
-      setRemaining(Math.max(0, total - elapsed));
-      if (elapsed >= total) {
-        complete(runningSession.id).then(() => setActiveSession(null));
-        setRemaining(0);
-      }
+      void Promise.resolve().then(() => {
+        const elapsed = Math.floor(
+          (Date.now() - new Date(runningSession.startedAt).getTime()) / 1000,
+        );
+        const total = runningSession.durationMinutes * 60;
+        setRemaining(Math.max(0, total - elapsed));
+        if (elapsed >= total) {
+          complete(runningSession.id).then(() => setActiveSession(null));
+          setRemaining(0);
+        }
+      });
     }
   }, [runningSession, complete]);
 
+  const shouldTick = remaining > 0;
   useEffect(() => {
-    if (remaining > 0 && !paused && runningSession) {
+    if (shouldTick && !paused && runningSession) {
       intervalRef.current = window.setInterval(() => {
         setRemaining((prev) => {
           if (prev <= 1) {
@@ -60,7 +63,7 @@ export default function FocusPage() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [remaining > 0, paused, runningSession, complete]);
+  }, [shouldTick, paused, runningSession, complete]);
 
   async function handleStart() {
     const session = await start(duration, selectedTask || undefined);

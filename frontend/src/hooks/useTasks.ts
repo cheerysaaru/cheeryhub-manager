@@ -47,32 +47,38 @@ export function useTasks(userId: string | null) {
     [pendingIds],
   );
 
-  const fetchTasks = useCallback(async () => {
+  const loadTasks = useCallback(() => {
+    return dedupe("tasks:list", () => api<Task[]>("/tasks"))
+      .then((data) => {
+        setTasks(
+          asArray<Task>(data)
+            .filter((task): task is Task =>
+              Boolean(
+                task &&
+                typeof task === "object" &&
+                typeof task.id === "string" &&
+                typeof task.title === "string" &&
+                typeof task.status === "string",
+              ),
+            )
+            .map(normalizeTask),
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load tasks.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const fetchTasks = useCallback(() => {
     setLoading(true);
     setError(null);
-    try {
-      const data = await dedupe("tasks:list", () => api<Task[]>("/tasks"));
-      setTasks(
-        asArray<Task>(data)
-          .filter((task): task is Task =>
-            Boolean(
-              task &&
-              typeof task === "object" &&
-              typeof task.id === "string" &&
-              typeof task.title === "string" &&
-              typeof task.status === "string",
-            ),
-          )
-          .map(normalizeTask),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load tasks.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    return loadTasks();
+  }, [loadTasks]);
 
   const fetchTrash = useCallback(async () => {
     try {
@@ -98,7 +104,7 @@ export function useTasks(userId: string | null) {
   }, []);
 
   useEffect(() => {
-    fetchTasks();
+    loadTasks();
     // Trash loads lazily (Trash bin / tab click) — no reason to pay for it on mount.
     const cleanup = on<Task>("task:created", (task) => {
       setTasks((prev) => prependUnique(prev, normalizeTask(task)));
@@ -124,7 +130,7 @@ export function useTasks(userId: string | null) {
       cleanup3();
       cleanup4();
     };
-  }, [fetchTasks, fetchTrash, on]);
+  }, [loadTasks, fetchTrash, on]);
 
   const create = useCallback(async (data: Partial<Task>) => {
     setCreating(true);

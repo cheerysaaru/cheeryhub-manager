@@ -100,25 +100,31 @@ export default function SettingsPage() {
     notifyProfileUpdated();
   }
 
-  const fetchSettings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api<UserSettings>("/settings");
-      if (!data) throw new Error("The settings response was empty.");
-      setSettings(data);
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load settings.",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const loadSettings = useCallback(() => {
+    return api<UserSettings>("/settings")
+      .then((data) => {
+        if (!data) throw new Error("The settings response was empty.");
+        setSettings(data);
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load settings.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchSettings = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadSettings();
+  }, [loadSettings]);
+
   useEffect(() => {
-    void fetchSettings();
-  }, [fetchSettings]);
+    void loadSettings();
+  }, [loadSettings]);
 
   async function saveSettings() {
     if (!settings) return;

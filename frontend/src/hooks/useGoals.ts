@@ -17,34 +17,40 @@ export function useGoals(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchGoals = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await dedupe("goals:list", () => api<Goal[]>("/goals"));
-      setGoals(
-        asArray<Goal>(data)
-          .filter((goal): goal is Goal =>
-            Boolean(
-              goal &&
-              typeof goal === "object" &&
-              typeof goal.id === "string" &&
-              typeof goal.title === "string",
-            ),
-          )
-          .map(normalizeGoal),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load goals.",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const loadGoals = useCallback(() => {
+    return dedupe("goals:list", () => api<Goal[]>("/goals"))
+      .then((data) => {
+        setGoals(
+          asArray<Goal>(data)
+            .filter((goal): goal is Goal =>
+              Boolean(
+                goal &&
+                typeof goal === "object" &&
+                typeof goal.id === "string" &&
+                typeof goal.title === "string",
+              ),
+            )
+            .map(normalizeGoal),
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load goals.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchGoals = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadGoals();
+  }, [loadGoals]);
+
   useEffect(() => {
-    fetchGoals();
+    loadGoals();
     const cleanup = on<Goal>("goal:created", (goal) => {
       const normalized = normalizeGoal(goal);
       setGoals((prev) =>
@@ -65,7 +71,7 @@ export function useGoals(userId: string | null) {
       cleanup2();
       cleanup3();
     };
-  }, [fetchGoals, on]);
+  }, [loadGoals, on]);
 
   const create = useCallback(async (data: Partial<Goal>) => {
     const goal = normalizeGoal(

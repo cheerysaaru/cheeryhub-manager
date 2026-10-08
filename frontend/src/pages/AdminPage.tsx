@@ -58,21 +58,27 @@ export default function AdminPage() {
     [users],
   );
 
+  function loadUsersData() {
+    return api<{ users: AdminUser[] }>("/admin/users")
+      .then((result) => {
+        setUsers(asArray<AdminUser>(result?.users));
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load users");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }
+
   async function loadUsers() {
     setLoading(true);
     setError("");
-    try {
-      const result = await api<{ users: AdminUser[] }>("/admin/users");
-      setUsers(asArray<AdminUser>(result?.users));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users");
-    } finally {
-      setLoading(false);
-    }
+    return loadUsersData();
   }
 
   useEffect(() => {
-    if (isAdmin) void loadUsers();
+    if (isAdmin) void loadUsersData();
   }, [isAdmin]);
 
   function flash(message: string) {

@@ -9,33 +9,39 @@ export function useJournal(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchEntries = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await api<JournalEntry[]>("/journal");
-      setEntries(
-        asArray<JournalEntry>(data).filter((entry): entry is JournalEntry =>
-          Boolean(
-            entry &&
-            typeof entry === "object" &&
-            typeof entry.id === "string" &&
-            typeof entry.date === "string",
+  const loadEntries = useCallback(() => {
+    return api<JournalEntry[]>("/journal")
+      .then((data) => {
+        setEntries(
+          asArray<JournalEntry>(data).filter((entry): entry is JournalEntry =>
+            Boolean(
+              entry &&
+              typeof entry === "object" &&
+              typeof entry.id === "string" &&
+              typeof entry.date === "string",
+            ),
           ),
-        ),
-      );
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not load journal entries.",
-      );
-    } finally {
-      setLoading(false);
-    }
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not load journal entries.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchEntries = useCallback(() => {
+    setError(null);
+    return loadEntries();
+  }, [loadEntries]);
+
   useEffect(() => {
-    fetchEntries();
+    loadEntries();
     const cleanup = on<JournalEntry>("journal:created", (entry) => {
       setEntries((prev) =>
         prev.some(
@@ -52,7 +58,7 @@ export function useJournal(userId: string | null) {
       cleanup();
       cleanup2();
     };
-  }, [fetchEntries, on]);
+  }, [loadEntries, on]);
 
   const getByDate = useCallback(async (date: string) => {
     try {

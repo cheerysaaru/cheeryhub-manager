@@ -1,15 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Plus,
   Trash2,
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
-  Calendar,
   ChevronLeft,
   ChevronRight,
-  Download,
-  BarChart2,
   PieChart,
 } from "lucide-react";
 import { parseLocalDate, todayISO } from "./utils/date";
@@ -175,11 +172,19 @@ function TransactionForm({
   const [date, setDate] = useState(initialDate || todayISO());
   const [description, setDescription] = useState(initialDescription || "");
 
-  useEffect(() => {
+  const [prevCategoryProps, setPrevCategoryProps] = useState({
+    type,
+    initialCategory,
+  });
+  if (
+    type !== prevCategoryProps.type ||
+    initialCategory !== prevCategoryProps.initialCategory
+  ) {
+    setPrevCategoryProps({ type, initialCategory });
     if (!initialCategory) {
       setCategory(type === "INCOME" ? "SALARY" : "FOOD");
     }
-  }, [type, initialCategory]);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -436,28 +441,29 @@ export default function FinancePanel({ api }: { api: Api }) {
   );
   const [loading, setLoading] = useState(true);
 
-  async function loadData() {
-    try {
-      const [txs, weekly, monthly] = await Promise.all([
-        api<Transaction[]>("/transactions"),
-        api<WeeklyReport>("/transactions/report/weekly"),
-        api<MonthlyReport>(
-          `/transactions/report/monthly?year=${currentMonth.getFullYear()}&month=${currentMonth.getMonth() + 1}`,
-        ),
-      ]);
-      setTransactions(asArray<Transaction>(txs));
-      setWeeklyReport(weekly);
-      setMonthlyReport(monthly);
-      setLoading(false);
-    } catch (error) {
-      console.error("Failed to load finance data:", error);
-      setLoading(false);
-    }
-  }
+  const loadData = useCallback(() => {
+    return Promise.all([
+      api<Transaction[]>("/transactions"),
+      api<WeeklyReport>("/transactions/report/weekly"),
+      api<MonthlyReport>(
+        `/transactions/report/monthly?year=${currentMonth.getFullYear()}&month=${currentMonth.getMonth() + 1}`,
+      ),
+    ])
+      .then(([txs, weekly, monthly]) => {
+        setTransactions(asArray<Transaction>(txs));
+        setWeeklyReport(weekly);
+        setMonthlyReport(monthly);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Failed to load finance data:", error);
+        setLoading(false);
+      });
+  }, [api, currentMonth]);
 
   useEffect(() => {
-    loadData();
-  }, [currentMonth]);
+    void loadData();
+  }, [loadData]);
 
   async function handleAddTransaction(data: {
     type: "INCOME" | "EXPENSE";
