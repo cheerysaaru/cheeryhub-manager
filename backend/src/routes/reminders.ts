@@ -30,7 +30,7 @@ export async function listReminders(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env.DB!);
+    const db = new Database(req.env.DB);
     const reminders = await db.all(
       `SELECT id, userId, title, description, scheduledFor, status, createdAt, updatedAt
        FROM Reminder WHERE userId = ?1 AND deletedAt IS NULL
@@ -82,7 +82,7 @@ export async function createReminder(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env.DB!);
+    const db = new Database(req.env.DB);
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
 
@@ -151,7 +151,7 @@ export async function updateReminder(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env.DB!);
+    const db = new Database(req.env.DB);
     const existing = await db.first<ReminderOwnerRow>(
       "SELECT userId FROM Reminder WHERE id = ?1 AND deletedAt IS NULL",
       [id],
@@ -264,7 +264,7 @@ export async function deleteReminder(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env.DB!);
+    const db = new Database(req.env.DB);
     const existing = await db.first<ReminderOwnerRow>(
       "SELECT userId FROM Reminder WHERE id = ?1 AND deletedAt IS NULL",
       [id],

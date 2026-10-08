@@ -1,16 +1,6 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
-interface Notification {
-  id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type: string;
-  read: boolean;
-  createdAt: string;
-}
-
 export async function listNotifications(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -22,7 +12,7 @@ export async function listNotifications(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env.DB!);
+  const db = new Database(req.env.DB);
   const notifications = await db.all<Notification>(
     'SELECT * FROM "Notification" WHERE userId = ?1 ORDER BY createdAt DESC LIMIT 50',
     [req.user.id],
@@ -34,9 +24,7 @@ export async function listNotifications(req: AppRequest): Promise<Response> {
   });
 }
 
-export async function markNotificationAsRead(
-  req: AppRequest,
-): Promise<Response> {
+export async function updateNotification(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
       JSON.stringify({
@@ -48,8 +36,9 @@ export async function markNotificationAsRead(
   }
 
   const { id } = req.params;
+  const { read } = req.body as { read?: boolean };
 
-  const db = new Database(req.env.DB!);
+  const db = new Database(req.env.DB);
   const notification = await db.first<Notification>(
     'SELECT * FROM "Notification" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -65,7 +54,12 @@ export async function markNotificationAsRead(
     );
   }
 
-  await db.run('UPDATE "Notification" SET "read" = true WHERE id = ?1', [id]);
+  if (read !== undefined) {
+    await db.run('UPDATE "Notification" SET "read" = ?1 WHERE id = ?2', [
+      read,
+      id,
+    ]);
+  }
 
   const updated = await db.first<Notification>(
     'SELECT * FROM "Notification" WHERE id = ?1',
@@ -91,7 +85,7 @@ export async function deleteNotification(req: AppRequest): Promise<Response> {
 
   const { id } = req.params;
 
-  const db = new Database(req.env.DB!);
+  const db = new Database(req.env.DB);
   const notification = await db.first<Notification>(
     'SELECT * FROM "Notification" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],

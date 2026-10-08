@@ -1,6 +1,7 @@
 import type { AppRequest, AppEnv } from "./types/index";
 import { verifyAuth } from "./middleware/auth";
 import * as authRoutes from "./routes/auth";
+import * as authPasswordRoutes from "./routes/auth-password";
 import * as healthRoutes from "./routes/health";
 import * as tasksRoutes from "./routes/tasks";
 import * as habitsRoutes from "./routes/habits";
@@ -14,6 +15,11 @@ import * as streaksRoutes from "./routes/streaks";
 import * as analyticsRoutes from "./routes/analytics";
 import * as brandRoutes from "./routes/brand";
 import * as backupRoutes from "./routes/backup";
+import * as journalRoutes from "./routes/journal";
+import * as focusRoutes from "./routes/focus";
+import * as xpRoutes from "./routes/xp";
+import * as adminRoutes from "./routes/admin";
+import * as achievementsRoutes from "./routes/achievements";
 
 const getCorsHeaders = (origin: string): Record<string, string> => {
   const allowedOrigins = [
@@ -170,6 +176,48 @@ async function handleRequest(
         const id = pathname.split("/")[3];
         appReq.params.id = id;
         response = await tasksRoutes.deleteTask(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/complete$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.completeTask(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/checkin$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.checkInTask(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/extend$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.extendTask(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/timer$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.startTaskTimer(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/restore$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.restoreTask(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/permanent$/) &&
+        request.method === "DELETE"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.permanentDeleteTask(appReq);
       }
 
       // Habits routes
@@ -248,6 +296,20 @@ async function handleRequest(
       // Notifications routes
       else if (pathname === "/api/notifications" && request.method === "GET") {
         response = await notificationsRoutes.listNotifications(appReq);
+      } else if (
+        pathname.match(/^\/api\/notifications\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await notificationsRoutes.updateNotification(appReq);
+      } else if (
+        pathname.match(/^\/api\/notifications\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await notificationsRoutes.deleteNotification(appReq);
       }
 
       // Skills, Settings, Transactions, Reminders, Brand, Backup routes
@@ -270,6 +332,20 @@ async function handleRequest(
         response = await remindersRoutes.listReminders(appReq);
       } else if (pathname === "/api/reminders" && request.method === "POST") {
         response = await remindersRoutes.createReminder(appReq);
+      } else if (
+        pathname.match(/^\/api\/reminders\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await remindersRoutes.updateReminder(appReq);
+      } else if (
+        pathname.match(/^\/api\/reminders\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await remindersRoutes.deleteReminder(appReq);
       } else if (pathname === "/api/brand" && request.method === "GET") {
         response = await brandRoutes.getBrand(appReq);
       } else if (pathname === "/api/brand" && request.method === "PUT") {
@@ -279,6 +355,97 @@ async function handleRequest(
         request.method === "POST"
       ) {
         response = await backupRoutes.exportData(appReq);
+      } else if (
+        pathname === "/api/backup/import" &&
+        request.method === "POST"
+      ) {
+        response = await backupRoutes.importData(appReq);
+      } else if (pathname === "/api/auth/forgot" && request.method === "POST") {
+        response = await authPasswordRoutes.forgotPassword(appReq);
+      } else if (pathname === "/api/auth/reset" && request.method === "POST") {
+        response = await authPasswordRoutes.resetPassword(appReq);
+      } else if (pathname === "/api/journal" && request.method === "GET") {
+        response = await journalRoutes.listJournalEntries(appReq);
+      } else if (pathname === "/api/journal" && request.method === "POST") {
+        response = await journalRoutes.createJournalEntry(appReq);
+      } else if (
+        pathname.match(/^\/api\/journal\/[^/]+$/) &&
+        request.method === "GET"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await journalRoutes.getJournalEntry(appReq);
+      } else if (
+        pathname.match(/^\/api\/journal\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await journalRoutes.updateJournalEntry(appReq);
+      } else if (
+        pathname.match(/^\/api\/journal\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await journalRoutes.deleteJournalEntry(appReq);
+      } else if (pathname === "/api/focus" && request.method === "GET") {
+        response = await focusRoutes.listFocusSessions(appReq);
+      } else if (pathname === "/api/focus" && request.method === "POST") {
+        response = await focusRoutes.createFocusSession(appReq);
+      } else if (
+        pathname.match(/^\/api\/focus\/[^/]+$/) &&
+        request.method === "GET"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await focusRoutes.getFocusSession(appReq);
+      } else if (
+        pathname.match(/^\/api\/focus\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await focusRoutes.updateFocusSession(appReq);
+      } else if (
+        pathname.match(/^\/api\/focus\/[^/]+\/complete$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await focusRoutes.completeFocusSession(appReq);
+      } else if (pathname === "/api/analytics/xp" && request.method === "GET") {
+        response = await xpRoutes.getXpHistory(appReq);
+      } else if (
+        pathname === "/api/analytics/charts" &&
+        request.method === "GET"
+      ) {
+        response = await xpRoutes.getXpChartData(appReq);
+      } else if (pathname === "/api/admin/users" && request.method === "GET") {
+        response = await adminRoutes.listUsers(appReq);
+      } else if (
+        pathname.match(/^\/api\/admin\/users\/[^/]+$/) &&
+        request.method === "GET"
+      ) {
+        const id = pathname.split("/")[4];
+        appReq.params.id = id;
+        response = await adminRoutes.getUserDetails(appReq);
+      } else if (
+        pathname.match(/^\/api\/admin\/users\/[^/]+$/) &&
+        request.method === "PUT"
+      ) {
+        const id = pathname.split("/")[4];
+        appReq.params.id = id;
+        response = await adminRoutes.updateUserRole(appReq);
+      } else if (pathname === "/api/admin/stats" && request.method === "GET") {
+        response = await adminRoutes.getSystemStats(appReq);
+      } else if (pathname === "/api/achievements" && request.method === "GET") {
+        response = await achievementsRoutes.listAchievements(appReq);
+      } else if (
+        pathname === "/api/achievements/unlock" &&
+        request.method === "POST"
+      ) {
+        response = await achievementsRoutes.unlockAchievement(appReq);
       }
     }
 

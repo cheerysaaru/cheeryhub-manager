@@ -259,7 +259,7 @@ export async function deleteTask(req: AppRequest): Promise<Response> {
 
   const { id } = req.params;
 
-  const db = new Database(req.env.DB!);
+  const db = new Database(req.env.DB);
   const task = await db.first<Task>(
     'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -285,4 +285,229 @@ export async function deleteTask(req: AppRequest): Promise<Response> {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+export async function completeTask(req: AppRequest): Promise<Response> {
+  if (!req.user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const now = new Date().toISOString();
+  await db.run(
+    'UPDATE "Task" SET status = "COMPLETED", completedAt = ?1, updatedAt = ?2 WHERE id = ?3',
+    [now, now, id],
+  );
+
+  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
+    id,
+  ]);
+  return new Response(JSON.stringify({ data: updated }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export async function checkInTask(req: AppRequest): Promise<Response> {
+  if (!req.user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const now = new Date().toISOString();
+  await db.run(
+    'UPDATE "Task" SET status = "IN_PROGRESS", updatedAt = ?1 WHERE id = ?2',
+    [now, id],
+  );
+
+  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
+    id,
+  ]);
+  return new Response(JSON.stringify({ data: updated }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export async function extendTask(req: AppRequest): Promise<Response> {
+  if (!req.user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { id } = req.params;
+  const { extendedAt } = req.body as { extendedAt?: string };
+
+  const db = new Database(req.env.DB);
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const newExtendedAt = extendedAt || new Date().toISOString();
+  await db.run(
+    'UPDATE "Task" SET extendedAt = ?1, updatedAt = ?2 WHERE id = ?3',
+    [newExtendedAt, new Date().toISOString(), id],
+  );
+
+  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
+    id,
+  ]);
+  return new Response(JSON.stringify({ data: updated }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export async function startTaskTimer(req: AppRequest): Promise<Response> {
+  if (!req.user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const now = new Date().toISOString();
+  await db.run(
+    'UPDATE "Task" SET timerStartedAt = ?1, status = "IN_PROGRESS", updatedAt = ?2 WHERE id = ?3',
+    [now, now, id],
+  );
+
+  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
+    id,
+  ]);
+  return new Response(JSON.stringify({ data: updated }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export async function restoreTask(req: AppRequest): Promise<Response> {
+  if (!req.user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const now = new Date().toISOString();
+  await db.run(
+    'UPDATE "Task" SET deletedAt = NULL, updatedAt = ?1 WHERE id = ?2',
+    [now, id],
+  );
+
+  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
+    id,
+  ]);
+  return new Response(JSON.stringify({ data: updated }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export async function permanentDeleteTask(req: AppRequest): Promise<Response> {
+  if (!req.user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  await db.run('DELETE FROM "Task" WHERE id = ?1', [id]);
+
+  return new Response(
+    JSON.stringify({ data: { message: "Task permanently deleted" } }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
