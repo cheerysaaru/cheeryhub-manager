@@ -1,6 +1,23 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
+interface CreateReminderPayload {
+  title: string;
+  description?: string;
+  scheduledFor: string;
+}
+
+interface ReminderOwnerRow {
+  userId: string;
+}
+
+interface UpdateReminderPayload {
+  title?: string;
+  description?: string;
+  scheduledFor?: string;
+  status?: string;
+}
+
 export async function listReminders(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -13,7 +30,7 @@ export async function listReminders(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     const reminders = await db.all(
       `SELECT id, userId, title, description, scheduledFor, status, createdAt, updatedAt
        FROM Reminder WHERE userId = ?1 AND deletedAt IS NULL
@@ -51,7 +68,8 @@ export async function createReminder(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { title, description, scheduledFor } = req.body as any;
+  const { title, description, scheduledFor } =
+    req.body as CreateReminderPayload;
 
   if (!title || !scheduledFor) {
     return new Response(
@@ -64,7 +82,7 @@ export async function createReminder(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
 
@@ -119,7 +137,8 @@ export async function updateReminder(req: AppRequest): Promise<Response> {
   }
 
   const id = req.params?.id;
-  const { title, description, scheduledFor, status } = req.body as any;
+  const { title, description, scheduledFor, status } =
+    req.body as UpdateReminderPayload;
 
   try {
     if (!id) {
@@ -132,8 +151,8 @@ export async function updateReminder(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env?.DB!);
-    const existing = await db.first(
+    const db = new Database(req.env.DB!);
+    const existing = await db.first<ReminderOwnerRow>(
       "SELECT userId FROM Reminder WHERE id = ?1 AND deletedAt IS NULL",
       [id],
     );
@@ -245,8 +264,8 @@ export async function deleteReminder(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env?.DB!);
-    const existing = await db.first(
+    const db = new Database(req.env.DB!);
+    const existing = await db.first<ReminderOwnerRow>(
       "SELECT userId FROM Reminder WHERE id = ?1 AND deletedAt IS NULL",
       [id],
     );

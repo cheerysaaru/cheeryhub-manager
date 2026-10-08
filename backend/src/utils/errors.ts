@@ -1,4 +1,4 @@
-﻿import type { ErrorRequestHandler, Request, Response } from "express";
+﻿import type { ErrorRequestHandler, Request } from "express";
 import { redactSecrets, getEnv } from "../env";
 import { logError, newRequestId } from "../lib/logger";
 import { getCorsOrigins } from "../lib/config";

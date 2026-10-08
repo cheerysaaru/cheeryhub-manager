@@ -8,6 +8,22 @@ interface StreakData {
   longest: number;
 }
 
+interface HabitRow {
+  id: string;
+  userId: string;
+  name: string;
+}
+
+interface StreakHabitRow {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+interface CheckInPayload {
+  date?: string;
+}
+
 export async function getStreaks(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -20,13 +36,13 @@ export async function getStreaks(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env?.DB!);
-    const habits = await db.all<any>(
+    const db = new Database(req.env.DB!);
+    const habits = await db.all<StreakHabitRow>(
       'SELECT id, name as title, createdAt FROM "Habit" WHERE userId = ?1 AND deletedAt IS NULL ORDER BY createdAt DESC LIMIT 10',
       [req.user.id],
     );
 
-    const streaks: StreakData[] = habits.map((habit: any) => ({
+    const streaks: StreakData[] = habits.map((habit) => ({
       id: habit.id,
       title: habit.title,
       current: 0,
@@ -63,13 +79,13 @@ export async function checkIn(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
-  const { date } = req.body as any;
+  const { id } = req.params;
+  const { date } = req.body as CheckInPayload;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
 
   try {
-    const habit = await db.first<any>(
+    const habit = await db.first<HabitRow>(
       'SELECT * FROM "Habit" WHERE id = ?1 AND userId = ?2',
       [id, req.user.id],
     );

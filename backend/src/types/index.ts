@@ -44,11 +44,25 @@ export interface DbUser {
   lastLoginAt?: string;
 }
 
-// @ts-ignore - Extend Request to add custom properties; ignore body type conflict
-export interface AppRequest extends Request {
-  body?: any;
-  user?: AppUser;
-  params?: Record<string, string>;
+/**
+ * The request object handed to every route handler. It is intentionally NOT
+ * a Fetch API `Request`: the router builds a plain object and `body` holds an
+ * already-parsed JSON value, not a readable stream.
+ */
+export interface AppRequest {
+  method: string;
+  url: string;
+  pathname: string;
+  searchParams: URLSearchParams;
+  headers: Headers;
+  /** Parsed JSON body (undefined for bodyless methods / non-JSON content) */
+  body?: unknown;
+  /** Worker environment bindings; always set by the dispatcher */
+  env: AppEnv;
+  /** Path parameters for the matched route; always initialised */
+  params: Record<string, string>;
+  /** Query-string parameters, when the handler needs them */
   query?: Record<string, string>;
-  env?: AppEnv;
+  /** Populated by the auth middleware on protected routes */
+  user?: AppUser;
 }

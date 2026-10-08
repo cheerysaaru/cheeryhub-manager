@@ -24,6 +24,19 @@ interface Task {
   deletedAt?: string;
 }
 
+interface CreateTaskPayload {
+  title: string;
+  description?: string;
+  priority?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  deadlineTime?: string;
+  category?: string;
+  goalId?: string;
+  skillId?: string;
+  estimatedMinutes?: number;
+}
+
 export async function listTasks(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -35,7 +48,7 @@ export async function listTasks(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const tasks = await db.all<Task>(
     'SELECT * FROM "Task" WHERE userId = ?1 AND deletedAt IS NULL ORDER BY createdAt DESC',
     [req.user.id],
@@ -60,7 +73,7 @@ export async function getTask(req: AppRequest): Promise<Response> {
 
   const { id } = req.params as Record<string, string>;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const task = await db.first<Task>(
     'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -93,7 +106,7 @@ export async function listTrashTasks(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const tasks = await db.all<Task>(
     'SELECT * FROM "Task" WHERE userId = ?1 AND deletedAt IS NOT NULL ORDER BY deletedAt DESC',
     [req.user.id],
@@ -127,7 +140,7 @@ export async function createTask(req: AppRequest): Promise<Response> {
     goalId,
     skillId,
     estimatedMinutes,
-  } = req.body as any;
+  } = req.body as CreateTaskPayload;
 
   if (!title) {
     return new Response(
@@ -139,7 +152,7 @@ export async function createTask(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const taskId = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -189,10 +202,10 @@ export async function updateTask(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
-  const updates = req.body as any;
+  const { id } = req.params;
+  const updates = req.body as Record<string, unknown>;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const task = await db.first<Task>(
     'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -244,9 +257,9 @@ export async function deleteTask(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
+  const { id } = req.params;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const task = await db.first<Task>(
     'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],

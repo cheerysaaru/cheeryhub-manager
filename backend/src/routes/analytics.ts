@@ -1,6 +1,14 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
+interface CountRow {
+  count: number;
+}
+
+interface TotalRow {
+  total: number | null;
+}
+
 export async function getAnalytics(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -13,37 +21,37 @@ export async function getAnalytics(req: AppRequest): Promise<Response> {
   }
 
   const userId = req.user.id;
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
 
   try {
     const user = await db.getUserById(userId);
 
     // Count tasks
-    const tasksResult = await db.first(
+    const tasksResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Task WHERE userId = ? AND deletedAt IS NULL`,
       [userId],
     );
 
     // Count habits
-    const habitsResult = await db.first(
+    const habitsResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Habit WHERE userId = ? AND deletedAt IS NULL`,
       [userId],
     );
 
     // Count goals
-    const goalsResult = await db.first(
+    const goalsResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Goal WHERE userId = ? AND deletedAt IS NULL`,
       [userId],
     );
 
     // Count skills
-    const skillsResult = await db.first(
+    const skillsResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Skill WHERE userId = ? AND deletedAt IS NULL`,
       [userId],
     );
 
     // Get XP data
-    const xpResult = await db.first(
+    const xpResult = await db.first<TotalRow>(
       `SELECT SUM(CASE WHEN type = 'earn' THEN amount ELSE -amount END) as total
        FROM XPTransaction WHERE userId = ?`,
       [userId],
@@ -56,7 +64,7 @@ export async function getAnalytics(req: AppRequest): Promise<Response> {
       now.getMonth(),
       now.getDate() - now.getDay() + 1,
     );
-    const completionsResult = await db.first(
+    const completionsResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM HabitDayEvent
        WHERE habitId IN (SELECT id FROM Habit WHERE userId = ? AND deletedAt IS NULL)
        AND date >= ? AND status = 'checked_in'`,
@@ -86,21 +94,21 @@ export async function getAnalytics(req: AppRequest): Promise<Response> {
 
     // Get today's data
     const today = new Date().toISOString().split("T")[0];
-    const completedHabitsToday = await db.first(
+    const completedHabitsToday = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM HabitDayEvent
        WHERE habitId IN (SELECT id FROM Habit WHERE userId = ? AND deletedAt IS NULL)
        AND date = ? AND status = 'checked_in'`,
       [userId, today],
     );
 
-    const completedTasksToday = await db.first(
+    const completedTasksToday = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Task
        WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NOT NULL
        AND DATE(completedAt) = ?`,
       [userId, today],
     );
 
-    const overdueTasksResult = await db.first(
+    const overdueTasksResult = await db.first<CountRow>(
       `SELECT COUNT(*) as count FROM Task
        WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NULL
        AND dueDate < ?`,
@@ -142,7 +150,7 @@ export async function getChartData(req: AppRequest): Promise<Response> {
   }
 
   const userId = req.user.id;
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const type = (req.query?.type as string) || "xp";
 
   try {

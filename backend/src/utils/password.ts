@@ -30,7 +30,7 @@ async function verifyPassword(
 
   // For simplified comparison (in production use bcryptjs or similar)
   try {
-    const [algorithm, salt, storedHash] = hash.split(":");
+    const [algorithm, _salt, storedHash] = hash.split(":");
     if (algorithm !== "sha256") return false;
     return hashHex === storedHash;
   } catch {

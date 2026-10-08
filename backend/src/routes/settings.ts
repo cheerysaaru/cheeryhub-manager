@@ -1,6 +1,13 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
+interface UpdateSettingsPayload {
+  timezone?: string;
+  theme?: string;
+  emailNotifications?: boolean;
+  pushNotifications?: boolean;
+}
+
 export async function getSettings(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -13,7 +20,7 @@ export async function getSettings(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     const user = await db.getUserById(req.user.id);
 
     if (!user) {
@@ -68,7 +75,7 @@ export async function updateSettings(req: AppRequest): Promise<Response> {
   }
 
   const { timezone, theme, emailNotifications, pushNotifications } =
-    req.body as any;
+    req.body as UpdateSettingsPayload;
 
   try {
     const updates = [];
@@ -101,7 +108,7 @@ export async function updateSettings(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     const updateIdx = values.length + 1;
     await db.run(
       `UPDATE User SET ${updates.join(", ")} WHERE id = ?${updateIdx}`,

@@ -1,4 +1,4 @@
-import type { D1Database, D1Result } from "@cloudflare/workers-types";
+import type { D1Database } from "@cloudflare/workers-types";
 import { v4 as uuidv4 } from "uuid";
 
 export interface DbUser {
@@ -93,19 +93,22 @@ export class Database {
   }
 
   // Generic query helpers
-  async all<T = any>(query: string, params?: any[]): Promise<T[]> {
+  async all<T = unknown>(query: string, params?: unknown[]): Promise<T[]> {
     const stmt = this.db.prepare(query);
     const result = await (params ? stmt.bind(...params) : stmt).all<T>();
     return result.results || [];
   }
 
-  async first<T = any>(query: string, params?: any[]): Promise<T | null> {
+  async first<T = unknown>(
+    query: string,
+    params?: unknown[],
+  ): Promise<T | null> {
     const stmt = this.db.prepare(query);
     const result = await (params ? stmt.bind(...params) : stmt).first<T>();
     return result || null;
   }
 
-  async run(query: string, params?: any[]): Promise<void> {
+  async run(query: string, params?: unknown[]): Promise<void> {
     const stmt = this.db.prepare(query);
     await (params ? stmt.bind(...params) : stmt).run();
   }

@@ -12,6 +12,12 @@ interface Goal {
   updatedAt: string;
 }
 
+interface CreateGoalPayload {
+  title: string;
+  description?: string;
+  targetDate?: string;
+}
+
 export async function listGoals(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -23,7 +29,7 @@ export async function listGoals(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const goals = await db.all<Goal>(
     'SELECT * FROM "Goal" WHERE userId = ?1 ORDER BY createdAt DESC',
     [req.user.id],
@@ -46,7 +52,7 @@ export async function createGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { title, description, targetDate } = req.body as any;
+  const { title, description, targetDate } = req.body as CreateGoalPayload;
 
   if (!title) {
     return new Response(
@@ -58,7 +64,7 @@ export async function createGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const goalId = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -89,10 +95,10 @@ export async function updateGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
-  const updates = req.body as any;
+  const { id } = req.params;
+  const updates = req.body as Record<string, unknown>;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const goal = await db.first<Goal>(
     'SELECT * FROM "Goal" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -144,9 +150,9 @@ export async function deleteGoal(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
+  const { id } = req.params;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const goal = await db.first<Goal>(
     'SELECT * FROM "Goal" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],

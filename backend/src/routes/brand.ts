@@ -1,6 +1,14 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
+interface UpdateBrandPayload {
+  name?: string;
+  avatar?: string;
+  bio?: string;
+  theme?: string;
+  color?: string;
+}
+
 export async function getBrand(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -13,7 +21,7 @@ export async function getBrand(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     const user = await db.getUserById(req.user.id);
 
     if (!user) {
@@ -64,7 +72,7 @@ export async function updateBrand(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { name, avatar, bio, theme, color } = req.body as any;
+  const { name, avatar, bio, theme, color } = req.body as UpdateBrandPayload;
 
   try {
     const updates = [];
@@ -101,7 +109,7 @@ export async function updateBrand(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     const updateIdx = values.length + 1;
     await db.run(
       `UPDATE User SET ${updates.join(", ")} WHERE id = ?${updateIdx}`,

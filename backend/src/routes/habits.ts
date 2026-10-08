@@ -20,6 +20,17 @@ interface HabitCompletion {
   createdAt: string;
 }
 
+interface HabitPayload {
+  title?: string;
+  description?: string;
+  frequency?: string;
+  targetDays?: number;
+}
+
+interface CompleteHabitPayload {
+  date?: string;
+}
+
 export async function listHabits(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -31,7 +42,7 @@ export async function listHabits(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const habits = await db.all<Habit>(
     'SELECT * FROM "Habit" WHERE userId = ?1 ORDER BY createdAt DESC',
     [req.user.id],
@@ -56,7 +67,7 @@ export async function getHabit(req: AppRequest): Promise<Response> {
 
   const { id } = req.params as Record<string, string>;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const habit = await db.first<Habit>(
     'SELECT * FROM "Habit" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -89,7 +100,8 @@ export async function createHabit(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { title, description, frequency, targetDays } = req.body as any;
+  const { title, description, frequency, targetDays } =
+    req.body as HabitPayload;
 
   if (!title || !frequency) {
     return new Response(
@@ -101,7 +113,7 @@ export async function createHabit(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const habitId = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -141,10 +153,10 @@ export async function completeHabit(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
-  const { date } = req.body as any;
+  const { id } = req.params;
+  const { date } = req.body as CompleteHabitPayload;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const habit = await db.first<Habit>(
     'SELECT * FROM "Habit" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -198,9 +210,9 @@ export async function getHabitStreak(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
+  const { id } = req.params;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const habit = await db.first<Habit>(
     'SELECT * FROM "Habit" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -268,9 +280,9 @@ export async function deleteHabit(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
+  const { id } = req.params;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const habit = await db.first<Habit>(
     'SELECT * FROM "Habit" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -306,10 +318,11 @@ export async function updateHabit(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
-  const { title, description, frequency, targetDays } = req.body as any;
+  const { id } = req.params;
+  const { title, description, frequency, targetDays } =
+    req.body as HabitPayload;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const habit = await db.first<Habit>(
     'SELECT * FROM "Habit" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],

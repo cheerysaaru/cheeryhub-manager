@@ -6,8 +6,8 @@ export type { AppRequest } from "../types/index";
 export async function verifyAuth(
   req: AppRequest,
 ): Promise<AppRequest | Response> {
-  const authHeader = (req.headers as any)?.get?.("Authorization");
-  const cookie = (req.headers as any)?.get?.("cookie");
+  const authHeader = req.headers.get("Authorization");
+  const cookie = req.headers.get("cookie");
 
   let token: string | null = null;
 
@@ -26,7 +26,7 @@ export async function verifyAuth(
   }
 
   try {
-    const payload = verify(token, req.env!.JWT_SECRET);
+    const payload = verify(token, req.env.JWT_SECRET);
     if (
       !payload ||
       typeof payload !== "object" ||
@@ -37,7 +37,7 @@ export async function verifyAuth(
     }
     req.user = { id: payload.id as string, email: payload.email as string };
     return req;
-  } catch (error) {
+  } catch {
     return new Response(
       JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
       { status: 401, headers: { "Content-Type": "application/json" } },

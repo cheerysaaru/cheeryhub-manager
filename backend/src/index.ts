@@ -50,7 +50,7 @@ const parseUrl = (url: string) => {
   };
 };
 
-const parseJsonBody = async (request: Request): Promise<any> => {
+const parseJsonBody = async (request: Request): Promise<unknown> => {
   try {
     if (
       request.method === "GET" ||
@@ -74,7 +74,7 @@ const parseJsonBody = async (request: Request): Promise<any> => {
 async function handleRequest(
   request: Request,
   env: AppEnv,
-  ctx: ExecutionContext,
+  _ctx: ExecutionContext,
 ): Promise<Response> {
   const origin = request.headers.get("origin") || "";
   const corsHeaders = getCorsHeaders(origin);
@@ -92,8 +92,7 @@ async function handleRequest(
     const body = await parseJsonBody(request);
 
     // Create app request
-    const appReq: any = {
-      ...request,
+    const appReq: AppRequest = {
       method: request.method,
       url: request.url,
       pathname,

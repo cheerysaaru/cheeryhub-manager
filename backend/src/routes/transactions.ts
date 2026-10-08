@@ -1,6 +1,20 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
+interface CreateTransactionPayload {
+  amount: number;
+  type: string;
+  source: string;
+  sourceId?: string;
+  description?: string;
+}
+
+interface XpSummaryRow {
+  earned: number | null;
+  spent: number | null;
+  totalTransactions: number;
+}
+
 export async function listTransactions(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -13,7 +27,7 @@ export async function listTransactions(req: AppRequest): Promise<Response> {
   }
 
   const userId = req.user.id;
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
 
   try {
     const transactions = await db.all(
@@ -56,10 +70,10 @@ export async function getTransactionsSummary(
   }
 
   const userId = req.user.id;
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
 
   try {
-    const summary = await db.first(
+    const summary = await db.first<XpSummaryRow>(
       `SELECT
          SUM(CASE WHEN type = 'earn' THEN amount ELSE 0 END) as earned,
          SUM(CASE WHEN type = 'spend' THEN amount ELSE 0 END) as spent,
@@ -110,7 +124,8 @@ export async function createTransaction(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { amount, type, source, sourceId, description } = req.body as any;
+  const { amount, type, source, sourceId, description } =
+    req.body as CreateTransactionPayload;
 
   if (!amount || !type || !source) {
     return new Response(
@@ -133,7 +148,7 @@ export async function createTransaction(req: AppRequest): Promise<Response> {
   }
 
   const userId = req.user.id;
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
 
   try {
     const transactionId = crypto.randomUUID();

@@ -11,6 +11,12 @@ interface Skill {
   updatedAt: string;
 }
 
+interface SkillPayload {
+  name?: string;
+  level?: number;
+  description?: string;
+}
+
 export async function listSkills(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -22,7 +28,7 @@ export async function listSkills(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const skills = await db.all<Skill>(
     'SELECT * FROM "Skill" WHERE userId = ?1 ORDER BY createdAt DESC',
     [req.user.id],
@@ -45,7 +51,7 @@ export async function createSkill(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { name, level, description } = req.body as any;
+  const { name, level, description } = req.body as SkillPayload;
 
   if (!name) {
     return new Response(
@@ -57,7 +63,7 @@ export async function createSkill(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const skillId = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -88,9 +94,9 @@ export async function deleteSkill(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
+  const { id } = req.params;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const skill = await db.first<Skill>(
     'SELECT * FROM "Skill" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -125,10 +131,10 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
-  const { name, level, description } = req.body as any;
+  const { id } = req.params;
+  const { name, level, description } = req.body as SkillPayload;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const skill = await db.first<Skill>(
     'SELECT * FROM "Skill" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],

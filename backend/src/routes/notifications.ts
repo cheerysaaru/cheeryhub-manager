@@ -22,7 +22,7 @@ export async function listNotifications(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const notifications = await db.all<Notification>(
     'SELECT * FROM "Notification" WHERE userId = ?1 ORDER BY createdAt DESC LIMIT 50',
     [req.user.id],
@@ -47,9 +47,9 @@ export async function markNotificationAsRead(
     );
   }
 
-  const { id } = req.params as any;
+  const { id } = req.params;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const notification = await db.first<Notification>(
     'SELECT * FROM "Notification" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],
@@ -89,9 +89,9 @@ export async function deleteNotification(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { id } = req.params as any;
+  const { id } = req.params;
 
-  const db = new Database(req.env?.DB!);
+  const db = new Database(req.env.DB!);
   const notification = await db.first<Notification>(
     'SELECT * FROM "Notification" WHERE id = ?1 AND userId = ?2',
     [id, req.user.id],

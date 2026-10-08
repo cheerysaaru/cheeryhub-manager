@@ -41,7 +41,7 @@ export async function register(req: AppRequest): Promise<Response> {
     }
 
     try {
-      const db = new Database(req.env!.DB);
+      const db = new Database(req.env.DB);
       const existing = await db.getUserByEmail(email.toLowerCase());
 
       if (existing) {
@@ -74,7 +74,7 @@ export async function register(req: AppRequest): Promise<Response> {
 
     let user;
     try {
-      const db = new Database(req.env!.DB);
+      const db = new Database(req.env.DB);
       user = await db.createUser({
         name: name.trim(),
         email: email.toLowerCase(),
@@ -95,7 +95,7 @@ export async function register(req: AppRequest): Promise<Response> {
     try {
       token = sign(
         { id: user.id, email: user.email },
-        (req.env?.JWT_SECRET || "secret") as string,
+        (req.env.JWT_SECRET || "secret") as string,
       );
     } catch (signError) {
       console.error(
@@ -157,7 +157,7 @@ export async function login(req: AppRequest): Promise<Response> {
 
     let user;
     try {
-      const db = new Database(req.env!.DB);
+      const db = new Database(req.env.DB);
       user = await db.getUserByEmail(email.toLowerCase());
     } catch (dbError) {
       console.error(
@@ -204,7 +204,7 @@ export async function login(req: AppRequest): Promise<Response> {
     try {
       token = sign(
         { id: user.id, email: user.email },
-        (req.env?.JWT_SECRET || "secret") as string,
+        (req.env.JWT_SECRET || "secret") as string,
       );
     } catch (signError) {
       console.error(
@@ -216,7 +216,7 @@ export async function login(req: AppRequest): Promise<Response> {
 
     // Update last login
     try {
-      const db = new Database(req.env!.DB);
+      const db = new Database(req.env.DB);
       await db.updateUser(user.id, { lastLoginAt: new Date().toISOString() });
     } catch (updateError) {
       console.error(
@@ -263,7 +263,7 @@ export async function login(req: AppRequest): Promise<Response> {
   }
 }
 
-export async function logout(req: AppRequest): Promise<Response> {
+export async function logout(_req: AppRequest): Promise<Response> {
   return new Response(
     JSON.stringify({
       data: { message: "Logged out successfully" },
@@ -291,7 +291,7 @@ export async function me(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env!.DB);
+    const db = new Database(req.env.DB);
     const user = await db.getUserById(req.user.id);
 
     if (!user) {
@@ -357,7 +357,7 @@ export async function refresh(req: AppRequest): Promise<Response> {
       );
     }
 
-    const payload = verify(token, (req.env?.JWT_SECRET || "secret") as string);
+    const payload = verify(token, (req.env.JWT_SECRET || "secret") as string);
     if (!payload) {
       return new Response(
         JSON.stringify({
@@ -368,8 +368,8 @@ export async function refresh(req: AppRequest): Promise<Response> {
       );
     }
 
-    const db = new Database(req.env!.DB);
-    const user = await db.getUserById(payload.userId);
+    const db = new Database(req.env.DB);
+    const user = await db.getUserById(payload.userId as string);
     if (!user) {
       return new Response(
         JSON.stringify({
@@ -382,7 +382,7 @@ export async function refresh(req: AppRequest): Promise<Response> {
 
     const newToken = sign(
       { userId: user.id, email: user.email },
-      (req.env?.JWT_SECRET || "secret") as string,
+      (req.env.JWT_SECRET || "secret") as string,
     );
 
     return new Response(

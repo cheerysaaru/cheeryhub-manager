@@ -1,6 +1,13 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 
+interface BackupStatsRow {
+  taskCount: number | null;
+  habitCount: number | null;
+  goalCount: number | null;
+  totalXPEarned: number | null;
+}
+
 export async function exportData(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -13,7 +20,7 @@ export async function exportData(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     const user = await db.getUserById(req.user.id);
 
     if (!user) {
@@ -130,10 +137,10 @@ export async function getBackupHistory(req: AppRequest): Promise<Response> {
   }
 
   try {
-    const db = new Database(req.env?.DB!);
+    const db = new Database(req.env.DB!);
     // Return information about previous backups (in a real system, this would query a backup table)
     // For now, just return metadata
-    const stats = await db.first(
+    const stats = await db.first<BackupStatsRow>(
       `SELECT
          (SELECT COUNT(*) FROM Task WHERE userId = ?1) as taskCount,
          (SELECT COUNT(*) FROM Habit WHERE userId = ?1) as habitCount,

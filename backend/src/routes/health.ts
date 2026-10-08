@@ -1,6 +1,6 @@
 import type { AppRequest } from "../types/index";
 
-export async function health(req: AppRequest): Promise<Response> {
+export async function health(_req: AppRequest): Promise<Response> {
   return new Response(
     JSON.stringify({
       status: "ok",
