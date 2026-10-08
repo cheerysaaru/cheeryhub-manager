@@ -3,19 +3,27 @@
  * volumes so latency measurements are not taken on an empty database.
  * Run: DATABASE_URL="file:./perf.db" npx tsx scripts/perf-seed.ts
  */
-import { PrismaClient, TaskStatus, Priority, TransactionType, TransactionCategory } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import {
+  PrismaClient,
+  TaskStatus,
+  Priority,
+  TransactionType,
+  TransactionCategory,
+} from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
-const EMAIL = 'perf@local.test';
-const PASSWORD = 'PerfPass123!';
+const EMAIL = "perf@local.test";
+const PASSWORD = "PerfPass123!";
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = Date.now();
 const day = (offset: number) => new Date(now - offset * DAY);
 const utcMidnight = (offset: number) => {
   const d = new Date(now - offset * DAY);
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+  );
 };
 
 function pick<T>(arr: T[], i: number): T {
@@ -28,10 +36,10 @@ async function main() {
     where: { email: EMAIL },
     update: {},
     create: {
-      name: 'Perf Tester',
+      name: "Perf Tester",
       email: EMAIL,
       passwordHash,
-      timezone: 'UTC',
+      timezone: "UTC",
       emailVerified: true,
       settings: { create: {} },
     },
@@ -55,8 +63,19 @@ async function main() {
   ]);
 
   // --- Tasks: 1000 (mixed status, some trashed, spread over 180 days) ---
-  const taskStatuses = [TaskStatus.TODO, TaskStatus.TODO, TaskStatus.TODO, TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS];
-  const priorities = [Priority.LOW, Priority.MEDIUM, Priority.HIGH, Priority.URGENT];
+  const taskStatuses = [
+    TaskStatus.TODO,
+    TaskStatus.TODO,
+    TaskStatus.TODO,
+    TaskStatus.COMPLETED,
+    TaskStatus.IN_PROGRESS,
+  ];
+  const priorities = [
+    Priority.LOW,
+    Priority.MEDIUM,
+    Priority.HIGH,
+    Priority.URGENT,
+  ];
   const tasks = Array.from({ length: 1000 }, (_, i) => {
     const createdAt = day(i % 180);
     const status = pick(taskStatuses, i);
@@ -81,13 +100,16 @@ async function main() {
   const habits = Array.from({ length: 30 }, (_, i) => ({
     userId: user.id,
     name: `Perf habit ${i}`,
-    frequency: 'daily',
+    frequency: "daily",
     createdAt: day(90),
     updatedAt: day(0),
   }));
   await prisma.habit.createMany({ data: habits });
-  const habitRows = await prisma.habit.findMany({ where: { userId: user.id }, select: { id: true } });
-  const statuses = ['COMPLETED', 'COMPLETED', 'COMPLETED', 'FAILED', 'SKIPPED'];
+  const habitRows = await prisma.habit.findMany({
+    where: { userId: user.id },
+    select: { id: true },
+  });
+  const statuses = ["COMPLETED", "COMPLETED", "COMPLETED", "FAILED", "SKIPPED"];
   const completions = [];
   for (const habit of habitRows) {
     for (let d = 1; d <= 60; d++) {
@@ -107,7 +129,7 @@ async function main() {
       userId: user.id,
       title: `Perf goal ${i}`,
       progress: i % 4 === 0 ? 100 : (i * 7) % 90,
-      status: i % 4 === 0 ? 'COMPLETED' : 'ACTIVE',
+      status: i % 4 === 0 ? "COMPLETED" : "ACTIVE",
       deadline: i % 5 === 0 ? day((i % 7) + 1) : null,
       createdAt: day(i % 120),
       updatedAt: day(0),
@@ -130,7 +152,7 @@ async function main() {
       durationMinutes: 15 + (i % 5) * 10,
       startedAt: day(i % 60),
       completedAt: day(i % 60),
-      status: 'COMPLETED',
+      status: "COMPLETED",
     })),
   });
 
@@ -150,13 +172,19 @@ async function main() {
       userId: user.id,
       title: `Reminder ${i}`,
       reminderDate: day(i % 21),
-      reminderTime: '09:00',
+      reminderTime: "09:00",
       createdAt: day(30),
       updatedAt: day(1),
     })),
   });
 
-  const xpReasons = ['task:ontime', 'habit:checkin', 'goal:done', 'task:missed', 'focus:done'];
+  const xpReasons = [
+    "task:ontime",
+    "habit:checkin",
+    "goal:done",
+    "task:missed",
+    "focus:done",
+  ];
   await prisma.xPTransaction.createMany({
     data: Array.from({ length: 400 }, (_, i) => ({
       userId: user.id,
@@ -184,20 +212,33 @@ async function main() {
   await prisma.notification.createMany({
     data: Array.from({ length: 150 }, (_, i) => ({
       userId: user.id,
-      type: 'task_overdue',
+      type: "task_overdue",
       title: `Notification ${i}`,
       body: `Body ${i}`,
-      link: '/tasks',
+      link: "/tasks",
       dedupeKey: `perf-notif:${i}`,
       readAt: i % 3 === 0 ? day(i % 30) : null,
       createdAt: day(i % 45),
     })),
   });
 
-  const txTypes = [TransactionType.EXPENSE, TransactionType.EXPENSE, TransactionType.INCOME];
+  const txTypes = [
+    TransactionType.EXPENSE,
+    TransactionType.EXPENSE,
+    TransactionType.INCOME,
+  ];
   const txCats: Record<string, TransactionCategory[]> = {
-    EXPENSE: [TransactionCategory.FOOD, TransactionCategory.HOUSING, TransactionCategory.TRANSPORTATION, TransactionCategory.SHOPPING],
-    INCOME: [TransactionCategory.SALARY, TransactionCategory.FREELANCE, TransactionCategory.INVESTMENTS],
+    EXPENSE: [
+      TransactionCategory.FOOD,
+      TransactionCategory.HOUSING,
+      TransactionCategory.TRANSPORTATION,
+      TransactionCategory.SHOPPING,
+    ],
+    INCOME: [
+      TransactionCategory.SALARY,
+      TransactionCategory.FREELANCE,
+      TransactionCategory.INVESTMENTS,
+    ],
   };
   await prisma.transaction.createMany({
     data: Array.from({ length: 300 }, (_, i) => {
@@ -217,14 +258,20 @@ async function main() {
 
   const counts = {
     tasks: await prisma.task.count({ where: { userId: user.id } }),
-    habitCompletions: await prisma.habitCompletion.count({ where: { userId: user.id } }),
+    habitCompletions: await prisma.habitCompletion.count({
+      where: { userId: user.id },
+    }),
     goals: await prisma.goal.count({ where: { userId: user.id } }),
     xp: await prisma.xPTransaction.count({ where: { userId: user.id } }),
-    notifications: await prisma.notification.count({ where: { userId: user.id } }),
-    transactions: await prisma.transaction.count({ where: { userId: user.id } }),
+    notifications: await prisma.notification.count({
+      where: { userId: user.id },
+    }),
+    transactions: await prisma.transaction.count({
+      where: { userId: user.id },
+    }),
     dailyStats: await prisma.dailyStats.count({ where: { userId: user.id } }),
   };
-  console.log('Seeded perf data for', EMAIL, JSON.stringify(counts));
+  console.log("Seeded perf data for", EMAIL, JSON.stringify(counts));
 }
 
 main()

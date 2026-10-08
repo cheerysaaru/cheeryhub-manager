@@ -1,54 +1,96 @@
-import { useState } from 'react';
-import { Plus, Trash2, Pencil, Download, BarChart2, PieChart, DollarSign, ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { useTransactions } from '../hooks/useTransactions';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
-import { Modal, ConfirmDialog } from '../components/Modal';
-import { ContextMenu, useContextMenu } from '../components/ContextMenu';
-import { Input } from '../components/Input';
-import { ApiLoadError } from '../components/ApiLoadError';
-import { asArray } from '../services/api';
-import type { Transaction, WeeklyReport, MonthlyReport } from '../types';
-import { formatShortDate, parseLocalDate, todayISO } from '../utils/date';
-import { downloadJson } from '../utils/misc';
+import { useState } from "react";
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  Download,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownRight,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { useTransactions } from "../hooks/useTransactions";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { Modal, ConfirmDialog } from "../components/Modal";
+import { ContextMenu, useContextMenu } from "../components/ContextMenu";
+import { Input } from "../components/Input";
+import { ApiLoadError } from "../components/ApiLoadError";
+import { asArray } from "../services/api";
+import type { Transaction, MonthlyReport } from "../types";
+import { formatShortDate, parseLocalDate, todayISO } from "../utils/date";
+import { downloadJson } from "../utils/misc";
 
-const INCOME_CATEGORIES = ['SALARY', 'FREELANCE', 'INVESTMENTS', 'BUSINESS', 'GIFTS', 'REFUNDS', 'OTHER_INCOME'];
+const INCOME_CATEGORIES = [
+  "SALARY",
+  "FREELANCE",
+  "INVESTMENTS",
+  "BUSINESS",
+  "GIFTS",
+  "REFUNDS",
+  "OTHER_INCOME",
+];
 const EXPENSE_CATEGORIES = [
-  'HOUSING', 'FOOD', 'TRANSPORTATION', 'UTILITIES', 'HEALTHCARE', 'ENTERTAINMENT',
-  'SHOPPING', 'EDUCATION', 'PERSONAL_CARE', 'SUBSCRIPTIONS', 'INSURANCE',
-  'DEBT_PAYMENTS', 'SAVINGS', 'INVESTMENTS_EXPENSE', 'GIFTS_DONATIONS', 'OTHER_EXPENSE',
+  "HOUSING",
+  "FOOD",
+  "TRANSPORTATION",
+  "UTILITIES",
+  "HEALTHCARE",
+  "ENTERTAINMENT",
+  "SHOPPING",
+  "EDUCATION",
+  "PERSONAL_CARE",
+  "SUBSCRIPTIONS",
+  "INSURANCE",
+  "DEBT_PAYMENTS",
+  "SAVINGS",
+  "INVESTMENTS_EXPENSE",
+  "GIFTS_DONATIONS",
+  "OTHER_EXPENSE",
 ];
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
 }
 
 function getCategoryLabel(category: string) {
-  return category.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function TransactionForm({ onSubmit, onCancel, initial }: {
+function TransactionForm({
+  onSubmit,
+  onCancel,
+  initial,
+}: {
   onSubmit: (data: Partial<Transaction>) => void;
   onCancel: () => void;
   initial?: Transaction;
 }) {
-  const [type, setType] = useState<'INCOME' | 'EXPENSE'>(initial?.type ?? 'EXPENSE');
-  const [category, setCategory] = useState(initial?.category ?? 'FOOD');
-  const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
-  const [amountError, setAmountError] = useState('');
+  const [type, setType] = useState<"INCOME" | "EXPENSE">(
+    initial?.type ?? "EXPENSE",
+  );
+  const [category, setCategory] = useState(initial?.category ?? "FOOD");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [amountError, setAmountError] = useState("");
   const [date, setDate] = useState(initial?.date?.slice(0, 10) ?? todayISO());
-  const [description, setDescription] = useState(initial?.description ?? '');
+  const [description, setDescription] = useState(initial?.description ?? "");
   const [isRecurring, setIsRecurring] = useState(initial?.isRecurring ?? false);
-  const [recurrencePattern, setRecurrencePattern] = useState(initial?.recurrencePattern ?? 'MONTHLY');
+  const [recurrencePattern, setRecurrencePattern] = useState(
+    initial?.recurrencePattern ?? "MONTHLY",
+  );
 
-  const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories = type === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
-  function handleTypeChange(newType: 'INCOME' | 'EXPENSE') {
+  function handleTypeChange(newType: "INCOME" | "EXPENSE") {
     setType(newType);
     if (!initial) {
-      setCategory(newType === 'INCOME' ? 'SALARY' : 'FOOD');
+      setCategory(newType === "INCOME" ? "SALARY" : "FOOD");
     }
   }
 
@@ -56,14 +98,14 @@ function TransactionForm({ onSubmit, onCancel, initial }: {
     e.preventDefault();
     const value = parseFloat(amount);
     if (!amount || Number.isNaN(value) || value <= 0) {
-      setAmountError('Enter an amount greater than 0.');
+      setAmountError("Enter an amount greater than 0.");
       return;
     }
     if (value > 99999999.99) {
-      setAmountError('Amount must be 99,999,999.99 or less.');
+      setAmountError("Amount must be 99,999,999.99 or less.");
       return;
     }
-    setAmountError('');
+    setAmountError("");
     onSubmit({
       type,
       category,
@@ -81,36 +123,88 @@ function TransactionForm({ onSubmit, onCancel, initial }: {
         <div className="form-group">
           <label className="input-label">Type</label>
           <div className="type-toggle">
-            <button type="button" className={type === 'INCOME' ? 'active' : ''} onClick={() => handleTypeChange('INCOME')}>
+            <button
+              type="button"
+              className={type === "INCOME" ? "active" : ""}
+              onClick={() => handleTypeChange("INCOME")}
+            >
               <ArrowUpRight size={16} /> Income
             </button>
-            <button type="button" className={type === 'EXPENSE' ? 'active' : ''} onClick={() => handleTypeChange('EXPENSE')}>
+            <button
+              type="button"
+              className={type === "EXPENSE" ? "active" : ""}
+              onClick={() => handleTypeChange("EXPENSE")}
+            >
               <ArrowDownRight size={16} /> Expense
             </button>
           </div>
         </div>
         <label className="input-label">
           Category
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="select">
-            {categories.map((c) => <option key={c} value={c}>{getCategoryLabel(c)}</option>)}
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="select"
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {getCategoryLabel(c)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
       <div className="form-row">
-        <Input label="Amount" type="number" step="0.01" min="0.01" max="99999999.99" value={amount} onChange={(e) => { setAmount(e.target.value); setAmountError(''); }} placeholder="0.00" required />
-        <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        <Input
+          label="Amount"
+          type="number"
+          step="0.01"
+          min="0.01"
+          max="99999999.99"
+          value={amount}
+          onChange={(e) => {
+            setAmount(e.target.value);
+            setAmountError("");
+          }}
+          placeholder="0.00"
+          required
+        />
+        <Input
+          label="Date"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+        />
       </div>
-      {amountError && <p className="error-message" role="alert">{amountError}</p>}
-      <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was this for?" />
+      {amountError && (
+        <p className="error-message" role="alert">
+          {amountError}
+        </p>
+      )}
+      <Input
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="What was this for?"
+      />
       <div className="recurring-row">
         <label className="recurring-toggle">
-          <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={isRecurring}
+            onChange={(e) => setIsRecurring(e.target.checked)}
+          />
           <span>Repeats on a schedule</span>
         </label>
         {isRecurring && (
           <label className="input-label">
             Pattern
-            <select value={recurrencePattern} onChange={(e) => setRecurrencePattern(e.target.value)} className="select">
+            <select
+              value={recurrencePattern}
+              onChange={(e) => setRecurrencePattern(e.target.value)}
+              className="select"
+            >
               <option value="WEEKLY">Weekly</option>
               <option value="MONTHLY">Monthly</option>
               <option value="YEARLY">Yearly</option>
@@ -119,20 +213,28 @@ function TransactionForm({ onSubmit, onCancel, initial }: {
         )}
       </div>
       <div className="modal-actions">
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">{initial ? 'Update' : 'Add Transaction'}</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">{initial ? "Update" : "Add Transaction"}</Button>
       </div>
     </form>
   );
 }
 
-function CategoryBreakdown({ data, type }: { data: Record<string, number>; type: 'income' | 'expense' }) {
+function CategoryBreakdown({
+  data,
+  type,
+}: {
+  data: Record<string, number>;
+  type: "income" | "expense";
+}) {
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
   const total = entries.reduce((sum, [, v]) => sum + v, 0);
   if (!entries.length) return null;
   return (
     <div className="category-breakdown">
-      <h4>{type === 'income' ? 'Income Sources' : 'Expense Categories'}</h4>
+      <h4>{type === "income" ? "Income Sources" : "Expense Categories"}</h4>
       <div className="category-bars">
         {entries.map(([cat, value]) => (
           <div key={cat} className="category-bar">
@@ -141,9 +243,14 @@ function CategoryBreakdown({ data, type }: { data: Record<string, number>; type:
               <span className="category-amount">{formatCurrency(value)}</span>
             </div>
             <div className="category-bar-track">
-              <div className={`category-bar-fill ${type}`} style={{ width: `${total > 0 ? (value / total) * 100 : 0}%` }} />
+              <div
+                className={`category-bar-fill ${type}`}
+                style={{ width: `${total > 0 ? (value / total) * 100 : 0}%` }}
+              />
             </div>
-            <span className="category-percent">{total > 0 ? Math.round((value / total) * 100) : 0}%</span>
+            <span className="category-percent">
+              {total > 0 ? Math.round((value / total) * 100) : 0}%
+            </span>
           </div>
         ))}
       </div>
@@ -151,8 +258,20 @@ function CategoryBreakdown({ data, type }: { data: Record<string, number>; type:
   );
 }
 
-function ReportCard({ title, income, expense, net, periodLabel, children }: {
-  title: string; income: number; expense: number; net: number; periodLabel: string; children?: React.ReactNode;
+function ReportCard({
+  title,
+  income,
+  expense,
+  net,
+  periodLabel,
+  children,
+}: {
+  title: string;
+  income: number;
+  expense: number;
+  net: number;
+  periodLabel: string;
+  children?: React.ReactNode;
 }) {
   return (
     <Card className="report-card" padding="md">
@@ -161,16 +280,24 @@ function ReportCard({ title, income, expense, net, periodLabel, children }: {
         <span className="report-period">{periodLabel}</span>
       </div>
       <div className="report-summary">
-        <div className="report-value income"><DollarSign size={18} /> {formatCurrency(income)}</div>
-        <div className="report-value expense"><DollarSign size={18} /> {formatCurrency(expense)}</div>
-        <div className={`report-value net ${net >= 0 ? 'positive' : 'negative'}`}><DollarSign size={18} /> {formatCurrency(net)}</div>
+        <div className="report-value income">
+          <DollarSign size={18} /> {formatCurrency(income)}
+        </div>
+        <div className="report-value expense">
+          <DollarSign size={18} /> {formatCurrency(expense)}
+        </div>
+        <div
+          className={`report-value net ${net >= 0 ? "positive" : "negative"}`}
+        >
+          <DollarSign size={18} /> {formatCurrency(net)}
+        </div>
       </div>
       {children}
     </Card>
   );
 }
 
-function TrendChart({ byDay }: { byDay: MonthlyReport['byDay'] }) {
+function TrendChart({ byDay }: { byDay: MonthlyReport["byDay"] }) {
   if (!byDay.length) return null;
   const max = Math.max(...byDay.flatMap((d) => [d.income, d.expense]), 1);
   return (
@@ -185,7 +312,11 @@ function TrendChart({ byDay }: { byDay: MonthlyReport['byDay'] }) {
           <span className="legend-item failed">Expenses</span>
         </div>
       </div>
-      <div className="bar-chart finance-trend" role="img" aria-label="Daily income and expenses for the selected month">
+      <div
+        className="bar-chart finance-trend"
+        role="img"
+        aria-label="Daily income and expenses for the selected month"
+      >
         {byDay.map((day) => (
           <div
             key={day.date}
@@ -194,11 +325,19 @@ function TrendChart({ byDay }: { byDay: MonthlyReport['byDay'] }) {
           >
             <div className="bar-track trend-track">
               <div className="trend-bars">
-                <div className="trend-bar income" style={{ height: `${(day.income / max) * 100}%` }} />
-                <div className="trend-bar expense" style={{ height: `${(day.expense / max) * 100}%` }} />
+                <div
+                  className="trend-bar income"
+                  style={{ height: `${(day.income / max) * 100}%` }}
+                />
+                <div
+                  className="trend-bar expense"
+                  style={{ height: `${(day.expense / max) * 100}%` }}
+                />
               </div>
             </div>
-            <span className="bar-label">{parseLocalDate(day.date).getDate()}</span>
+            <span className="bar-label">
+              {parseLocalDate(day.date).getDate()}
+            </span>
           </div>
         ))}
       </div>
@@ -208,11 +347,24 @@ function TrendChart({ byDay }: { byDay: MonthlyReport['byDay'] }) {
 
 export default function FinancePage() {
   const { user } = useAuth();
-  const { transactions, weeklyReport, monthlyReport, loading, error, fetchTransactions, fetchReports, create, update, remove } = useTransactions(user?.id ?? null);
+  const {
+    transactions,
+    weeklyReport,
+    monthlyReport,
+    loading,
+    error,
+    fetchTransactions,
+    fetchReports,
+    create,
+    update,
+    remove,
+  } = useTransactions(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
-  const [filterType, setFilterType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
+  const [filterType, setFilterType] = useState<"ALL" | "INCOME" | "EXPENSE">(
+    "ALL",
+  );
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const txMenu = useContextMenu();
 
@@ -240,7 +392,10 @@ export default function FinancePage() {
     downloadJson(`finance-${todayISO()}.json`, transactions);
   }
 
-  const filtered = filterType === 'ALL' ? transactions : transactions.filter((t) => t.type === filterType);
+  const filtered =
+    filterType === "ALL"
+      ? transactions
+      : transactions.filter((t) => t.type === filterType);
   const wi = weeklyReport?.weekly?.income ?? 0;
   const we = weeklyReport?.weekly?.expense ?? 0;
   const mi = monthlyReport?.summary?.income ?? 0;
@@ -253,26 +408,69 @@ export default function FinancePage() {
           <p className="eyebrow">Finance</p>
           <h1>Income & Expenses</h1>
         </div>
-        <Button size="lg" onClick={() => { setEditing(null); setShowForm(true); }}>
+        <Button
+          size="lg"
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+        >
           <Plus size={20} /> Add Transaction
         </Button>
       </header>
 
       <ApiLoadError
         error={error}
-        onRetry={() => void Promise.all([
-          fetchTransactions(),
-          fetchReports(currentMonth.getFullYear(), currentMonth.getMonth() + 1),
-        ])}
+        onRetry={() =>
+          void Promise.all([
+            fetchTransactions(),
+            fetchReports(
+              currentMonth.getFullYear(),
+              currentMonth.getMonth() + 1,
+            ),
+          ])
+        }
       />
       <div className="reports-grid">
-        <ReportCard title="This Week" income={wi} expense={we} net={wi - we} periodLabel={weeklyReport?.period ? `${weeklyReport.period.weekStart} – ${weeklyReport.period.weekEnd}` : ''}>
-          <CategoryBreakdown data={weeklyReport?.monthly?.byCategory?.income ?? {}} type="income" />
-          <CategoryBreakdown data={weeklyReport?.monthly?.byCategory?.expense ?? {}} type="expense" />
+        <ReportCard
+          title="This Week"
+          income={wi}
+          expense={we}
+          net={wi - we}
+          periodLabel={
+            weeklyReport?.period
+              ? `${weeklyReport.period.weekStart} – ${weeklyReport.period.weekEnd}`
+              : ""
+          }
+        >
+          <CategoryBreakdown
+            data={weeklyReport?.monthly?.byCategory?.income ?? {}}
+            type="income"
+          />
+          <CategoryBreakdown
+            data={weeklyReport?.monthly?.byCategory?.expense ?? {}}
+            type="expense"
+          />
         </ReportCard>
-        <ReportCard title={`Month of ${currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}`} income={mi} expense={me} net={mi - me} periodLabel={monthlyReport?.period ? `${monthlyReport.period.monthStart} – ${monthlyReport.period.monthEnd}` : ''}>
-          <CategoryBreakdown data={monthlyReport?.byCategory?.income ?? {}} type="income" />
-          <CategoryBreakdown data={monthlyReport?.byCategory?.expense ?? {}} type="expense" />
+        <ReportCard
+          title={`Month of ${currentMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}`}
+          income={mi}
+          expense={me}
+          net={mi - me}
+          periodLabel={
+            monthlyReport?.period
+              ? `${monthlyReport.period.monthStart} – ${monthlyReport.period.monthEnd}`
+              : ""
+          }
+        >
+          <CategoryBreakdown
+            data={monthlyReport?.byCategory?.income ?? {}}
+            type="income"
+          />
+          <CategoryBreakdown
+            data={monthlyReport?.byCategory?.expense ?? {}}
+            type="expense"
+          />
         </ReportCard>
       </div>
 
@@ -280,18 +478,43 @@ export default function FinancePage() {
 
       <div className="finance-controls">
         <div className="month-nav">
-          <Button variant="outline" size="sm" onClick={() => shiftMonth(-1)} aria-label="Previous month"><ChevronLeft size={18} /></Button>
-          <span className="month-label">{currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
-          <Button variant="outline" size="sm" onClick={() => shiftMonth(1)} aria-label="Next month"><ChevronRight size={18} /></Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => shiftMonth(-1)}
+            aria-label="Previous month"
+          >
+            <ChevronLeft size={18} />
+          </Button>
+          <span className="month-label">
+            {currentMonth.toLocaleDateString(undefined, {
+              month: "long",
+              year: "numeric",
+            })}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => shiftMonth(1)}
+            aria-label="Next month"
+          >
+            <ChevronRight size={18} />
+          </Button>
         </div>
         <div className="filter-tabs">
-          {(['ALL', 'INCOME', 'EXPENSE'] as const).map((f) => (
-            <button key={f} className={`filter-tab ${filterType === f ? 'active' : ''}`} onClick={() => setFilterType(f)}>
-              {f === 'ALL' ? 'All' : f === 'INCOME' ? 'Income' : 'Expenses'}
+          {(["ALL", "INCOME", "EXPENSE"] as const).map((f) => (
+            <button
+              key={f}
+              className={`filter-tab ${filterType === f ? "active" : ""}`}
+              onClick={() => setFilterType(f)}
+            >
+              {f === "ALL" ? "All" : f === "INCOME" ? "Income" : "Expenses"}
             </button>
           ))}
         </div>
-        <Button variant="ghost" size="sm" onClick={handleExport}><Download size={16} /> Export</Button>
+        <Button variant="ghost" size="sm" onClick={handleExport}>
+          <Download size={16} /> Export
+        </Button>
       </div>
 
       <section className="panel">
@@ -312,19 +535,47 @@ export default function FinancePage() {
                 {...txMenu.bind(t.description || getCategoryLabel(t.category))}
               >
                 <div className="transaction-main">
-                  <span className="transaction-category">{getCategoryLabel(t.category)}</span>
-                  <span className={`transaction-amount ${t.type === 'INCOME' ? 'positive' : 'negative'}`}>
-                    {t.type === 'INCOME' ? '+' : '-'}{formatCurrency(t.amount)}
+                  <span className="transaction-category">
+                    {getCategoryLabel(t.category)}
+                  </span>
+                  <span
+                    className={`transaction-amount ${t.type === "INCOME" ? "positive" : "negative"}`}
+                  >
+                    {t.type === "INCOME" ? "+" : "-"}
+                    {formatCurrency(t.amount)}
                   </span>
                 </div>
                 <div className="transaction-meta">
-                  {t.description && <span className="transaction-desc">{t.description}</span>}
-                  <span className="transaction-date">{formatShortDate(t.date)}</span>
-                  {t.isRecurring && <Badge variant="info" size="sm">Recurring</Badge>}
+                  {t.description && (
+                    <span className="transaction-desc">{t.description}</span>
+                  )}
+                  <span className="transaction-date">
+                    {formatShortDate(t.date)}
+                  </span>
+                  {t.isRecurring && (
+                    <Badge variant="info" size="sm">
+                      Recurring
+                    </Badge>
+                  )}
                 </div>
                 <div className="transaction-actions">
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(t)} aria-label="Edit"><Pencil size={14} /></Button>
-                  <Button variant="ghost" size="sm" className="danger-ghost" onClick={() => setDeleteTarget(t)} aria-label="Delete"><Trash2 size={14} /></Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(t)}
+                    aria-label="Edit"
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="danger-ghost"
+                    onClick={() => setDeleteTarget(t)}
+                    aria-label="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </Button>
                 </div>
               </li>
             ))}
@@ -332,16 +583,39 @@ export default function FinancePage() {
         )}
       </section>
 
-      <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditing(null); }} title={editing ? 'Edit Transaction' : 'Add Transaction'}>
-        <TransactionForm onSubmit={handleSubmit} onCancel={() => { setShowForm(false); setEditing(null); }} initial={editing ?? undefined} />
+      <Modal
+        isOpen={showForm}
+        onClose={() => {
+          setShowForm(false);
+          setEditing(null);
+        }}
+        title={editing ? "Edit Transaction" : "Add Transaction"}
+      >
+        <TransactionForm
+          onSubmit={handleSubmit}
+          onCancel={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
+          initial={editing ?? undefined}
+        />
       </Modal>
 
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={async () => { if (deleteTarget) { await remove(deleteTarget.id); setDeleteTarget(null); fetchReports(currentMonth.getFullYear(), currentMonth.getMonth() + 1); } }}
+        onConfirm={async () => {
+          if (deleteTarget) {
+            await remove(deleteTarget.id);
+            setDeleteTarget(null);
+            fetchReports(
+              currentMonth.getFullYear(),
+              currentMonth.getMonth() + 1,
+            );
+          }
+        }}
         title="Delete transaction?"
-        message={`${deleteTarget ? formatCurrency(deleteTarget.amount) : ''} entry will be permanently deleted.`}
+        message={`${deleteTarget ? formatCurrency(deleteTarget.amount) : ""} entry will be permanently deleted.`}
         confirmText="Delete"
         variant="danger"
       />
@@ -350,12 +624,20 @@ export default function FinancePage() {
         onClose={txMenu.close}
         onEdit={() => {
           if (!txMenu.menu) return;
-          const tx = filtered.find((t) => (t.description || getCategoryLabel(t.category)) === txMenu.menu?.label);
+          const tx = filtered.find(
+            (t) =>
+              (t.description || getCategoryLabel(t.category)) ===
+              txMenu.menu?.label,
+          );
           if (tx) handleEdit(tx);
         }}
         onDelete={() => {
           if (!txMenu.menu) return;
-          const tx = filtered.find((t) => (t.description || getCategoryLabel(t.category)) === txMenu.menu?.label);
+          const tx = filtered.find(
+            (t) =>
+              (t.description || getCategoryLabel(t.category)) ===
+              txMenu.menu?.label,
+          );
           if (tx) setDeleteTarget(tx);
         }}
         editLabel="Edit transaction"

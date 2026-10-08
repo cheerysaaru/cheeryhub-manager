@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api, asArray } from '../services/api';
-import type { Skill } from '../types';
-import { useSocket } from './useSocket';
+import { useCallback, useEffect, useState } from "react";
+import { api, asArray } from "../services/api";
+import type { Skill } from "../types";
+import { useSocket } from "./useSocket";
 
 export function useSkills(userId: string | null) {
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -9,29 +9,47 @@ export function useSkills(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchSkills = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const data = await api<Skill[]>('/skills');
-      setSkills(asArray<Skill>(data)
-        .filter((skill): skill is Skill => Boolean(skill && typeof skill === 'object' && typeof skill.id === 'string' && typeof skill.name === 'string')));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load skills.');
-    } finally {
-      setLoading(false);
-    }
+  const loadSkills = useCallback(() => {
+    return api<Skill[]>("/skills")
+      .then((data) => {
+        setSkills(
+          asArray<Skill>(data).filter((skill): skill is Skill =>
+            Boolean(
+              skill &&
+              typeof skill === "object" &&
+              typeof skill.id === "string" &&
+              typeof skill.name === "string",
+            ),
+          ),
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load skills.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchSkills = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    return loadSkills();
+  }, [loadSkills]);
+
   useEffect(() => {
-    fetchSkills();
-    const cleanup = on<Skill>('skill:created', (skill) => {
-      setSkills((prev) => (prev.some((s) => s.id === skill.id) ? prev : [skill, ...prev]));
+    loadSkills();
+    const cleanup = on<Skill>("skill:created", (skill) => {
+      setSkills((prev) =>
+        prev.some((s) => s.id === skill.id) ? prev : [skill, ...prev],
+      );
     });
-    const cleanup2 = on<Skill>('skill:updated', (skill) => {
+    const cleanup2 = on<Skill>("skill:updated", (skill) => {
       setSkills((prev) => prev.map((s) => (s.id === skill.id ? skill : s)));
     });
-    const cleanup3 = on<{ id: string }>('skill:deleted', ({ id }) => {
+    const cleanup3 = on<{ id: string }>("skill:deleted", ({ id }) => {
       setSkills((prev) => prev.filter((s) => s.id !== id));
     });
     return () => {
@@ -39,22 +57,30 @@ export function useSkills(userId: string | null) {
       cleanup2();
       cleanup3();
     };
-  }, [fetchSkills, on]);
+  }, [loadSkills, on]);
 
   const create = useCallback(async (data: Partial<Skill>) => {
-    const skill = await api<Skill>('/skills', { method: 'POST', body: JSON.stringify(data) });
-    setSkills((prev) => (prev.some((s) => s.id === skill.id) ? prev : [skill, ...prev]));
+    const skill = await api<Skill>("/skills", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    setSkills((prev) =>
+      prev.some((s) => s.id === skill.id) ? prev : [skill, ...prev],
+    );
     return skill;
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Skill>) => {
-    const skill = await api<Skill>(`/skills/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    const skill = await api<Skill>(`/skills/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
     setSkills((prev) => prev.map((s) => (s.id === id ? skill : s)));
     return skill;
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    await api(`/skills/${id}`, { method: 'DELETE' });
+    await api(`/skills/${id}`, { method: "DELETE" });
     setSkills((prev) => prev.filter((s) => s.id !== id));
   }, []);
 

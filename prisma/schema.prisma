@@ -98,6 +98,7 @@ model User {
   taskCheckIns TaskCheckIn[]
   transactions Transaction[]
   passwordResets PasswordReset[]
+  achievements Achievement[]
   notifications Notification[]
 }
 
@@ -115,6 +116,20 @@ model Notification {
   @@unique([userId, dedupeKey])
   @@index([userId, readAt])
   @@index([userId, createdAt])
+}
+
+model Achievement {
+  id String @id @default(cuid())
+  userId String
+  key String
+  name String
+  description String?
+  icon String?
+  unlockedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 model PasswordReset {
@@ -184,8 +199,10 @@ model Habit {
   id String @id @default(cuid())
   userId String
   name String
+  title String @default("") // API alias for name
   description String?
   frequency String
+  targetDays Int @default(7)
   active Boolean @default(true)
   deletedAt DateTime?
   createdAt DateTime @default(now())
@@ -232,6 +249,7 @@ model Goal {
   description String?
   progress Int @default(0)
   deadline DateTime?
+  targetDate DateTime? // API alias for deadline
   status GoalStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -258,6 +276,8 @@ model Skill {
   name String
   currentLevel Int @default(1)
   targetLevel Int @default(5)
+  level Int @default(1) // API alias for currentLevel
+  description String?
   progress Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

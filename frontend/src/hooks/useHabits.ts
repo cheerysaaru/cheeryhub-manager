@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, asArray } from '../services/api';
-import { dedupe } from '../services/inflight';
-import { buildWeekDateKeys } from '../utils/commitmentCalendar';
-import { todayISO } from '../utils/date';
-import type { Habit } from '../types';
-import { useSocket } from './useSocket';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api, asArray } from "../services/api";
+import { dedupe } from "../services/inflight";
+import { buildWeekDateKeys } from "../utils/commitmentCalendar";
+import { todayISO } from "../utils/date";
+import type { Habit } from "../types";
+import { useSocket } from "./useSocket";
 
-function normalizeHabit(habit: Partial<Habit> & { id: string }, timeZone?: string): Habit {
-  const weekDates = habit.weekDates?.length === 7
-    ? habit.weekDates
-    : buildWeekDateKeys(todayISO(timeZone));
+function normalizeHabit(
+  habit: Partial<Habit> & { id: string },
+  timeZone?: string,
+): Habit {
+  const weekDates =
+    habit.weekDates?.length === 7
+      ? habit.weekDates
+      : buildWeekDateKeys(todayISO(timeZone));
   return {
     ...habit,
     completedToday: habit.completedToday ?? false,
@@ -18,7 +22,10 @@ function normalizeHabit(habit: Partial<Habit> & { id: string }, timeZone?: strin
     completedDays: habit.completedDays ?? 0,
     weekCompletedDays: habit.weekCompletedDays ?? 0,
     weekStart: habit.weekStart ?? weekDates[0],
-    weekDates: asArray<string>(habit.weekDates).length === 7 ? asArray<string>(habit.weekDates) : weekDates,
+    weekDates:
+      asArray<string>(habit.weekDates).length === 7
+        ? asArray<string>(habit.weekDates)
+        : weekDates,
     completedDates: asArray<string>(habit.completedDates),
     failedDates: asArray<string>(habit.failedDates),
     skippedDates: asArray<string>(habit.skippedDates),
@@ -32,23 +39,28 @@ function prependUnique(list: Habit[], habit: Habit): Habit[] {
 function mergeHabit(
   current: Habit | undefined,
   incoming: Partial<Habit> & { id: string },
-  timeZone?: string
+  timeZone?: string,
 ): Habit {
   const base = current ?? ({} as Habit);
-  return normalizeHabit({
-    ...base,
-    ...incoming,
-    weekDates: incoming.weekDates?.length === 7 ? incoming.weekDates : base.weekDates,
-    completedDates: incoming.completedDates ?? base.completedDates ?? [],
-    failedDates: incoming.failedDates ?? base.failedDates ?? [],
-    skippedDates: incoming.skippedDates ?? base.skippedDates ?? [],
-    completedToday: incoming.completedToday ?? base.completedToday ?? false,
-    failedToday: incoming.failedToday ?? base.failedToday ?? false,
-    skippedToday: incoming.skippedToday ?? base.skippedToday ?? false,
-    completedDays: incoming.completedDays ?? base.completedDays ?? 0,
-    weekCompletedDays: incoming.weekCompletedDays ?? base.weekCompletedDays ?? 0,
-    weekStart: incoming.weekStart ?? base.weekStart,
-  }, timeZone);
+  return normalizeHabit(
+    {
+      ...base,
+      ...incoming,
+      weekDates:
+        incoming.weekDates?.length === 7 ? incoming.weekDates : base.weekDates,
+      completedDates: incoming.completedDates ?? base.completedDates ?? [],
+      failedDates: incoming.failedDates ?? base.failedDates ?? [],
+      skippedDates: incoming.skippedDates ?? base.skippedDates ?? [],
+      completedToday: incoming.completedToday ?? base.completedToday ?? false,
+      failedToday: incoming.failedToday ?? base.failedToday ?? false,
+      skippedToday: incoming.skippedToday ?? base.skippedToday ?? false,
+      completedDays: incoming.completedDays ?? base.completedDays ?? 0,
+      weekCompletedDays:
+        incoming.weekCompletedDays ?? base.weekCompletedDays ?? 0,
+      weekStart: incoming.weekStart ?? base.weekStart,
+    },
+    timeZone,
+  );
 }
 
 function todayKey(timeZone?: string): string {
@@ -59,17 +71,20 @@ function todayKey(timeZone?: string): string {
 function applyDayStatus(
   habit: Habit,
   day: string,
-  status: 'COMPLETED' | 'FAILED' | 'SKIPPED' | null,
-  timeZone?: string
+  status: "COMPLETED" | "FAILED" | "SKIPPED" | null,
+  timeZone?: string,
 ): Habit {
   const hadCompleted = habit.completedDates.includes(day);
   const completedDates = habit.completedDates.filter((d) => d !== day);
   const failedDates = habit.failedDates.filter((d) => d !== day);
   const skippedDates = habit.skippedDates.filter((d) => d !== day);
-  if (status === 'COMPLETED') completedDates.push(day);
-  if (status === 'FAILED') failedDates.push(day);
-  if (status === 'SKIPPED') skippedDates.push(day);
-  const completedDays = hadCompleted && status !== 'COMPLETED' ? Math.max(0, habit.completedDays - 1) : habit.completedDays + (!hadCompleted && status === 'COMPLETED' ? 1 : 0);
+  if (status === "COMPLETED") completedDates.push(day);
+  if (status === "FAILED") failedDates.push(day);
+  if (status === "SKIPPED") skippedDates.push(day);
+  const completedDays =
+    hadCompleted && status !== "COMPLETED"
+      ? Math.max(0, habit.completedDays - 1)
+      : habit.completedDays + (!hadCompleted && status === "COMPLETED" ? 1 : 0);
   const weekCompletedDays = habit.weekDates.length
     ? completedDates.filter((d) => habit.weekDates.includes(d)).length
     : habit.weekCompletedDays;
@@ -83,9 +98,9 @@ function applyDayStatus(
     weekCompletedDays,
     ...(isToday
       ? {
-          completedToday: status === 'COMPLETED',
-          failedToday: status === 'FAILED',
-          skippedToday: status === 'SKIPPED',
+          completedToday: status === "COMPLETED",
+          failedToday: status === "FAILED",
+          skippedToday: status === "SKIPPED",
         }
       : {}),
   };
@@ -113,36 +128,71 @@ export function useHabits(userId: string | null, timeZone?: string) {
     });
   }, []);
 
-  const isPending = useCallback((id: string) => pendingIds.has(id), [pendingIds]);
+  const isPending = useCallback(
+    (id: string) => pendingIds.has(id),
+    [pendingIds],
+  );
 
-  const fetchHabits = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await dedupe('habits:list', () => api<Habit[]>('/habits'));
-      setHabits(asArray<Habit>(data)
-        .filter((habit): habit is Habit => Boolean(habit && typeof habit === 'object' && typeof habit.id === 'string' && typeof habit.name === 'string'))
-        .map((habit) => normalizeHabit(habit, timeZone)));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load habits.');
-    } finally {
-      setLoading(false);
-    }
+  const loadHabits = useCallback(() => {
+    return dedupe("habits:list", () => api<Habit[]>("/habits"))
+      .then((data) => {
+        setHabits(
+          asArray<Habit>(data)
+            .filter((habit): habit is Habit =>
+              Boolean(
+                habit &&
+                typeof habit === "object" &&
+                typeof habit.id === "string" &&
+                typeof habit.name === "string",
+              ),
+            )
+            .map((habit) => normalizeHabit(habit, timeZone)),
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load habits.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [timeZone]);
 
+  const fetchHabits = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadHabits();
+  }, [loadHabits]);
+
+  const [prevTimeZone, setPrevTimeZone] = useState(timeZone);
+  if (timeZone !== prevTimeZone) {
+    setPrevTimeZone(timeZone);
+    setLoading(true);
+    setError(null);
+  }
+
   useEffect(() => {
-    fetchHabits();
-    const cleanup = on<Habit>('habit:created', (habit) => {
+    loadHabits();
+    const cleanup = on<Habit>("habit:created", (habit) => {
       setHabits((prev) => prependUnique(prev, normalizeHabit(habit, timeZone)));
     });
-    const cleanup2 = on<Habit>('habit:updated', (habit) => {
-      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit, timeZone) : h)));
+    const cleanup2 = on<Habit>("habit:updated", (habit) => {
+      setHabits((prev) =>
+        prev.map((h) =>
+          h.id === habit.id ? mergeHabit(h, habit, timeZone) : h,
+        ),
+      );
     });
-    const cleanup3 = on<{ id: string }>('habit:deleted', ({ id }) => {
+    const cleanup3 = on<{ id: string }>("habit:deleted", ({ id }) => {
       setHabits((prev) => prev.filter((h) => h.id !== id));
     });
-    const cleanup4 = on<Habit>('habit:completed', (habit) => {
-      setHabits((prev) => prev.map((h) => (h.id === habit.id ? mergeHabit(h, habit, timeZone) : h)));
+    const cleanup4 = on<Habit>("habit:completed", (habit) => {
+      setHabits((prev) =>
+        prev.map((h) =>
+          h.id === habit.id ? mergeHabit(h, habit, timeZone) : h,
+        ),
+      );
     });
     return () => {
       cleanup();
@@ -150,29 +200,41 @@ export function useHabits(userId: string | null, timeZone?: string) {
       cleanup3();
       cleanup4();
     };
-  }, [fetchHabits, on, timeZone]);
+  }, [loadHabits, on, timeZone]);
 
-  const create = useCallback(async (data: Partial<Habit>) => {
-    setCreating(true);
-    try {
-      const habit = await api<Habit>('/habits', { method: 'POST', body: JSON.stringify(data) });
+  const create = useCallback(
+    async (data: Partial<Habit>) => {
+      setCreating(true);
+      try {
+        const habit = await api<Habit>("/habits", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        const normalized = normalizeHabit(habit, timeZone);
+        setHabits((prev) => prependUnique(prev, normalized));
+        return normalized;
+      } finally {
+        setCreating(false);
+      }
+    },
+    [timeZone],
+  );
+
+  const update = useCallback(
+    async (id: string, data: Partial<Habit>) => {
+      const habit = await api<Habit>(`/habits/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
       const normalized = normalizeHabit(habit, timeZone);
-      setHabits((prev) => prependUnique(prev, normalized));
+      setHabits((prev) => prev.map((h) => (h.id === id ? normalized : h)));
       return normalized;
-    } finally {
-      setCreating(false);
-    }
-  }, [timeZone]);
-
-  const update = useCallback(async (id: string, data: Partial<Habit>) => {
-    const habit = await api<Habit>(`/habits/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-    const normalized = normalizeHabit(habit, timeZone);
-    setHabits((prev) => prev.map((h) => (h.id === id ? normalized : h)));
-    return normalized;
-  }, [timeZone]);
+    },
+    [timeZone],
+  );
 
   const remove = useCallback(async (id: string) => {
-    await api(`/habits/${id}`, { method: 'DELETE' });
+    await api(`/habits/${id}`, { method: "DELETE" });
     setHabits((prev) => prev.filter((h) => h.id !== id));
   }, []);
 
@@ -185,59 +247,93 @@ export function useHabits(userId: string | null, timeZone?: string) {
     async (
       id: string,
       date: string | undefined,
-      status: 'COMPLETED' | 'FAILED' | 'SKIPPED' | null,
-      request: () => Promise<unknown>
+      status: "COMPLETED" | "FAILED" | "SKIPPED" | null,
+      request: () => Promise<unknown>,
     ): Promise<boolean> => {
       const day = date ?? todayKey(timeZone);
       const before = habitsRef.current.find((habit) => habit.id === id);
       if (!before) return false;
       markPending(id, true);
-      setHabits((prev) => prev.map((habit) => (habit.id === id ? applyDayStatus(habit, day, status, timeZone) : habit)));
+      setHabits((prev) =>
+        prev.map((habit) =>
+          habit.id === id
+            ? applyDayStatus(habit, day, status, timeZone)
+            : habit,
+        ),
+      );
       try {
         await request();
         return true;
       } catch (error) {
-        setHabits((prev) => prev.map((habit) => (habit.id === id ? before : habit)));
-        console.warn('Optimistic habit update reverted', error);
+        setHabits((prev) =>
+          prev.map((habit) => (habit.id === id ? before : habit)),
+        );
+        console.warn("Optimistic habit update reverted", error);
         return false;
       } finally {
         markPending(id, false);
       }
     },
-    [markPending, timeZone]
+    [markPending, timeZone],
   );
 
   const complete = useCallback(
     (id: string, date?: string) =>
-      applyDayAction(id, date, 'COMPLETED', () =>
-        api(`/habits/${id}/complete`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) })
+      applyDayAction(id, date, "COMPLETED", () =>
+        api(`/habits/${id}/complete`, {
+          method: "POST",
+          body: JSON.stringify(date ? { date } : {}),
+        }),
       ),
-    [applyDayAction]
+    [applyDayAction],
   );
 
   const clearToday = useCallback(
     (id: string, date?: string) =>
       applyDayAction(id, date, null, () =>
-        api(`/habits/${id}/today`, { method: 'DELETE', body: JSON.stringify(date ? { date } : {}) })
+        api(`/habits/${id}/today`, {
+          method: "DELETE",
+          body: JSON.stringify(date ? { date } : {}),
+        }),
       ),
-    [applyDayAction]
+    [applyDayAction],
   );
 
   const failToday = useCallback(
     (id: string, date?: string) =>
-      applyDayAction(id, date, 'FAILED', () =>
-        api(`/habits/${id}/fail`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) })
+      applyDayAction(id, date, "FAILED", () =>
+        api(`/habits/${id}/fail`, {
+          method: "POST",
+          body: JSON.stringify(date ? { date } : {}),
+        }),
       ),
-    [applyDayAction]
+    [applyDayAction],
   );
 
   const skipToday = useCallback(
     (id: string, date?: string) =>
-      applyDayAction(id, date, 'SKIPPED', () =>
-        api(`/habits/${id}/skip`, { method: 'POST', body: JSON.stringify(date ? { date } : {}) })
+      applyDayAction(id, date, "SKIPPED", () =>
+        api(`/habits/${id}/skip`, {
+          method: "POST",
+          body: JSON.stringify(date ? { date } : {}),
+        }),
       ),
-    [applyDayAction]
+    [applyDayAction],
   );
 
-  return { habits, loading, error, creating, isPending, fetchHabits, create, update, remove, complete, clearToday, failToday, skipToday };
+  return {
+    habits,
+    loading,
+    error,
+    creating,
+    isPending,
+    fetchHabits,
+    create,
+    update,
+    remove,
+    complete,
+    clearToday,
+    failToday,
+    skipToday,
+  };
 }

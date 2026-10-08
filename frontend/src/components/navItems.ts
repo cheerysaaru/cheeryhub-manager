@@ -11,9 +11,9 @@ import {
   BarChart2,
   Briefcase,
   Shield,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { ROUTES } from '../routes';
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { ROUTES } from "../routes";
 
 export interface NavItem {
   path: string;
@@ -27,21 +27,21 @@ export interface NavItem {
  * Bin likewise opens from the Today's Tasks card icon, never from the nav.
  */
 export const navItems: NavItem[] = [
-  { path: ROUTES.dashboard, label: 'Dashboard', icon: Home },
-  { path: ROUTES.goals, label: 'Goals', icon: Target },
-  { path: ROUTES.skills, label: 'Skills', icon: Trophy },
-  { path: ROUTES.achievements, label: 'Achievements', icon: Award },
-  { path: ROUTES.focus, label: 'Focus', icon: Brain },
-  { path: ROUTES.journal, label: 'Journal', icon: BookOpen },
-  { path: ROUTES.reminders, label: 'Reminders', icon: Bell },
-  { path: ROUTES.analytics, label: 'Analytics', icon: BarChart2 },
-  { path: ROUTES.brand, label: 'Brand', icon: Briefcase },
-  { path: ROUTES.finance, label: 'Finance', icon: DollarSign },
-  { path: ROUTES.settings, label: 'Settings', icon: Settings },
+  { path: ROUTES.dashboard, label: "Dashboard", icon: Home },
+  { path: ROUTES.goals, label: "Goals", icon: Target },
+  { path: ROUTES.skills, label: "Skills", icon: Trophy },
+  { path: ROUTES.achievements, label: "Achievements", icon: Award },
+  { path: ROUTES.focus, label: "Focus", icon: Brain },
+  { path: ROUTES.journal, label: "Journal", icon: BookOpen },
+  { path: ROUTES.reminders, label: "Reminders", icon: Bell },
+  { path: ROUTES.analytics, label: "Analytics", icon: BarChart2 },
+  { path: ROUTES.brand, label: "Brand", icon: Briefcase },
+  { path: ROUTES.finance, label: "Finance", icon: DollarSign },
+  { path: ROUTES.settings, label: "Settings", icon: Settings },
 ];
 
 export const adminItems: NavItem[] = [
-  { path: ROUTES.admin, label: 'Admin', icon: Shield },
+  { path: ROUTES.admin, label: "Admin", icon: Shield },
 ];
 
 /**

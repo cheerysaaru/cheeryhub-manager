@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api, asArray } from '../services/api';
-import { useSocket } from './useSocket';
-import type { AppNotification } from '../types';
+import { useCallback, useEffect, useState } from "react";
+import { api, asArray } from "../services/api";
+import { useSocket } from "./useSocket";
+import type { AppNotification } from "../types";
 
 export function useNotifications(userId: string | null) {
   const [items, setItems] = useState<AppNotification[]>([]);
@@ -10,39 +10,71 @@ export function useNotifications(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const { on } = useSocket(userId);
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data: unknown = await api<unknown>('/notifications');
-      const payload = data && typeof data === 'object' ? data as Record<string, unknown> : {};
-      setItems(asArray<AppNotification>(payload.items)
-        .filter((item): item is AppNotification => Boolean(item && typeof item === 'object' && typeof item.id === 'string')));
-      setUnreadCount(typeof payload.unreadCount === 'number' ? payload.unreadCount : 0);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load notifications.');
-    } finally {
-      setLoading(false);
-    }
+  const loadNotifications = useCallback(() => {
+    return api<unknown>("/notifications")
+      .then((data) => {
+        const payload =
+          data && typeof data === "object"
+            ? (data as Record<string, unknown>)
+            : {};
+        setItems(
+          asArray<AppNotification>(payload.items).filter(
+            (item): item is AppNotification =>
+              Boolean(
+                item && typeof item === "object" && typeof item.id === "string",
+              ),
+          ),
+        );
+        setUnreadCount(
+          typeof payload.unreadCount === "number" ? payload.unreadCount : 0,
+        );
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not load notifications.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchNotifications = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadNotifications();
+  }, [loadNotifications]);
+
   useEffect(() => {
-    void fetchNotifications();
-    const cleanupCreate = on<AppNotification>('notification:created', (notification) => {
+    void loadNotifications();
+    const cleanupCreate = on<AppNotification>(
+      "notification:created",
+      (notification) => {
+        setItems((prev) =>
+          prev.some((item) => item.id === notification.id)
+            ? prev
+            : [notification, ...prev],
+        );
+        setUnreadCount((count) => count + 1);
+      },
+    );
+    const cleanupRead = on<{ id: string }>("notification:read", ({ id }) => {
       setItems((prev) =>
-        prev.some((item) => item.id === notification.id) ? prev : [notification, ...prev]
-      );
-      setUnreadCount((count) => count + 1);
-    });
-    const cleanupRead = on<{ id: string }>('notification:read', ({ id }) => {
-      setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, readAt: item.readAt ?? new Date().toISOString() } : item))
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, readAt: item.readAt ?? new Date().toISOString() }
+            : item,
+        ),
       );
       setUnreadCount((count) => Math.max(0, count - 1));
     });
-    const cleanupAll = on('notification:read-all', () => {
+    const cleanupAll = on("notification:read-all", () => {
       const now = new Date().toISOString();
-      setItems((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? now })));
+      setItems((prev) =>
+        prev.map((item) => ({ ...item, readAt: item.readAt ?? now })),
+      );
       setUnreadCount(0);
     });
     return () => {
@@ -50,42 +82,57 @@ export function useNotifications(userId: string | null) {
       cleanupRead();
       cleanupAll();
     };
-  }, [fetchNotifications, on]);
+  }, [loadNotifications, on]);
 
-  const markRead = useCallback(async (id: string) => {
-    const target = items.find((item) => item.id === id);
-    if (target?.readAt) return;
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, readAt: new Date().toISOString() } : item))
-    );
-    setUnreadCount((count) => Math.max(0, count - 1));
-    try {
-      await api(`/notifications/${id}/read`, { method: 'POST' });
-    } catch (caught) {
-      await fetchNotifications();
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Unable to update this notification. Please try again.'
+  const markRead = useCallback(
+    async (id: string) => {
+      const target = items.find((item) => item.id === id);
+      if (target?.readAt) return;
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, readAt: new Date().toISOString() } : item,
+        ),
       );
-    }
-  }, [fetchNotifications, items]);
+      setUnreadCount((count) => Math.max(0, count - 1));
+      try {
+        await api(`/notifications/${id}/read`, { method: "POST" });
+      } catch (caught) {
+        await fetchNotifications();
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Unable to update this notification. Please try again.",
+        );
+      }
+    },
+    [fetchNotifications, items],
+  );
 
   const markAllRead = useCallback(async () => {
     const now = new Date().toISOString();
-    setItems((prev) => prev.map((item) => ({ ...item, readAt: item.readAt ?? now })));
+    setItems((prev) =>
+      prev.map((item) => ({ ...item, readAt: item.readAt ?? now })),
+    );
     setUnreadCount(0);
     try {
-      await api('/notifications/read-all', { method: 'POST' });
+      await api("/notifications/read-all", { method: "POST" });
     } catch (caught) {
       await fetchNotifications();
       setError(
         caught instanceof Error
           ? caught.message
-          : 'Unable to update notifications. Please try again.'
+          : "Unable to update notifications. Please try again.",
       );
     }
   }, [fetchNotifications]);
 
-  return { items, unreadCount, loading, error, fetchNotifications, markRead, markAllRead };
+  return {
+    items,
+    unreadCount,
+    loading,
+    error,
+    fetchNotifications,
+    markRead,
+    markAllRead,
+  };
 }

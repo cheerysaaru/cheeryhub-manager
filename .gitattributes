@@ -1,1 +1,4 @@
-*.sh text eol=lf
+# Normalize text files to LF in the working tree so the Prettier check
+# (default endOfLine: "lf") passes on every machine, regardless of the
+# local core.autocrlf setting. Binary files are left untouched by `text=auto`.
+* text=auto eol=lf

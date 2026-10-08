@@ -4,16 +4,16 @@ export interface User {
   email: string;
   timezone: string;
   createdAt: string;
-  role: 'ADMIN' | 'USER';
-  status: 'ACTIVE' | 'DISABLED';
+  role: "ADMIN" | "USER";
+  status: "ACTIVE" | "DISABLED";
 }
 
 export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'ADMIN' | 'USER';
-  status: 'ACTIVE' | 'DISABLED';
+  role: "ADMIN" | "USER";
+  status: "ACTIVE" | "DISABLED";
   timezone: string;
   emailVerified: boolean;
   lastLoginAt?: string | null;
@@ -27,8 +27,8 @@ export interface Task {
   title: string;
   description?: string;
   category?: string;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_COMPLETED' | 'ARCHIVED';
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  status: "TODO" | "IN_PROGRESS" | "COMPLETED" | "NOT_COMPLETED" | "ARCHIVED";
   scheduledDate?: string;
   scheduledTime?: string;
   deadlineTime?: string;
@@ -36,7 +36,7 @@ export interface Task {
   dueAt?: string;
   extendedAt?: string;
   timerStartedAt?: string;
-  recurrence: 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  recurrence: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
   isMandatory: boolean;
   reminderEnabled: boolean;
   estimatedMinutes?: number;
@@ -93,7 +93,7 @@ export interface Goal {
   description?: string;
   progress: number;
   deadline?: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'ARCHIVED';
+  status: "ACTIVE" | "COMPLETED" | "PAUSED" | "ARCHIVED";
   createdAt: string;
   updatedAt: string;
   milestones: GoalMilestone[];
@@ -128,7 +128,7 @@ export interface FocusSession {
   durationMinutes: number;
   startedAt: string;
   completedAt?: string;
-  status: 'RUNNING' | 'COMPLETED' | 'CANCELLED';
+  status: "RUNNING" | "COMPLETED" | "CANCELLED";
   task?: Task;
 }
 
@@ -153,7 +153,7 @@ export interface Reminder {
   description?: string;
   reminderDate: string;
   reminderTime?: string;
-  repeatType: 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  repeatType: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -187,7 +187,7 @@ export interface BrandProject {
   userId: string;
   title: string;
   description?: string;
-  status: 'IDEA' | 'ACTIVE' | 'PAUSED' | 'COMPLETED';
+  status: "IDEA" | "ACTIVE" | "PAUSED" | "COMPLETED";
   progress: number;
   createdAt: string;
   updatedAt: string;
@@ -207,7 +207,7 @@ export interface BrandMilestone {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'INCOME' | 'EXPENSE';
+  type: "INCOME" | "EXPENSE";
   category: string;
   amount: number;
   description?: string;

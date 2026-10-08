@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { CalendarClock } from 'lucide-react';
-import { Modal } from './Modal';
-import { Button } from './Button';
-import { combineDateTime, toDateInput, toTimeInput } from '../utils/deadline';
+import { useState } from "react";
+import { CalendarClock } from "lucide-react";
+import { Modal } from "./Modal";
+import { Button } from "./Button";
+import { combineDateTime, toDateInput, toTimeInput } from "../utils/deadline";
 
 interface DeadlinePickerProps {
   isOpen: boolean;
@@ -19,9 +19,9 @@ interface DeadlinePickerProps {
  */
 export function DeadlinePicker({
   isOpen,
-  title = 'Choose a deadline',
+  title = "Choose a deadline",
   initial,
-  confirmLabel = 'Save deadline',
+  confirmLabel = "Save deadline",
   onConfirm,
   onClose,
 }: DeadlinePickerProps) {
@@ -29,32 +29,43 @@ export function DeadlinePicker({
   const [date, setDate] = useState(() =>
     initialDate && !Number.isNaN(initialDate.getTime())
       ? toDateInput(initialDate)
-      : toDateInput(new Date())
+      : toDateInput(new Date()),
   );
   const [time, setTime] = useState(() =>
     initialDate && !Number.isNaN(initialDate.getTime())
       ? toTimeInput(initialDate)
-      : '23:59'
+      : "23:59",
   );
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const source = initial ? new Date(initial) : null;
-    setDate(source && !Number.isNaN(source.getTime()) ? toDateInput(source) : toDateInput(new Date()));
-    setTime(source && !Number.isNaN(source.getTime()) ? toTimeInput(source) : '23:59');
-    setError('');
-  }, [isOpen, initial]);
+  const [prevProps, setPrevProps] = useState({ isOpen, initial });
+  if (isOpen !== prevProps.isOpen || initial !== prevProps.initial) {
+    setPrevProps({ isOpen, initial });
+    if (isOpen) {
+      const source = initial ? new Date(initial) : null;
+      setDate(
+        source && !Number.isNaN(source.getTime())
+          ? toDateInput(source)
+          : toDateInput(new Date()),
+      );
+      setTime(
+        source && !Number.isNaN(source.getTime())
+          ? toTimeInput(source)
+          : "23:59",
+      );
+      setError("");
+    }
+  }
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const iso = combineDateTime(date, time);
     if (!iso) {
-      setError('Pick a valid date and time.');
+      setError("Pick a valid date and time.");
       return;
     }
     if (new Date(iso).getTime() <= Date.now()) {
-      setError('The deadline must be in the future.');
+      setError("The deadline must be in the future.");
       return;
     }
     onConfirm(iso);
@@ -86,9 +97,14 @@ export function DeadlinePicker({
           </label>
         </div>
         <p className="deadline-hint">
-          <CalendarClock size={14} /> 23:59 is used when you keep the end of the day.
+          <CalendarClock size={14} /> 23:59 is used when you keep the end of the
+          day.
         </p>
-        {error && <p className="form-error" role="alert">{error}</p>}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
         <div className="modal-actions">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel

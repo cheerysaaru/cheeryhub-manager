@@ -1,32 +1,45 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Shield, UserPlus, KeyRound, Ban, CheckCircle2, Trash2, Pencil } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { Button } from '../components/Button';
-import { Card, CardTitle, CardDescription } from '../components/Card';
-import { Input } from '../components/Input';
-import { Badge } from '../components/Badge';
-import { Modal, ConfirmDialog } from '../components/Modal';
-import { api, asArray } from '../services/api';
-import { PASSWORD_RULES, passwordProblem } from '../utils/validation';
-import type { AdminUser } from '../types';
+import { useEffect, useMemo, useState } from "react";
+import {
+  Shield,
+  UserPlus,
+  KeyRound,
+  Ban,
+  CheckCircle2,
+  Trash2,
+  Pencil,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "../components/Button";
+import { Card, CardTitle, CardDescription } from "../components/Card";
+import { Input } from "../components/Input";
+import { Badge } from "../components/Badge";
+import { Modal, ConfirmDialog } from "../components/Modal";
+import { api, asArray } from "../services/api";
+import { PASSWORD_RULES, passwordProblem } from "../utils/validation";
+import type { AdminUser } from "../types";
 
-type Mode = 'create' | 'edit' | 'password' | null;
+type Mode = "create" | "edit" | "password" | null;
 
 interface FormState {
   name: string;
   email: string;
   password: string;
-  role: 'ADMIN' | 'USER';
+  role: "ADMIN" | "USER";
 }
 
-const emptyForm: FormState = { name: '', email: '', password: '', role: 'USER' };
+const emptyForm: FormState = {
+  name: "",
+  email: "",
+  password: "",
+  role: "USER",
+};
 
 export default function AdminPage() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [mode, setMode] = useState<Mode>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editing, setEditing] = useState<AdminUser | null>(null);
@@ -38,60 +51,67 @@ export default function AdminPage() {
     action: () => Promise<void>;
   } | null>(null);
 
-  const isAdmin = me?.role === 'ADMIN';
+  const isAdmin = me?.role === "ADMIN";
   const adminCount = useMemo(
-    () => users.filter((u) => u.role === 'ADMIN' && u.status === 'ACTIVE').length,
-    [users]
+    () =>
+      users.filter((u) => u.role === "ADMIN" && u.status === "ACTIVE").length,
+    [users],
   );
+
+  function loadUsersData() {
+    return api<{ users: AdminUser[] }>("/admin/users")
+      .then((result) => {
+        setUsers(asArray<AdminUser>(result?.users));
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load users");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }
 
   async function loadUsers() {
     setLoading(true);
-    setError('');
-    try {
-      const result = await api<{ users: AdminUser[] }>('/admin/users');
-      setUsers(asArray<AdminUser>(result?.users));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users');
-    } finally {
-      setLoading(false);
-    }
+    setError("");
+    return loadUsersData();
   }
 
   useEffect(() => {
-    if (isAdmin) void loadUsers();
+    if (isAdmin) void loadUsersData();
   }, [isAdmin]);
 
   function flash(message: string) {
     setNotice(message);
-    setTimeout(() => setNotice(''), 3000);
+    setTimeout(() => setNotice(""), 3000);
   }
 
   function openCreate() {
     setForm(emptyForm);
     setEditing(null);
-    setMode('create');
+    setMode("create");
   }
 
   function openEdit(target: AdminUser) {
     setForm({
       name: target.name,
       email: target.email,
-      password: '',
+      password: "",
       role: target.role,
     });
     setEditing(target);
-    setMode('edit');
+    setMode("edit");
   }
 
   function openPassword(target: AdminUser) {
-    setForm({ ...emptyForm, password: '' });
+    setForm({ ...emptyForm, password: "" });
     setEditing(target);
-    setMode('password');
+    setMode("password");
   }
 
   async function submitForm(e: React.FormEvent) {
     e.preventDefault();
-    if (mode === 'create' || mode === 'password') {
+    if (mode === "create" || mode === "password") {
       const problem = passwordProblem(form.password);
       if (problem) {
         setError(problem);
@@ -99,11 +119,11 @@ export default function AdminPage() {
       }
     }
     setSaving(true);
-    setError('');
+    setError("");
     try {
-      if (mode === 'create') {
-        await api('/admin/users', {
-          method: 'POST',
+      if (mode === "create") {
+        await api("/admin/users", {
+          method: "POST",
           body: JSON.stringify({
             name: form.name,
             email: form.email,
@@ -111,29 +131,29 @@ export default function AdminPage() {
             role: form.role,
           }),
         });
-        flash('User created');
-      } else if (mode === 'edit' && editing) {
+        flash("User created");
+      } else if (mode === "edit" && editing) {
         await api(`/admin/users/${editing.id}`, {
-          method: 'PUT',
+          method: "PUT",
           body: JSON.stringify({
             name: form.name,
             email: form.email,
             role: form.role,
           }),
         });
-        flash('User updated');
-      } else if (mode === 'password' && editing) {
+        flash("User updated");
+      } else if (mode === "password" && editing) {
         await api(`/admin/users/${editing.id}/reset-password`, {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify({ password: form.password }),
         });
-        flash('Password reset');
+        flash("Password reset");
       }
       setMode(null);
       setEditing(null);
       await loadUsers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
+      setError(err instanceof Error ? err.message : "Action failed");
     } finally {
       setSaving(false);
     }
@@ -142,7 +162,7 @@ export default function AdminPage() {
   function askConfirm(
     title: string,
     message: string,
-    action: () => Promise<void>
+    action: () => Promise<void>,
   ) {
     setConfirm({ open: true, title, message, action });
   }
@@ -150,13 +170,13 @@ export default function AdminPage() {
   async function runConfirm() {
     if (!confirm) return;
     setSaving(true);
-    setError('');
+    setError("");
     try {
       await confirm.action();
       setConfirm(null);
       await loadUsers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
+      setError(err instanceof Error ? err.message : "Action failed");
       setConfirm(null);
     } finally {
       setSaving(false);
@@ -165,19 +185,19 @@ export default function AdminPage() {
 
   function toggleStatus(target: AdminUser) {
     if (target.id === me?.id) return;
-    if (target.status === 'ACTIVE') {
+    if (target.status === "ACTIVE") {
       askConfirm(
-        'Disable account?',
+        "Disable account?",
         `${target.name} will be signed out and blocked from the dashboard.`,
         async () => {
-          await api(`/admin/users/${target.id}/disable`, { method: 'POST' });
-          flash('Account disabled');
-        }
+          await api(`/admin/users/${target.id}/disable`, { method: "POST" });
+          flash("Account disabled");
+        },
       );
     } else {
       void (async () => {
-        await api(`/admin/users/${target.id}/enable`, { method: 'POST' });
-        flash('Account enabled');
+        await api(`/admin/users/${target.id}/enable`, { method: "POST" });
+        flash("Account enabled");
         await loadUsers();
       })();
     }
@@ -186,12 +206,12 @@ export default function AdminPage() {
   function removeUser(target: AdminUser) {
     if (target.id === me?.id) return;
     askConfirm(
-      'Delete user?',
+      "Delete user?",
       `This permanently deletes ${target.name} and all of their data. This cannot be undone.`,
       async () => {
-        await api(`/admin/users/${target.id}`, { method: 'DELETE' });
-        flash('User deleted');
-      }
+        await api(`/admin/users/${target.id}`, { method: "DELETE" });
+        flash("User deleted");
+      },
     );
   }
 
@@ -202,7 +222,9 @@ export default function AdminPage() {
           <div>
             <p className="eyebrow">Admin</p>
             <h1>Access denied</h1>
-            <p className="muted">You need administrator access to view this page.</p>
+            <p className="muted">
+              You need administrator access to view this page.
+            </p>
           </div>
         </header>
       </div>
@@ -215,7 +237,9 @@ export default function AdminPage() {
         <div>
           <p className="eyebrow">Admin</p>
           <h1>User management</h1>
-          <p className="muted">Create, update, disable, and remove dashboard accounts.</p>
+          <p className="muted">
+            Create, update, disable, and remove dashboard accounts.
+          </p>
         </div>
         <Button onClick={openCreate}>
           <UserPlus size={16} /> New user
@@ -240,7 +264,8 @@ export default function AdminPage() {
             <div>
               <CardTitle>Accounts</CardTitle>
               <CardDescription>
-                {users.length} total · {adminCount} active admin{adminCount === 1 ? '' : 's'}
+                {users.length} total · {adminCount} active admin
+                {adminCount === 1 ? "" : "s"}
               </CardDescription>
             </div>
           </div>
@@ -268,13 +293,17 @@ export default function AdminPage() {
                           <strong>{target.name}</strong>
                           <span>{target.email}</span>
                           {target.id === me?.id && (
-                            <Badge variant="info" size="sm">You</Badge>
+                            <Badge variant="info" size="sm">
+                              You
+                            </Badge>
                           )}
                         </div>
                       </td>
                       <td>
                         <Badge
-                          variant={target.role === 'ADMIN' ? 'warning' : 'default'}
+                          variant={
+                            target.role === "ADMIN" ? "warning" : "default"
+                          }
                           size="sm"
                         >
                           {target.role}
@@ -282,7 +311,9 @@ export default function AdminPage() {
                       </td>
                       <td>
                         <Badge
-                          variant={target.status === 'ACTIVE' ? 'success' : 'danger'}
+                          variant={
+                            target.status === "ACTIVE" ? "success" : "danger"
+                          }
                           size="sm"
                         >
                           {target.status}
@@ -294,7 +325,7 @@ export default function AdminPage() {
                       <td className="admin-muted">
                         {target.lastLoginAt
                           ? new Date(target.lastLoginAt).toLocaleString()
-                          : 'Never'}
+                          : "Never"}
                       </td>
                       <td>
                         <div className="admin-actions">
@@ -320,12 +351,12 @@ export default function AdminPage() {
                             disabled={target.id === me?.id}
                             onClick={() => toggleStatus(target)}
                             aria-label={
-                              target.status === 'ACTIVE'
+                              target.status === "ACTIVE"
                                 ? `Disable ${target.name}`
                                 : `Enable ${target.name}`
                             }
                           >
-                            {target.status === 'ACTIVE' ? (
+                            {target.status === "ACTIVE" ? (
                               <Ban size={14} />
                             ) : (
                               <CheckCircle2 size={14} />
@@ -364,19 +395,19 @@ export default function AdminPage() {
         onClose={() => {
           setMode(null);
           setEditing(null);
-          setError('');
+          setError("");
         }}
         title={
-          mode === 'create'
-            ? 'Create user'
-            : mode === 'edit'
-              ? 'Edit user'
-              : 'Reset password'
+          mode === "create"
+            ? "Create user"
+            : mode === "edit"
+              ? "Edit user"
+              : "Reset password"
         }
         size="sm"
       >
         <form className="modal-form" onSubmit={submitForm}>
-          {mode !== 'password' && (
+          {mode !== "password" && (
             <>
               <Input
                 label="Name"
@@ -394,7 +425,7 @@ export default function AdminPage() {
               />
             </>
           )}
-          {mode === 'create' && (
+          {mode === "create" && (
             <Input
               label="Password"
               type="password"
@@ -406,7 +437,7 @@ export default function AdminPage() {
               helperText={PASSWORD_RULES}
             />
           )}
-          {mode === 'password' && (
+          {mode === "password" && (
             <>
               <p className="modal-message">
                 Set a new password for {editing?.email}.
@@ -423,14 +454,17 @@ export default function AdminPage() {
               />
             </>
           )}
-          {mode !== 'password' && (
+          {mode !== "password" && (
             <label className="input-wrapper">
               <span className="input-label">Role</span>
               <select
                 className="select"
                 value={form.role}
                 onChange={(e) =>
-                  setForm({ ...form, role: e.target.value as FormState['role'] })
+                  setForm({
+                    ...form,
+                    role: e.target.value as FormState["role"],
+                  })
                 }
               >
                 <option value="USER">USER</option>
@@ -438,8 +472,10 @@ export default function AdminPage() {
               </select>
             </label>
           )}
-          {mode === 'edit' && editing?.id === me?.id && (
-            <p className="muted">You cannot demote or disable your own account.</p>
+          {mode === "edit" && editing?.id === me?.id && (
+            <p className="muted">
+              You cannot demote or disable your own account.
+            </p>
           )}
           <div className="modal-actions">
             <Button
@@ -448,18 +484,18 @@ export default function AdminPage() {
               onClick={() => {
                 setMode(null);
                 setEditing(null);
-                setError('');
+                setError("");
               }}
               disabled={saving}
             >
               Cancel
             </Button>
             <Button type="submit" loading={saving}>
-              {mode === 'create'
-                ? 'Create'
-                : mode === 'edit'
-                  ? 'Save changes'
-                  : 'Reset password'}
+              {mode === "create"
+                ? "Create"
+                : mode === "edit"
+                  ? "Save changes"
+                  : "Reset password"}
             </Button>
           </div>
         </form>
@@ -469,8 +505,8 @@ export default function AdminPage() {
         isOpen={confirm?.open ?? false}
         onClose={() => setConfirm(null)}
         onConfirm={runConfirm}
-        title={confirm?.title ?? ''}
-        message={confirm?.message ?? ''}
+        title={confirm?.title ?? ""}
+        message={confirm?.message ?? ""}
         confirmText="Confirm"
         variant="danger"
         loading={saving}

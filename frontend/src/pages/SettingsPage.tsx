@@ -1,20 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Settings, Download, LogOut, User, Palette } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { Button } from '../components/Button';
-import { Card, CardTitle, CardDescription } from '../components/Card';
-import { Input } from '../components/Input';
-import { Switch } from '../components/Switch';
-import { Avatar } from '../components/Avatar';
-import { ApiLoadError } from '../components/ApiLoadError';
-import { Tabs, TabsList, TabsTrigger } from '../components/Tabs';
-import { ProfilePhotoCropModal } from '../components/ProfilePhotoCropModal';
-import { api } from '../services/api';
-import { downloadJson } from '../utils/misc';
-import { todayISO } from '../utils/date';
-import { getTheme, applyTheme, type ThemeMode } from '../utils/theme';
-import { getDisplayName, getProfilePic, notifyProfileUpdated, saveProfilePic, removeProfilePic } from '../utils/profile';
-import type { UserSettings } from '../types';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Settings, Download, LogOut, User, Palette } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "../components/Button";
+import { Card, CardTitle, CardDescription } from "../components/Card";
+import { Input } from "../components/Input";
+import { Switch } from "../components/Switch";
+import { Avatar } from "../components/Avatar";
+import { ApiLoadError } from "../components/ApiLoadError";
+import { Tabs, TabsList, TabsTrigger } from "../components/Tabs";
+import { ProfilePhotoCropModal } from "../components/ProfilePhotoCropModal";
+import { api } from "../services/api";
+import { downloadJson } from "../utils/misc";
+import { todayISO } from "../utils/date";
+import { getTheme, applyTheme, type ThemeMode } from "../utils/theme";
+import {
+  getDisplayName,
+  getProfilePic,
+  notifyProfileUpdated,
+  saveProfilePic,
+  removeProfilePic,
+} from "../utils/profile";
+import type { UserSettings } from "../types";
 
 const MAX_USERNAME_CHANGES = 2;
 
@@ -27,22 +33,28 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setThemeState] = useState<ThemeMode>(() => getTheme());
-  const [profilePic, setProfilePic] = useState<string | null>(() => getProfilePic());
+  const [profilePic, setProfilePic] = useState<string | null>(() =>
+    getProfilePic(),
+  );
   const [cropSrc, setCropSrc] = useState<string | null>(null);
-  const [username, setUsername] = useState(() => getDisplayName(user?.name ?? ''));
+  const [username, setUsername] = useState(() =>
+    getDisplayName(user?.name ?? ""),
+  );
   const [usernameChangeCount, setUsernameChangeCount] = useState(() => {
     try {
-      return parseInt(localStorage.getItem('usernameChangeCount') || '0', 10) || 0;
+      return (
+        parseInt(localStorage.getItem("usernameChangeCount") || "0", 10) || 0
+      );
     } catch {
       return 0;
     }
   });
   const [usernameSaved, setUsernameSaved] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importMsg, setImportMsg] = useState('');
+  const [importMsg, setImportMsg] = useState("");
 
   function handleThemeChange(value: string) {
-    const next = value === 'dark' ? 'dark' : 'light';
+    const next = value === "dark" ? "dark" : "light";
     applyTheme(next);
     setThemeState(next);
   }
@@ -55,7 +67,7 @@ export default function SettingsPage() {
       setCropSrc(String(reader.result));
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
+    e.target.value = "";
   }
 
   function handleCropSave(base64: string) {
@@ -73,8 +85,11 @@ export default function SettingsPage() {
     const trimmed = username.trim();
     if (!trimmed || usernameChangeCount >= MAX_USERNAME_CHANGES) return;
     try {
-      localStorage.setItem('userName', trimmed);
-      localStorage.setItem('usernameChangeCount', String(usernameChangeCount + 1));
+      localStorage.setItem("userName", trimmed);
+      localStorage.setItem(
+        "usernameChangeCount",
+        String(usernameChangeCount + 1),
+      );
     } catch {
       /* Storage may be unavailable. */
     }
@@ -85,34 +100,47 @@ export default function SettingsPage() {
     notifyProfileUpdated();
   }
 
-  const fetchSettings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api<UserSettings>('/settings');
-      if (!data) throw new Error('The settings response was empty.');
-      setSettings(data);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load settings.');
-    } finally {
-      setLoading(false);
-    }
+  const loadSettings = useCallback(() => {
+    return api<UserSettings>("/settings")
+      .then((data) => {
+        if (!data) throw new Error("The settings response was empty.");
+        setSettings(data);
+      })
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof Error ? caught.message : "Could not load settings.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const fetchSettings = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return loadSettings();
+  }, [loadSettings]);
+
   useEffect(() => {
-    void fetchSettings();
-  }, [fetchSettings]);
+    void loadSettings();
+  }, [loadSettings]);
 
   async function saveSettings() {
     if (!settings) return;
     setSaving(true);
     try {
-      const updated = await api<UserSettings>('/settings', { method: 'PUT', body: JSON.stringify(settings) });
+      const updated = await api<UserSettings>("/settings", {
+        method: "PUT",
+        body: JSON.stringify(settings),
+      });
       setSettings(updated ?? settings);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not save settings.');
+      setError(
+        caught instanceof Error ? caught.message : "Could not save settings.",
+      );
     } finally {
       setSaving(false);
     }
@@ -120,10 +148,10 @@ export default function SettingsPage() {
 
   async function handleExport() {
     try {
-      const data = await api('/backup/export');
+      const data = await api("/backup/export");
       downloadJson(`productivity-backup-${todayISO()}.json`, data);
     } catch {
-      alert('Export failed. Please try again.');
+      alert("Export failed. Please try again.");
     }
   }
 
@@ -131,21 +159,29 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
-    setImportMsg('');
+    setImportMsg("");
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      await api('/backup/import', { method: 'POST', body: JSON.stringify(data) });
-      setImportMsg('Backup imported successfully.');
+      await api("/backup/import", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      setImportMsg("Backup imported successfully.");
     } catch (err) {
-      setImportMsg(`Import failed: ${err instanceof Error ? err.message : 'invalid file'}`);
+      setImportMsg(
+        `Import failed: ${err instanceof Error ? err.message : "invalid file"}`,
+      );
     } finally {
       setImporting(false);
-      e.target.value = '';
+      e.target.value = "";
     }
   }
 
-  function update<K extends keyof UserSettings>(key: K, value: UserSettings[K]) {
+  function update<K extends keyof UserSettings>(
+    key: K,
+    value: UserSettings[K],
+  ) {
     setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
@@ -156,7 +192,9 @@ export default function SettingsPage() {
   if (!settings) {
     return (
       <div className="page">
-        <header className="page-header"><h1>Settings</h1></header>
+        <header className="page-header">
+          <h1>Settings</h1>
+        </header>
         <ApiLoadError error={error} onRetry={() => void fetchSettings()} />
       </div>
     );
@@ -189,17 +227,25 @@ export default function SettingsPage() {
                   <Avatar
                     size="xl"
                     className="settings-avatar"
-                    name={username || user?.name || '?'}
+                    name={username || user?.name || "?"}
                     src={profilePic}
                     alt="Profile photo"
                   />
                   {profilePic && (
-                    <button type="button" className="remove-photo-link" onClick={handleRemovePhoto}>
+                    <button
+                      type="button"
+                      className="remove-photo-link"
+                      onClick={handleRemovePhoto}
+                    >
                       Remove photo
                     </button>
                   )}
                 </div>
-                <Button variant="secondary" type="button" onClick={() => fileInputRef.current?.click()}>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   Change Photo
                 </Button>
                 <input
@@ -213,7 +259,9 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="settings-field settings-field-wide">
-              <label className="input-label" htmlFor="profile-username">Username</label>
+              <label className="input-label" htmlFor="profile-username">
+                Username
+              </label>
               <div className="settings-username-row">
                 <Input
                   id="profile-username"
@@ -225,21 +273,35 @@ export default function SettingsPage() {
                 <Button
                   type="button"
                   onClick={saveUsername}
-                  disabled={usernameChangeCount >= MAX_USERNAME_CHANGES || !username.trim()}
+                  disabled={
+                    usernameChangeCount >= MAX_USERNAME_CHANGES ||
+                    !username.trim()
+                  }
                 >
                   Save
                 </Button>
               </div>
               {usernameChangeCount >= MAX_USERNAME_CHANGES ? (
-                <p className="settings-note">You have used both username changes. Username cannot be changed again.</p>
+                <p className="settings-note">
+                  You have used both username changes. Username cannot be
+                  changed again.
+                </p>
               ) : usernameChangeCount === 0 ? (
-                <p className="settings-note">You can change your username 2 times total.</p>
+                <p className="settings-note">
+                  You can change your username 2 times total.
+                </p>
               ) : (
                 <p className="settings-note">
-                  You can change your username {MAX_USERNAME_CHANGES - usernameChangeCount} more time(s).
+                  You can change your username{" "}
+                  {MAX_USERNAME_CHANGES - usernameChangeCount} more time(s).
                 </p>
               )}
-              <span className={`save-indicator ${usernameSaved ? 'show' : ''}`} role="status">Saved ✓</span>
+              <span
+                className={`save-indicator ${usernameSaved ? "show" : ""}`}
+                role="status"
+              >
+                Saved ✓
+              </span>
             </div>
             <div className="settings-field">
               <label className="input-label">Name</label>
@@ -255,7 +317,11 @@ export default function SettingsPage() {
             </div>
             <div className="settings-field">
               <label className="input-label">Member since</label>
-              <p className="settings-value">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}</p>
+              <p className="settings-value">
+                {user?.createdAt
+                  ? new Date(user.createdAt).toLocaleDateString()
+                  : "—"}
+              </p>
             </div>
           </div>
         </div>
@@ -290,24 +356,51 @@ export default function SettingsPage() {
             <Settings size={20} />
             <div>
               <CardTitle>Daily Schedule</CardTitle>
-              <CardDescription>Set your preferred times for the day</CardDescription>
+              <CardDescription>
+                Set your preferred times for the day
+              </CardDescription>
             </div>
           </div>
           <div className="settings-fields">
             <div className="settings-field">
-              <Input label="Wake up" type="time" value={settings.wakeUpTime} onChange={(e) => update('wakeUpTime', e.target.value)} />
+              <Input
+                label="Wake up"
+                type="time"
+                value={settings.wakeUpTime}
+                onChange={(e) => update("wakeUpTime", e.target.value)}
+              />
             </div>
             <div className="settings-field">
-              <Input label="Breakfast" type="time" value={settings.breakfastTime} onChange={(e) => update('breakfastTime', e.target.value)} />
+              <Input
+                label="Breakfast"
+                type="time"
+                value={settings.breakfastTime}
+                onChange={(e) => update("breakfastTime", e.target.value)}
+              />
             </div>
             <div className="settings-field">
-              <Input label="Lunch" type="time" value={settings.lunchTime} onChange={(e) => update('lunchTime', e.target.value)} />
+              <Input
+                label="Lunch"
+                type="time"
+                value={settings.lunchTime}
+                onChange={(e) => update("lunchTime", e.target.value)}
+              />
             </div>
             <div className="settings-field">
-              <Input label="Dinner" type="time" value={settings.dinnerTime} onChange={(e) => update('dinnerTime', e.target.value)} />
+              <Input
+                label="Dinner"
+                type="time"
+                value={settings.dinnerTime}
+                onChange={(e) => update("dinnerTime", e.target.value)}
+              />
             </div>
             <div className="settings-field">
-              <Input label="Sleep" type="time" value={settings.sleepTime} onChange={(e) => update('sleepTime', e.target.value)} />
+              <Input
+                label="Sleep"
+                type="time"
+                value={settings.sleepTime}
+                onChange={(e) => update("sleepTime", e.target.value)}
+              />
             </div>
           </div>
         </div>
@@ -319,23 +412,56 @@ export default function SettingsPage() {
             <Settings size={20} />
             <div>
               <CardTitle>Focus Defaults</CardTitle>
-              <CardDescription>Default durations for focus sessions</CardDescription>
+              <CardDescription>
+                Default durations for focus sessions
+              </CardDescription>
             </div>
           </div>
           <div className="settings-fields">
             <div className="settings-field">
-              <Input label="Focus duration (min)" type="number" min="5" max="180" value={settings.defaultFocusDuration} onChange={(e) => update('defaultFocusDuration', Number(e.target.value))} />
+              <Input
+                label="Focus duration (min)"
+                type="number"
+                min="5"
+                max="180"
+                value={settings.defaultFocusDuration}
+                onChange={(e) =>
+                  update("defaultFocusDuration", Number(e.target.value))
+                }
+              />
             </div>
             <div className="settings-field">
-              <Input label="Break duration (min)" type="number" min="1" max="60" value={settings.defaultBreakDuration} onChange={(e) => update('defaultBreakDuration', Number(e.target.value))} />
+              <Input
+                label="Break duration (min)"
+                type="number"
+                min="1"
+                max="60"
+                value={settings.defaultBreakDuration}
+                onChange={(e) =>
+                  update("defaultBreakDuration", Number(e.target.value))
+                }
+              />
             </div>
             <div className="settings-field">
-              <Switch checked={settings.notificationsEnabled} onChange={(e) => update('notificationsEnabled', e.target.checked)} label="Enable notifications" />
+              <Switch
+                checked={settings.notificationsEnabled}
+                onChange={(e) =>
+                  update("notificationsEnabled", e.target.checked)
+                }
+                label="Enable notifications"
+              />
             </div>
           </div>
           <div className="settings-actions">
-            <span className={`save-indicator ${saved ? 'show' : ''}`} role="status">Saved ✓</span>
-            <Button onClick={saveSettings} loading={saving}>Save Settings</Button>
+            <span
+              className={`save-indicator ${saved ? "show" : ""}`}
+              role="status"
+            >
+              Saved ✓
+            </span>
+            <Button onClick={saveSettings} loading={saving}>
+              Save Settings
+            </Button>
           </div>
         </div>
       </Card>
@@ -346,7 +472,9 @@ export default function SettingsPage() {
             <Download size={20} />
             <div>
               <CardTitle>Data & Backup</CardTitle>
-              <CardDescription>Export your data as JSON or restore from a backup file</CardDescription>
+              <CardDescription>
+                Export your data as JSON or restore from a backup file
+              </CardDescription>
             </div>
           </div>
           <div className="settings-actions">
@@ -355,10 +483,19 @@ export default function SettingsPage() {
             </Button>
             <label className="import-label">
               <span className="sr-only">Import backup file</span>
-              <input type="file" accept="application/json" onChange={handleImport} disabled={importing} />
+              <input
+                type="file"
+                accept="application/json"
+                onChange={handleImport}
+                disabled={importing}
+              />
             </label>
           </div>
-          {importMsg && <p className="save-indicator show" role="status">{importMsg}</p>}
+          {importMsg && (
+            <p className="save-indicator show" role="status">
+              {importMsg}
+            </p>
+          )}
         </div>
       </Card>
 

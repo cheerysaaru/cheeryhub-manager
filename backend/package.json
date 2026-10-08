@@ -4,19 +4,21 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev --env staging --remote",
-    "build": "wrangler build",
+    "build": "wrangler deploy --dry-run --outdir dist --env=",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:local": "wrangler dev --env staging --port 4000"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20241218.1",
-    "itty-router": "^6.0.0",
-    "uuid": "^11.0.3"
+    "@cloudflare/workers-types": "^5.20260923.1",
+    "uuid": "^11.0.3",
+    "zod": "^3.22.3"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^20.0.0",
     "@types/uuid": "^9.0.8",
     "typescript": "^5.9.2",
-    "wrangler": "^3.85.0"
+    "wrangler": "^4.147.0"
   }
 }

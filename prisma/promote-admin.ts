@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const email = process.argv[2];
   if (!email) {
-    console.error('Usage: npx tsx prisma/promote-admin.ts <email>');
+    console.error("Usage: npx tsx prisma/promote-admin.ts <email>");
     process.exit(1);
   }
 
@@ -15,14 +15,14 @@ async function main() {
     process.exit(1);
   }
 
-  if (user.role === 'ADMIN') {
+  if (user.role === "ADMIN") {
     console.log(`User "${email}" is already an admin.`);
     return;
   }
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { role: 'ADMIN', status: 'ACTIVE' },
+    data: { role: "ADMIN", status: "ACTIVE" },
   });
 
   console.log(`Promoted "${email}" to ADMIN.`);

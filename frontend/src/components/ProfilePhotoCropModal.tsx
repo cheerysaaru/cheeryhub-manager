@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
-import { Button } from './Button';
-import { cropAndSaveProfilePic } from '../utils/profile';
+import { useRef, useState } from "react";
+import { Button } from "./Button";
+import { cropAndSaveProfilePic } from "../utils/profile";
 
 const STAGE = 300;
 
@@ -20,7 +20,12 @@ export function ProfilePhotoCropModal({ imageSrc, onCancel, onSave }: Props) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
-  const dragRef = useRef<{ startX: number; startY: number; offX: number; offY: number } | null>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    offX: number;
+    offY: number;
+  } | null>(null);
 
   const cropSize = dims ? Math.min(dims.w, dims.h) / zoom : 1;
   const scale = dims ? STAGE / cropSize : 1;
@@ -49,7 +54,12 @@ export function ProfilePhotoCropModal({ imageSrc, onCancel, onSave }: Props) {
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!dims) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, offX: safeOffset.x, offY: safeOffset.y };
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      offX: safeOffset.x,
+      offY: safeOffset.y,
+    };
     setDragging(true);
   }
 
@@ -76,7 +86,12 @@ export function ProfilePhotoCropModal({ imageSrc, onCancel, onSave }: Props) {
     if (!dims || saving) return;
     setSaving(true);
     try {
-      const base64 = await cropAndSaveProfilePic(imageSrc, safeOffset.x, safeOffset.y, zoom);
+      const base64 = await cropAndSaveProfilePic(
+        imageSrc,
+        safeOffset.x,
+        safeOffset.y,
+        zoom,
+      );
       onSave(base64);
     } finally {
       setSaving(false);
@@ -93,24 +108,41 @@ export function ProfilePhotoCropModal({ imageSrc, onCancel, onSave }: Props) {
     : { opacity: 0 };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Adjust your profile photo">
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Adjust your profile photo"
+    >
       <div className="modal-content modal-sm crop-modal">
         <h2 className="modal-title">Adjust your profile photo</h2>
 
         <div
-          className={`crop-stage${dragging ? ' dragging' : ''}`}
+          className={`crop-stage${dragging ? " dragging" : ""}`}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
-          <img src={imageSrc} alt="" className="crop-image" style={imgStyle} onLoad={handleLoad} draggable={false} />
+          <img
+            src={imageSrc}
+            alt=""
+            className="crop-image"
+            style={imgStyle}
+            onLoad={handleLoad}
+            draggable={false}
+          />
           <div className="crop-mask" />
         </div>
 
         <div className="crop-zoom-row">
           <span className="crop-zoom-label">Zoom:</span>
-          <button type="button" className="crop-zoom-btn" aria-label="Zoom out" onClick={() => changeZoom(zoom - 0.25)}>
+          <button
+            type="button"
+            className="crop-zoom-btn"
+            aria-label="Zoom out"
+            onClick={() => changeZoom(zoom - 0.25)}
+          >
             −
           </button>
           <input
@@ -123,7 +155,12 @@ export function ProfilePhotoCropModal({ imageSrc, onCancel, onSave }: Props) {
             aria-label="Zoom"
             onChange={(e) => changeZoom(Number(e.target.value))}
           />
-          <button type="button" className="crop-zoom-btn" aria-label="Zoom in" onClick={() => changeZoom(zoom + 0.25)}>
+          <button
+            type="button"
+            className="crop-zoom-btn"
+            aria-label="Zoom in"
+            onClick={() => changeZoom(zoom + 0.25)}
+          >
             +
           </button>
         </div>

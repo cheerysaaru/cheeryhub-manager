@@ -1,56 +1,86 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
-import { LogOut, Menu, X } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { Avatar } from './Avatar';
-import { GreetingPopup } from './GreetingPopup';
-import { NotificationCenter } from './NotificationCenter';
-import { adminItems, isActiveNavPath, navItems } from './navItems';
-import { getDisplayName, getProfilePic, PROFILE_EVENT, initAvatar } from '../utils/profile';
+import { useEffect, useState } from "react";
+import { Link, useLocation, Outlet } from "react-router-dom";
+import { LogOut, Menu, X } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { Avatar } from "./Avatar";
+import { GreetingPopup } from "./GreetingPopup";
+import { NotificationCenter } from "./NotificationCenter";
+import { adminItems, isActiveNavPath, navItems } from "./navItems";
+import {
+  getDisplayName,
+  getProfilePic,
+  PROFILE_EVENT,
+  initAvatar,
+} from "../utils/profile";
 
 export function Layout() {
   const { user, loading, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileName, setProfileName] = useState(() => getDisplayName(user?.name ?? ''));
+  const [profileName, setProfileName] = useState(() =>
+    getDisplayName(user?.name ?? ""),
+  );
   const [profilePic, setProfilePic] = useState(() => getProfilePic());
 
+  const [prevUserName, setPrevUserName] = useState(user?.name);
+  if (user?.name !== prevUserName) {
+    setPrevUserName(user?.name);
+    setProfileName(getDisplayName(user?.name ?? ""));
+  }
+
   useEffect(() => {
-    setProfileName(getDisplayName(user?.name ?? ''));
     initAvatar();
+  }, [user]);
+
+  useEffect(() => {
     const onProfileUpdated = () => {
-      setProfileName(getDisplayName(user?.name ?? ''));
+      setProfileName(getDisplayName(user?.name ?? ""));
       setProfilePic(getProfilePic());
     };
     window.addEventListener(PROFILE_EVENT, onProfileUpdated);
     return () => window.removeEventListener(PROFILE_EVENT, onProfileUpdated);
   }, [user]);
   const visibleNavItems =
-    user?.role === 'ADMIN' ? [...navItems, ...adminItems] : navItems;
+    user?.role === "ADMIN" ? [...navItems, ...adminItems] : navItems;
 
   const handleLogout = () => {
     logout();
     setMobileMenuOpen(false);
   };
 
-  if (loading) return <div className="app-loading-screen"><div className="spinner" /><p>Loading…</p></div>;
+  if (loading)
+    return (
+      <div className="app-loading-screen">
+        <div className="spinner" />
+        <p>Loading…</p>
+      </div>
+    );
   if (!user) return <Outlet />;
 
   return (
     <div className="app-layout">
       <header className="app-header">
         <div className="header-left">
-          <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}>
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <Link to="/" className="logo">
             <span>cheeryhub</span>
           </Link>
         </div>
-        <nav className={`app-nav ${mobileMenuOpen ? 'open' : ''}`}>
+        <nav className={`app-nav ${mobileMenuOpen ? "open" : ""}`}>
           <div className="nav-drawer-head">
             <span className="nav-drawer-title">Menu</span>
-            <button type="button" className="nav-drawer-close" onClick={() => setMobileMenuOpen(false)} aria-label="Close menu">
+            <button
+              type="button"
+              className="nav-drawer-close"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close menu"
+            >
               <X size={20} />
               <span>Close</span>
             </button>
@@ -60,7 +90,7 @@ export function Layout() {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`nav-link ${isActiveNavPath(location.pathname, item.path) ? 'active' : ''}`}
+                  className={`nav-link ${isActiveNavPath(location.pathname, item.path) ? "active" : ""}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <item.icon size={20} />
@@ -78,13 +108,19 @@ export function Layout() {
         </nav>
         <div className="header-right">
           <NotificationCenter userId={user.id} />
-          <Avatar size="md" className="nav-avatar" name={profileName || user?.name || '?'} src={profilePic} alt={profileName} />
+          <Avatar
+            size="md"
+            className="nav-avatar"
+            name={profileName || user?.name || "?"}
+            src={profilePic}
+            alt={profileName}
+          />
         </div>
       </header>
       <main className="app-main">
         <Outlet />
       </main>
-      <GreetingPopup username={profileName || user?.name || 'there'} />
+      <GreetingPopup username={profileName || user?.name || "there"} />
       <style>{`
         .app-layout {
           min-height: 100vh;

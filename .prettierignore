@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+coverage
+backups
+docs/qa-screenshots
+package-lock.json
+*.db
+*.log
+*.old
+*.tsbuildinfo
+backend/worker-configuration.d.ts
+frontend/public/sw.js

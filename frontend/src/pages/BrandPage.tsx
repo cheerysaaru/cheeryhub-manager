@@ -1,37 +1,70 @@
-import { useState } from 'react';
-import { Plus, Briefcase, Trash2, Pencil, ChevronDown, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { useBrand } from '../hooks/useBrand';
-import { asArray } from '../services/api';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
-import { Progress } from '../components/Progress';
-import { Modal, ConfirmDialog } from '../components/Modal';
-import { ContextMenu, useContextMenu } from '../components/ContextMenu';
-import { Input } from '../components/Input';
-import { Textarea } from '../components/Textarea';
-import { ApiLoadError } from '../components/ApiLoadError';
-import type { BrandProject, BrandMilestone } from '../types';
+import { useState } from "react";
+import {
+  Plus,
+  Briefcase,
+  Trash2,
+  Pencil,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  Circle,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { useBrand } from "../hooks/useBrand";
+import { asArray } from "../services/api";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { Progress } from "../components/Progress";
+import { Modal, ConfirmDialog } from "../components/Modal";
+import { ContextMenu, useContextMenu } from "../components/ContextMenu";
+import { Input } from "../components/Input";
+import { Textarea } from "../components/Textarea";
+import { ApiLoadError } from "../components/ApiLoadError";
+import type { BrandProject, BrandMilestone } from "../types";
 
 export default function BrandPage() {
   const { user } = useAuth();
-  const { projects, loading, error, fetchProjects, create, update, remove, createMilestone, updateMilestone, deleteMilestone } = useBrand(user?.id ?? null);
+  const {
+    projects,
+    loading,
+    error,
+    fetchProjects,
+    create,
+    update,
+    remove,
+    createMilestone,
+    updateMilestone,
+    deleteMilestone,
+  } = useBrand(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<BrandProject | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BrandProject | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [milestoneForm, setMilestoneForm] = useState<{ projectId: string; title: string } | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', status: 'IDEA' as BrandProject['status'], progress: 0 });
+  const [milestoneForm, setMilestoneForm] = useState<{
+    projectId: string;
+    title: string;
+  } | null>(null);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    status: "IDEA" as BrandProject["status"],
+    progress: 0,
+  });
   const projectMenu = useContextMenu();
 
   function openForm(project?: BrandProject) {
     if (project) {
       setEditing(project);
-      setForm({ title: project.title, description: project.description ?? '', status: project.status, progress: project.progress });
+      setForm({
+        title: project.title,
+        description: project.description ?? "",
+        status: project.status,
+        progress: project.progress,
+      });
     } else {
       setEditing(null);
-      setForm({ title: '', description: '', status: 'IDEA', progress: 0 });
+      setForm({ title: "", description: "", status: "IDEA", progress: 0 });
     }
     setShowForm(true);
   }
@@ -46,7 +79,8 @@ export default function BrandPage() {
   function toggleExpand(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -60,13 +94,23 @@ export default function BrandPage() {
   async function toggleMilestone(project: BrandProject, ms: BrandMilestone) {
     await updateMilestone(project.id, ms.id, { completed: !ms.completed });
     const milestones = asArray<BrandMilestone>(project.milestones);
-    const completed = milestones.filter((m) => (m.id === ms.id ? !ms.completed : m.completed)).length;
-    const progress = milestones.length ? Math.round((completed / milestones.length) * 100) : 0;
+    const completed = milestones.filter((m) =>
+      m.id === ms.id ? !ms.completed : m.completed,
+    ).length;
+    const progress = milestones.length
+      ? Math.round((completed / milestones.length) * 100)
+      : 0;
     await update(project.id, { progress });
   }
 
   const statusVariant = (s: string) =>
-    s === 'ACTIVE' ? 'success' : s === 'COMPLETED' ? 'info' : s === 'PAUSED' ? 'warning' : 'outline';
+    s === "ACTIVE"
+      ? "success"
+      : s === "COMPLETED"
+        ? "info"
+        : s === "PAUSED"
+          ? "warning"
+          : "outline";
 
   return (
     <div className="page">
@@ -88,7 +132,9 @@ export default function BrandPage() {
           <Briefcase size={40} />
           <strong>No brand projects yet</strong>
           <p>Track your side projects, launches, and brand initiatives.</p>
-          <Button onClick={() => openForm()}><Plus size={18} /> New Project</Button>
+          <Button onClick={() => openForm()}>
+            <Plus size={18} /> New Project
+          </Button>
         </div>
       ) : (
         <div className="goals-list">
@@ -96,31 +142,84 @@ export default function BrandPage() {
             const milestones = asArray<BrandMilestone>(project.milestones);
             const isExpanded = expanded.has(project.id);
             return (
-              <Card key={project.id} className="goal-card" padding="md" {...projectMenu.bind(project.title)}>
-                <div className="goal-header" onClick={() => toggleExpand(project.id)}>
-                  <button className="expand-toggle" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
-                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+              <Card
+                key={project.id}
+                className="goal-card"
+                padding="md"
+                {...projectMenu.bind(project.title)}
+              >
+                <div
+                  className="goal-header"
+                  onClick={() => toggleExpand(project.id)}
+                >
+                  <button
+                    className="expand-toggle"
+                    aria-label={isExpanded ? "Collapse" : "Expand"}
+                  >
+                    {isExpanded ? (
+                      <ChevronDown size={20} />
+                    ) : (
+                      <ChevronRight size={20} />
+                    )}
                   </button>
                   <div className="goal-info">
                     <strong>{project.title}</strong>
                     <div className="goal-badges">
-                      <Badge variant={statusVariant(project.status)}>{project.status.toLowerCase()}</Badge>
-                      <span className="goal-progress-text">{project.progress}%</span>
+                      <Badge variant={statusVariant(project.status)}>
+                        {project.status.toLowerCase()}
+                      </Badge>
+                      <span className="goal-progress-text">
+                        {project.progress}%
+                      </span>
                     </div>
-                    {project.description && <p className="goal-desc">{project.description}</p>}
+                    {project.description && (
+                      <p className="goal-desc">{project.description}</p>
+                    )}
                   </div>
-                  <div className="goal-actions" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" onClick={() => openForm(project)} aria-label="Edit"><Pencil size={16} /></Button>
-                    <Button variant="ghost" size="sm" className="danger-ghost" onClick={() => setDeleteTarget(project)} aria-label="Delete"><Trash2 size={16} /></Button>
+                  <div
+                    className="goal-actions"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openForm(project)}
+                      aria-label="Edit"
+                    >
+                      <Pencil size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="danger-ghost"
+                      onClick={() => setDeleteTarget(project)}
+                      aria-label="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
                   </div>
                 </div>
-                <Progress value={project.progress} size="md" showLabel label="Progress" />
+                <Progress
+                  value={project.progress}
+                  size="md"
+                  showLabel
+                  label="Progress"
+                />
                 {isExpanded && (
                   <div className="goal-details">
                     <div className="milestones-section">
                       <div className="milestones-header">
                         <h3>Milestones</h3>
-                        <Button variant="ghost" size="sm" onClick={() => setMilestoneForm({ projectId: project.id, title: '' })}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setMilestoneForm({
+                              projectId: project.id,
+                              title: "",
+                            })
+                          }
+                        >
                           <Plus size={16} /> Add
                         </Button>
                       </div>
@@ -129,26 +228,66 @@ export default function BrandPage() {
                           <input
                             autoFocus
                             value={milestoneForm.title}
-                            onChange={(e) => setMilestoneForm({ ...milestoneForm, title: e.target.value })}
+                            onChange={(e) =>
+                              setMilestoneForm({
+                                ...milestoneForm,
+                                title: e.target.value,
+                              })
+                            }
                             placeholder="Milestone title"
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') addMilestone(project.id, milestoneForm.title);
-                              if (e.key === 'Escape') setMilestoneForm(null);
+                              if (e.key === "Enter")
+                                addMilestone(project.id, milestoneForm.title);
+                              if (e.key === "Escape") setMilestoneForm(null);
                             }}
                           />
-                          <Button size="sm" onClick={() => addMilestone(project.id, milestoneForm.title)}>Add</Button>
-                          <Button variant="ghost" size="sm" onClick={() => setMilestoneForm(null)}>✕</Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              addMilestone(project.id, milestoneForm.title)
+                            }
+                          >
+                            Add
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setMilestoneForm(null)}
+                          >
+                            ✕
+                          </Button>
                         </div>
                       )}
                       <ul className="milestone-list">
-                        {milestones.length === 0 && <li className="empty-milestone">No milestones yet.</li>}
+                        {milestones.length === 0 && (
+                          <li className="empty-milestone">
+                            No milestones yet.
+                          </li>
+                        )}
                         {milestones.map((ms) => (
-                          <li key={ms.id} className={`milestone-item ${ms.completed ? 'completed' : ''}`}>
-                            <button className="milestone-check" onClick={() => toggleMilestone(project, ms)} aria-label={ms.completed ? 'Uncomplete' : 'Complete'}>
-                              {ms.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                          <li
+                            key={ms.id}
+                            className={`milestone-item ${ms.completed ? "completed" : ""}`}
+                          >
+                            <button
+                              className="milestone-check"
+                              onClick={() => toggleMilestone(project, ms)}
+                              aria-label={
+                                ms.completed ? "Uncomplete" : "Complete"
+                              }
+                            >
+                              {ms.completed ? (
+                                <CheckCircle2 size={18} />
+                              ) : (
+                                <Circle size={18} />
+                              )}
                             </button>
                             <span className="milestone-title">{ms.title}</span>
-                            <button className="milestone-delete" onClick={() => deleteMilestone(project.id, ms.id)} aria-label="Delete milestone">
+                            <button
+                              className="milestone-delete"
+                              onClick={() => deleteMilestone(project.id, ms.id)}
+                              aria-label="Delete milestone"
+                            >
                               <Trash2 size={14} />
                             </button>
                           </li>
@@ -163,14 +302,37 @@ export default function BrandPage() {
         </div>
       )}
 
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit Project' : 'New Project'}>
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? "Edit Project" : "New Project"}
+      >
         <form onSubmit={handleSubmit} className="modal-form">
-          <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-          <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+          <Input
+            label="Title"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            required
+          />
+          <Textarea
+            label="Description"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            rows={3}
+          />
           <div className="form-row">
             <label className="input-label">
               Status
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as BrandProject['status'] })} className="select">
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    status: e.target.value as BrandProject["status"],
+                  })
+                }
+                className="select"
+              >
                 <option value="IDEA">Idea</option>
                 <option value="ACTIVE">Active</option>
                 <option value="PAUSED">Paused</option>
@@ -179,12 +341,27 @@ export default function BrandPage() {
             </label>
             <label className="input-label">
               Progress: {form.progress}%
-              <input type="range" min="0" max="100" value={form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} className="range-input" />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={form.progress}
+                onChange={(e) =>
+                  setForm({ ...form, progress: Number(e.target.value) })
+                }
+                className="range-input"
+              />
             </label>
           </div>
           <div className="modal-actions">
-            <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button type="submit">{editing ? 'Save' : 'Create Project'}</Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowForm(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">{editing ? "Save" : "Create Project"}</Button>
           </div>
         </form>
       </Modal>
@@ -192,7 +369,12 @@ export default function BrandPage() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={async () => { if (deleteTarget) { await remove(deleteTarget.id); setDeleteTarget(null); } }}
+        onConfirm={async () => {
+          if (deleteTarget) {
+            await remove(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
         title="Delete project?"
         message={`"${deleteTarget?.title}" and its milestones will be permanently deleted.`}
         confirmText="Delete"
@@ -203,12 +385,16 @@ export default function BrandPage() {
         onClose={projectMenu.close}
         onEdit={() => {
           if (!projectMenu.menu) return;
-          const project = projects.find((p) => p.title === projectMenu.menu?.label);
+          const project = projects.find(
+            (p) => p.title === projectMenu.menu?.label,
+          );
           if (project) openForm(project);
         }}
         onDelete={() => {
           if (!projectMenu.menu) return;
-          const project = projects.find((p) => p.title === projectMenu.menu?.label);
+          const project = projects.find(
+            (p) => p.title === projectMenu.menu?.label,
+          );
           if (project) setDeleteTarget(project);
         }}
         editLabel="Edit project"

@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { Pencil, Trash2 } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
+import { Pencil, Trash2 } from "lucide-react";
 
 export interface ContextMenuState {
   x: number;
@@ -34,7 +40,9 @@ let ignoreCloseUntil = 0;
 
 export function useContextMenu() {
   const [menu, setMenu] = useState<ContextMenuState | null>(null);
-  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(
+    null,
+  );
 
   const openAt = useCallback((x: number, y: number, label: string) => {
     ignoreCloseUntil = Date.now() + 600;
@@ -42,43 +50,58 @@ export function useContextMenu() {
     window.getSelection()?.removeAllRanges();
   }, []);
 
-  const open = useCallback((event: React.MouseEvent, label: string) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openAt(event.clientX, event.clientY, label);
-  }, [openAt]);
+  const open = useCallback(
+    (event: React.MouseEvent, label: string) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openAt(event.clientX, event.clientY, label);
+    },
+    [openAt],
+  );
 
   const close = useCallback(() => setMenu(null), []);
 
-  const bind = useCallback((label: string) => ({
-    'data-context-menu': '',
-    onContextMenu: (event: React.MouseEvent) => open(event, label),
-    onTouchEnd: (event: React.TouchEvent) => {
-      const touch = event.changedTouches[0];
-      if (!touch) return;
-      const now = Date.now();
-      const x = touch.clientX;
-      const y = touch.clientY;
-      const last = lastTapRef.current;
-      const isDoubleTap =
-        last &&
-        now - last.time < 350 &&
-        Math.abs(x - last.x) < 30 &&
-        Math.abs(y - last.y) < 30;
-      if (isDoubleTap) {
-        lastTapRef.current = null;
-        event.preventDefault();
-        openAt(x, y, label);
-        return;
-      }
-      lastTapRef.current = { time: now, x, y };
-    },
-  }), [open, openAt]);
+  const bind = useCallback(
+    (label: string) => ({
+      "data-context-menu": "",
+      onContextMenu: (event: React.MouseEvent) => open(event, label),
+      onTouchEnd: (event: React.TouchEvent) => {
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+        const now = Date.now();
+        const x = touch.clientX;
+        const y = touch.clientY;
+        const last = lastTapRef.current;
+        const isDoubleTap =
+          last &&
+          now - last.time < 350 &&
+          Math.abs(x - last.x) < 30 &&
+          Math.abs(y - last.y) < 30;
+        if (isDoubleTap) {
+          lastTapRef.current = null;
+          event.preventDefault();
+          openAt(x, y, label);
+          return;
+        }
+        lastTapRef.current = { time: now, x, y };
+      },
+    }),
+    [open, openAt],
+  );
 
   return { menu, open, close, bind };
 }
 
-export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edit', deleteLabel = 'Delete', title, items }: ContextMenuProps) {
+export function ContextMenu({
+  state,
+  onClose,
+  onEdit,
+  onDelete,
+  editLabel = "Edit",
+  deleteLabel = "Delete",
+  title,
+  items,
+}: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,20 +111,20 @@ export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edi
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
     const onScroll = () => onClose();
-    window.addEventListener('mousedown', onDown);
-    window.addEventListener('touchstart', onDown, { passive: true });
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('resize', onScroll);
-    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("touchstart", onDown, { passive: true });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onScroll);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
-      window.removeEventListener('mousedown', onDown);
-      window.removeEventListener('touchstart', onDown);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('resize', onScroll);
-      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("touchstart", onDown);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [state, onClose]);
 
@@ -121,42 +144,60 @@ export function ContextMenu({ state, onClose, onEdit, onDelete, editLabel = 'Edi
       aria-label={`Actions for ${state.label}`}
       style={{ left: Math.max(8, x), top: Math.max(8, y) }}
     >
-      <p className="context-menu-title" title={title ?? state.label}>{title ?? state.label}</p>
-      {items
-        ? items.map((item) => (
+      <p className="context-menu-title" title={title ?? state.label}>
+        {title ?? state.label}
+      </p>
+      {items ? (
+        items.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={`context-menu-item${item.danger ? " danger" : ""}`}
+            role="menuitem"
+            disabled={item.disabled}
+            onClick={() => {
+              if (item.disabled) return;
+              item.onClick();
+              onClose();
+            }}
+          >
+            {item.icon}
+            {item.label}
+          </button>
+        ))
+      ) : (
+        <>
+          {onEdit && (
             <button
-              key={item.key}
               type="button"
-              className={`context-menu-item${item.danger ? ' danger' : ''}`}
+              className="context-menu-item"
               role="menuitem"
-              disabled={item.disabled}
               onClick={() => {
-                if (item.disabled) return;
-                item.onClick();
+                onEdit();
                 onClose();
               }}
             >
-              {item.icon}
-              {item.label}
+              <Pencil size={15} />
+              {editLabel}
             </button>
-          ))
-        : (
-          <>
-            {onEdit && (
-              <button type="button" className="context-menu-item" role="menuitem" onClick={() => { onEdit(); onClose(); }}>
-                <Pencil size={15} />
-                {editLabel}
-              </button>
-            )}
-            {onDelete && (
-              <button type="button" className="context-menu-item danger" role="menuitem" onClick={() => { onDelete(); onClose(); }}>
-                <Trash2 size={15} />
-                {deleteLabel}
-              </button>
-            )}
-          </>
-        )}
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className="context-menu-item danger"
+              role="menuitem"
+              onClick={() => {
+                onDelete();
+                onClose();
+              }}
+            >
+              <Trash2 size={15} />
+              {deleteLabel}
+            </button>
+          )}
+        </>
+      )}
     </div>,
-    document.body
+    document.body,
   );
 }

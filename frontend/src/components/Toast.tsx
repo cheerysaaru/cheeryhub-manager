@@ -1,5 +1,11 @@
-import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import {
+  useState,
+  useCallback,
+  createContext,
+  useContext,
+  ReactNode,
+} from "react";
+import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from "lucide-react";
 
 export interface ToastAction {
   label: string;
@@ -7,7 +13,7 @@ export interface ToastAction {
 }
 
 export interface ToastOptions {
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: "success" | "error" | "warning" | "info";
   title: string;
   message?: string;
   duration?: number;
@@ -35,15 +41,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const toast = useCallback<ToastFn>((t) => {
-    const id = Math.random().toString(36).slice(2);
-    const newToast = { ...t, id };
-    setToasts((prev) => [...prev, newToast]);
-    if (t.duration !== 0) {
-      setTimeout(() => dismiss(id), t.duration ?? 4000);
-    }
-    return id;
-  }, [dismiss]);
+  const toast = useCallback<ToastFn>(
+    (t) => {
+      const id = Math.random().toString(36).slice(2);
+      const newToast = { ...t, id };
+      setToasts((prev) => [...prev, newToast]);
+      if (t.duration !== 0) {
+        setTimeout(() => dismiss(id), t.duration ?? 4000);
+      }
+      return id;
+    },
+    [dismiss],
+  );
 
   return (
     <ToastContext.Provider value={{ toast, dismiss }}>
@@ -55,11 +64,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast() {
   const context = useContext(ToastContext);
-  if (!context) throw new Error('useToast must be used within a ToastProvider');
+  if (!context) throw new Error("useToast must be used within a ToastProvider");
   return context;
 }
 
-function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
+function ToastContainer({
+  toasts,
+  onDismiss,
+}: {
+  toasts: Toast[];
+  onDismiss: (id: string) => void;
+}) {
   const icons = {
     success: <CheckCircle className="toast-icon-success" size={20} />,
     error: <AlertCircle className="toast-icon-error" size={20} />,
@@ -68,16 +83,25 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
   };
 
   const bgClasses = {
-    success: 'toast-success',
-    error: 'toast-error',
-    warning: 'toast-warning',
-    info: 'toast-info',
+    success: "toast-success",
+    error: "toast-error",
+    warning: "toast-warning",
+    info: "toast-info",
   };
 
   return (
-    <div className="toast-container" role="region" aria-label="Notifications" aria-live="polite">
+    <div
+      className="toast-container"
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
+    >
       {toasts.map((toast) => (
-        <div key={toast.id} className={`toast ${bgClasses[toast.type]}`} role="alert">
+        <div
+          key={toast.id}
+          className={`toast ${bgClasses[toast.type]}`}
+          role="alert"
+        >
           <div className="toast-icon">{icons[toast.type]}</div>
           <div className="toast-content">
             <p className="toast-title">{toast.title}</p>
@@ -95,7 +119,11 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
               </button>
             )}
           </div>
-          <button className="toast-close" onClick={() => onDismiss(toast.id)} aria-label="Dismiss">
+          <button
+            className="toast-close"
+            onClick={() => onDismiss(toast.id)}
+            aria-label="Dismiss"
+          >
             <X size={16} />
           </button>
         </div>

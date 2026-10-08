@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
-import { formatShortFullDate } from '../utils/commitmentCalendar';
-import type { ToastFn } from '../components/Toast';
-import type { DayAction } from '../components/DayContextMenu';
+import { useCallback } from "react";
+import { formatShortFullDate } from "../utils/commitmentCalendar";
+import type { ToastFn } from "../components/Toast";
+import type { DayAction } from "../components/DayContextMenu";
 
 interface DayApi {
   complete: (id: string, date?: string) => Promise<boolean>;
@@ -10,10 +10,10 @@ interface DayApi {
   skipToday: (id: string, date?: string) => Promise<boolean>;
 }
 
-const ACTION_TITLES: Record<Exclude<DayAction, 'undo'>, string> = {
-  checkin: 'Checked in',
-  fail: 'Marked as failed',
-  leave: 'Marked as leave',
+const ACTION_TITLES: Record<Exclude<DayAction, "undo">, string> = {
+  checkin: "Checked in",
+  fail: "Marked as failed",
+  leave: "Marked as leave",
 };
 
 /**
@@ -24,22 +24,26 @@ export function useDayActions(api: DayApi, toast: ToastFn) {
   const { complete, clearToday, failToday, skipToday } = api;
 
   return useCallback(
-    async (habitId: string, date: string, action: DayAction): Promise<boolean> => {
+    async (
+      habitId: string,
+      date: string,
+      action: DayAction,
+    ): Promise<boolean> => {
       let ok: boolean;
-      if (action === 'checkin') ok = await complete(habitId, date);
-      else if (action === 'fail') ok = await failToday(habitId, date);
-      else if (action === 'leave') ok = await skipToday(habitId, date);
+      if (action === "checkin") ok = await complete(habitId, date);
+      else if (action === "fail") ok = await failToday(habitId, date);
+      else if (action === "leave") ok = await skipToday(habitId, date);
       else ok = await clearToday(habitId, date);
       if (!ok) return false;
 
-      if (action !== 'undo') {
+      if (action !== "undo") {
         toast({
-          type: 'info',
+          type: "info",
           title: ACTION_TITLES[action],
           message: formatShortFullDate(date),
           duration: 5000,
           action: {
-            label: 'Undo',
+            label: "Undo",
             onClick: () => {
               void clearToday(habitId, date);
             },
@@ -48,6 +52,6 @@ export function useDayActions(api: DayApi, toast: ToastFn) {
       }
       return true;
     },
-    [complete, clearToday, failToday, skipToday, toast]
+    [complete, clearToday, failToday, skipToday, toast],
   );
 }
