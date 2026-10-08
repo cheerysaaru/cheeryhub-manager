@@ -1,27 +1,27 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = 'User';
-  const password = 'Abi2006';
+  const email = "User";
+  const password = "Abi2006";
   const passwordHash = await bcrypt.hash(password, 12);
 
   await prisma.user.upsert({
     where: { email },
     update: {
-      name: 'user',
+      name: "user",
       passwordHash,
       emailVerified: true,
       emailVerificationToken: null,
       emailVerificationExpires: null,
     },
     create: {
-      name: 'user',
+      name: "user",
       email,
       passwordHash,
-      timezone: 'UTC',
+      timezone: "UTC",
       emailVerified: true,
       settings: { create: {} },
     },

@@ -1,35 +1,66 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Target, CheckCircle2, Circle, Trash2, ChevronDown, ChevronRight, Pencil, X, AlertTriangle } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { useGoals } from '../hooks/useGoals';
-import { useTasks } from '../hooks/useTasks';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
-import { Progress } from '../components/Progress';
-import { Modal, ConfirmDialog } from '../components/Modal';
-import { ContextMenu, useContextMenu } from '../components/ContextMenu';
-import { useToast } from '../components/Toast';
-import { Input } from '../components/Input';
-import { Textarea } from '../components/Textarea';
-import { archiveGoal } from '../utils/archivedments';
-import { ApiLoadError } from '../components/ApiLoadError';
-import { asArray } from '../services/api';
-import type { Goal, GoalMilestone } from '../types';
-import { daysUntil } from '../utils/date';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Plus,
+  Target,
+  CheckCircle2,
+  Circle,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  X,
+  AlertTriangle,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { useGoals } from "../hooks/useGoals";
+import { useTasks } from "../hooks/useTasks";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { Progress } from "../components/Progress";
+import { Modal, ConfirmDialog } from "../components/Modal";
+import { ContextMenu, useContextMenu } from "../components/ContextMenu";
+import { useToast } from "../components/Toast";
+import { Input } from "../components/Input";
+import { Textarea } from "../components/Textarea";
+import { archiveGoal } from "../utils/archivedments";
+import { ApiLoadError } from "../components/ApiLoadError";
+import { asArray } from "../services/api";
+import type { Goal, GoalMilestone } from "../types";
+import { daysUntil } from "../utils/date";
 
 export default function GoalsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { goals, loading, error: goalsError, fetchGoals, create, update, remove, createMilestone, updateMilestone, deleteMilestone } = useGoals(user?.id ?? null);
+  const {
+    goals,
+    loading,
+    error: goalsError,
+    fetchGoals,
+    create,
+    update,
+    remove,
+    createMilestone,
+    updateMilestone,
+    deleteMilestone,
+  } = useGoals(user?.id ?? null);
   const { tasks, error: tasksError, fetchTasks } = useTasks(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [milestoneForm, setMilestoneForm] = useState<{ goalId: string; title: string } | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', deadline: '', status: 'ACTIVE' as Goal['status'], progress: 0 });
+  const [milestoneForm, setMilestoneForm] = useState<{
+    goalId: string;
+    title: string;
+  } | null>(null);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    deadline: "",
+    status: "ACTIVE" as Goal["status"],
+    progress: 0,
+  });
   const goalMenu = useContextMenu();
   const error = goalsError ?? tasksError;
 
@@ -38,14 +69,20 @@ export default function GoalsPage() {
       setEditingGoal(goal);
       setForm({
         title: goal.title,
-        description: goal.description ?? '',
-        deadline: goal.deadline ? goal.deadline.slice(0, 10) : '',
+        description: goal.description ?? "",
+        deadline: goal.deadline ? goal.deadline.slice(0, 10) : "",
         status: goal.status,
         progress: goal.progress,
       });
     } else {
       setEditingGoal(null);
-      setForm({ title: '', description: '', deadline: '', status: 'ACTIVE', progress: 0 });
+      setForm({
+        title: "",
+        description: "",
+        deadline: "",
+        status: "ACTIVE",
+        progress: 0,
+      });
     }
     setShowForm(true);
   }
@@ -74,7 +111,10 @@ export default function GoalsPage() {
         description: data.description,
       });
       if (archived) {
-        toast({ type: 'success', title: `"${data.title}" completed! Added to Achievements.` });
+        toast({
+          type: "success",
+          title: `"${data.title}" completed! Added to Achievements.`,
+        });
       }
     }
   }
@@ -92,15 +132,29 @@ export default function GoalsPage() {
   }
 
   async function toggleMilestone(goal: Goal, milestone: GoalMilestone) {
-    await updateMilestone(goal.id, milestone.id, { completed: !milestone.completed });
+    await updateMilestone(goal.id, milestone.id, {
+      completed: !milestone.completed,
+    });
     const milestones = asArray<GoalMilestone>(goal.milestones);
-    const completedCount = milestones.filter((m) => (m.id === milestone.id ? !milestone.completed : m.completed)).length;
-    const newProgress = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
+    const completedCount = milestones.filter((m) =>
+      m.id === milestone.id ? !milestone.completed : m.completed,
+    ).length;
+    const newProgress =
+      milestones.length > 0
+        ? Math.round((completedCount / milestones.length) * 100)
+        : 0;
     await update(goal.id, { progress: newProgress });
     if (newProgress === 100 && goal.progress < 100) {
-      const archived = archiveGoal({ id: goal.id, title: goal.title, description: goal.description ?? undefined });
+      const archived = archiveGoal({
+        id: goal.id,
+        title: goal.title,
+        description: goal.description ?? undefined,
+      });
       if (archived) {
-        toast({ type: 'success', title: `"${goal.title}" completed! Added to Achievements.` });
+        toast({
+          type: "success",
+          title: `"${goal.title}" completed! Added to Achievements.`,
+        });
       }
     }
   }
@@ -113,7 +167,14 @@ export default function GoalsPage() {
     });
   }
 
-  const statusVariant = (s: string) => (s === 'ACTIVE' ? 'success' : s === 'COMPLETED' ? 'info' : s === 'PAUSED' ? 'warning' : 'outline');
+  const statusVariant = (s: string) =>
+    s === "ACTIVE"
+      ? "success"
+      : s === "COMPLETED"
+        ? "info"
+        : s === "PAUSED"
+          ? "warning"
+          : "outline";
 
   return (
     <div className="page">
@@ -138,15 +199,21 @@ export default function GoalsPage() {
           <Target size={40} />
           <strong>No goals yet</strong>
           <p>Create your first goal to start tracking progress.</p>
-          <Button onClick={() => openForm()}><Plus size={18} /> New Goal</Button>
+          <Button onClick={() => openForm()}>
+            <Plus size={18} /> New Goal
+          </Button>
         </div>
       ) : (
         <div className="goals-list">
           {goals.map((goal) => {
             const milestones = asArray<GoalMilestone>(goal.milestones);
-            const linkedTasks = tasks.filter((t) => t.goalId === goal.id && !t.deletedAt);
+            const linkedTasks = tasks.filter(
+              (t) => t.goalId === goal.id && !t.deletedAt,
+            );
             const isExpanded = expanded.has(goal.id);
-            const deadlineDays = goal.deadline ? daysUntil(goal.deadline) : null;
+            const deadlineDays = goal.deadline
+              ? daysUntil(goal.deadline)
+              : null;
 
             return (
               <Card
@@ -155,41 +222,93 @@ export default function GoalsPage() {
                 padding="md"
                 {...goalMenu.bind(goal.title)}
               >
-                <div className="goal-header" onClick={() => toggleExpand(goal.id)}>
-                  <button className="expand-toggle" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
-                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                <div
+                  className="goal-header"
+                  onClick={() => toggleExpand(goal.id)}
+                >
+                  <button
+                    className="expand-toggle"
+                    aria-label={isExpanded ? "Collapse" : "Expand"}
+                  >
+                    {isExpanded ? (
+                      <ChevronDown size={20} />
+                    ) : (
+                      <ChevronRight size={20} />
+                    )}
                   </button>
                   <div className="goal-info">
                     <strong>{goal.title}</strong>
                     <div className="goal-badges">
-                      <Badge variant={statusVariant(goal.status)}>{goal.status.toLowerCase()}</Badge>
+                      <Badge variant={statusVariant(goal.status)}>
+                        {goal.status.toLowerCase()}
+                      </Badge>
                       {deadlineDays !== null && (
-                        <Badge variant={deadlineDays < 0 ? 'danger' : deadlineDays <= 7 ? 'warning' : 'outline'}>
-                          {deadlineDays < 0 ? `${Math.abs(deadlineDays)} days overdue` : `${deadlineDays} days left`}
+                        <Badge
+                          variant={
+                            deadlineDays < 0
+                              ? "danger"
+                              : deadlineDays <= 7
+                                ? "warning"
+                                : "outline"
+                          }
+                        >
+                          {deadlineDays < 0
+                            ? `${Math.abs(deadlineDays)} days overdue`
+                            : `${deadlineDays} days left`}
                         </Badge>
                       )}
-                      <span className="goal-progress-text">{goal.progress}%</span>
+                      <span className="goal-progress-text">
+                        {goal.progress}%
+                      </span>
                     </div>
-                    {goal.description && <p className="goal-desc">{goal.description}</p>}
+                    {goal.description && (
+                      <p className="goal-desc">{goal.description}</p>
+                    )}
                   </div>
-                  <div className="goal-actions" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" onClick={() => openForm(goal)} aria-label="Edit goal">
+                  <div
+                    className="goal-actions"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openForm(goal)}
+                      aria-label="Edit goal"
+                    >
                       <Pencil size={16} />
                     </Button>
-                    <Button variant="ghost" size="sm" className="danger-ghost" onClick={() => setDeleteTarget(goal)} aria-label="Delete goal">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="danger-ghost"
+                      onClick={() => setDeleteTarget(goal)}
+                      aria-label="Delete goal"
+                    >
                       <Trash2 size={16} />
                     </Button>
                   </div>
                 </div>
 
-                <Progress value={goal.progress} size="md" showLabel label="Progress" variant={goal.progress >= 80 ? 'success' : 'default'} />
+                <Progress
+                  value={goal.progress}
+                  size="md"
+                  showLabel
+                  label="Progress"
+                  variant={goal.progress >= 80 ? "success" : "default"}
+                />
 
                 {isExpanded && (
                   <div className="goal-details">
                     <div className="milestones-section">
                       <div className="milestones-header">
                         <h3>Milestones</h3>
-                        <Button variant="ghost" size="sm" onClick={() => setMilestoneForm({ goalId: goal.id, title: '' })}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setMilestoneForm({ goalId: goal.id, title: "" })
+                          }
+                        >
                           <Plus size={16} /> Add Milestone
                         </Button>
                       </div>
@@ -198,26 +317,68 @@ export default function GoalsPage() {
                           <input
                             autoFocus
                             value={milestoneForm.title}
-                            onChange={(e) => setMilestoneForm({ ...milestoneForm, title: e.target.value })}
+                            onChange={(e) =>
+                              setMilestoneForm({
+                                ...milestoneForm,
+                                title: e.target.value,
+                              })
+                            }
                             placeholder="Milestone title"
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') addMilestone(goal.id, milestoneForm.title);
-                              if (e.key === 'Escape') setMilestoneForm(null);
+                              if (e.key === "Enter")
+                                addMilestone(goal.id, milestoneForm.title);
+                              if (e.key === "Escape") setMilestoneForm(null);
                             }}
                           />
-                          <Button size="sm" onClick={() => addMilestone(goal.id, milestoneForm.title)}>Add</Button>
-                          <Button variant="ghost" size="sm" onClick={() => setMilestoneForm(null)}><X size={16} /></Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              addMilestone(goal.id, milestoneForm.title)
+                            }
+                          >
+                            Add
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setMilestoneForm(null)}
+                          >
+                            <X size={16} />
+                          </Button>
                         </div>
                       ) : null}
                       <ul className="milestone-list">
-                        {milestones.length === 0 && <li className="empty-milestone">No milestones yet.</li>}
+                        {milestones.length === 0 && (
+                          <li className="empty-milestone">
+                            No milestones yet.
+                          </li>
+                        )}
                         {milestones.map((ms) => (
-                          <li key={ms.id} className={`milestone-item ${ms.completed ? 'completed' : ''}`}>
-                            <button className="milestone-check" onClick={() => toggleMilestone(goal, ms)} aria-label={ms.completed ? 'Uncomplete milestone' : 'Complete milestone'}>
-                              {ms.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                          <li
+                            key={ms.id}
+                            className={`milestone-item ${ms.completed ? "completed" : ""}`}
+                          >
+                            <button
+                              className="milestone-check"
+                              onClick={() => toggleMilestone(goal, ms)}
+                              aria-label={
+                                ms.completed
+                                  ? "Uncomplete milestone"
+                                  : "Complete milestone"
+                              }
+                            >
+                              {ms.completed ? (
+                                <CheckCircle2 size={18} />
+                              ) : (
+                                <Circle size={18} />
+                              )}
                             </button>
                             <span className="milestone-title">{ms.title}</span>
-                            <button className="milestone-delete" onClick={() => deleteMilestone(goal.id, ms.id)} aria-label="Delete milestone">
+                            <button
+                              className="milestone-delete"
+                              onClick={() => deleteMilestone(goal.id, ms.id)}
+                              aria-label="Delete milestone"
+                            >
                               <Trash2 size={14} />
                             </button>
                           </li>
@@ -228,15 +389,23 @@ export default function GoalsPage() {
                     <div className="linked-tasks-section">
                       <h3>Linked Tasks ({linkedTasks.length})</h3>
                       <ul className="linked-task-list">
-                        {linkedTasks.length === 0 && <li className="empty-milestone">No linked tasks.</li>}
+                        {linkedTasks.length === 0 && (
+                          <li className="empty-milestone">No linked tasks.</li>
+                        )}
                         {linkedTasks.map((task) => (
                           <li key={task.id} className="linked-task-item">
-                            {task.checkedToday ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                            {task.checkedToday ? (
+                              <CheckCircle2 size={16} />
+                            ) : (
+                              <Circle size={16} />
+                            )}
                             <span>{task.title}</span>
                           </li>
                         ))}
                       </ul>
-                      <Link to="/" className="link-button-small">Go to tasks →</Link>
+                      <Link to="/" className="link-button-small">
+                        Go to tasks →
+                      </Link>
                     </div>
                   </div>
                 )}
@@ -246,15 +415,40 @@ export default function GoalsPage() {
         </div>
       )}
 
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title={editingGoal ? 'Edit Goal' : 'New Goal'}>
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={editingGoal ? "Edit Goal" : "New Goal"}
+      >
         <form onSubmit={handleSubmit} className="modal-form">
-          <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-          <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
-          <Input label="Deadline" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
+          <Input
+            label="Title"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            required
+          />
+          <Textarea
+            label="Description"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            rows={3}
+          />
+          <Input
+            label="Deadline"
+            type="date"
+            value={form.deadline}
+            onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+          />
           <div className="form-row">
             <label className="input-label">
               Status
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Goal['status'] })} className="select">
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm({ ...form, status: e.target.value as Goal["status"] })
+                }
+                className="select"
+              >
                 <option value="ACTIVE">Active</option>
                 <option value="COMPLETED">Completed</option>
                 <option value="PAUSED">Paused</option>
@@ -263,12 +457,29 @@ export default function GoalsPage() {
             </label>
             <label className="input-label">
               Progress: {form.progress}%
-              <input type="range" min="0" max="100" value={form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} className="range-input" />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={form.progress}
+                onChange={(e) =>
+                  setForm({ ...form, progress: Number(e.target.value) })
+                }
+                className="range-input"
+              />
             </label>
           </div>
           <div className="modal-actions">
-            <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button type="submit">{editingGoal ? 'Save Changes' : 'Create Goal'}</Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowForm(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              {editingGoal ? "Save Changes" : "Create Goal"}
+            </Button>
           </div>
         </form>
       </Modal>

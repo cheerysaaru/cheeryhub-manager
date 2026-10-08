@@ -1,53 +1,55 @@
-import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { useAuth } from '../hooks/useAuth';
-import { PASSWORD_RULES, passwordProblem } from '../utils/validation';
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Button } from "../components/Button";
+import { Input } from "../components/Input";
+import { useAuth } from "../hooks/useAuth";
+import { PASSWORD_RULES, passwordProblem } from "../utils/validation";
 
 function strengthOf(password: string): { score: number; label: string } {
-  if (!password) return { score: 0, label: '' };
+  if (!password) return { score: 0, label: "" };
   let score = 0;
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[!@#$%^&*]/.test(password)) score++;
-  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
-  return { score, label: labels[score] ?? '' };
+  const labels = ["", "Weak", "Fair", "Good", "Strong"];
+  return { score, label: labels[score] ?? "" };
 }
 
 export default function ResetPage() {
   const { resetPassword } = useAuth();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') ?? '';
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const token = searchParams.get("token") ?? "";
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   const strength = useMemo(() => strengthOf(password), [password]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     const problem = passwordProblem(password);
     if (problem) {
       setError(problem);
       return;
     }
     if (password !== confirm) {
-      setError('Passwords do not match.');
+      setError("Passwords do not match.");
       return;
     }
     setLoading(true);
     try {
       const message = await resetPassword(token, password);
       setNotice(message);
-      setPassword('');
-      setConfirm('');
+      setPassword("");
+      setConfirm("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to reset the password');
+      setError(
+        err instanceof Error ? err.message : "Unable to reset the password",
+      );
     } finally {
       setLoading(false);
     }
@@ -62,11 +64,14 @@ export default function ResetPage() {
           <br />
           <em>password.</em>
         </h1>
-        <p className="muted">This link only works once and expires 15 minutes after it was sent.</p>
+        <p className="muted">
+          This link only works once and expires 15 minutes after it was sent.
+        </p>
 
         {!token && (
           <p className="error-message" role="alert">
-            This reset link is missing its token. Request a new one from the sign-in page.
+            This reset link is missing its token. Request a new one from the
+            sign-in page.
           </p>
         )}
 
@@ -98,7 +103,7 @@ export default function ResetPage() {
                   {[1, 2, 3, 4].map((step) => (
                     <span
                       key={step}
-                      className={`strength-seg ${strength.score >= step ? `on level-${strength.score}` : ''}`}
+                      className={`strength-seg ${strength.score >= step ? `on level-${strength.score}` : ""}`}
                     />
                   ))}
                 </div>
@@ -112,7 +117,11 @@ export default function ResetPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password"
-              error={confirm && confirm !== password ? 'Passwords do not match.' : undefined}
+              error={
+                confirm && confirm !== password
+                  ? "Passwords do not match."
+                  : undefined
+              }
               required
             />
             <p className="auth-hint">{PASSWORD_RULES}</p>
@@ -127,7 +136,11 @@ export default function ResetPage() {
           </form>
         )}
 
-        {error && <p className="error-message" role="alert">{error}</p>}
+        {error && (
+          <p className="error-message" role="alert">
+            {error}
+          </p>
+        )}
       </section>
     </main>
   );

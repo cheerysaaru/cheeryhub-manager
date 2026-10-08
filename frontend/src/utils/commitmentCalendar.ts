@@ -3,7 +3,12 @@
  * Everything here is side-effect free so the calendar can be unit tested and
  * only the visible month is ever computed (older months load on demand).
  */
-import { dateKeyInTimeZone, getLocalDateString, parseLocalDate, shiftDate } from './date';
+import {
+  dateKeyInTimeZone,
+  getLocalDateString,
+  parseLocalDate,
+  shiftDate,
+} from "./date";
 
 /** Users may fix today and the last 2 days — mirrors the server window. */
 export const EDIT_WINDOW_DAYS = 2;
@@ -11,17 +16,18 @@ export const EDIT_WINDOW_DAYS = 2;
 /** Tooltip shown on locked (too old) days in the UI. */
 export const LOCKED_TOOLTIP = `Locked after ${EDIT_WINDOW_DAYS} days`;
 
-export type DayStatus = 'COMPLETED' | 'FAILED' | 'SKIPPED' | 'EMPTY' | 'NOT_STARTED' | 'FUTURE';
+export type DayStatus =
+  "COMPLETED" | "FAILED" | "SKIPPED" | "EMPTY" | "NOT_STARTED" | "FUTURE";
 
-export type EditableStatus = 'COMPLETED' | 'FAILED' | 'SKIPPED' | 'EMPTY';
+export type EditableStatus = "COMPLETED" | "FAILED" | "SKIPPED" | "EMPTY";
 
 export const STATUS_LABEL: Record<DayStatus, string> = {
-  COMPLETED: 'checked in',
-  FAILED: 'failed',
-  SKIPPED: 'left',
-  EMPTY: 'nothing recorded',
-  NOT_STARTED: 'not started',
-  FUTURE: 'not started yet',
+  COMPLETED: "checked in",
+  FAILED: "failed",
+  SKIPPED: "left",
+  EMPTY: "nothing recorded",
+  NOT_STARTED: "not started",
+  FUTURE: "not started yet",
 };
 
 export interface HabitDayData {
@@ -45,7 +51,7 @@ export interface MonthCell {
 export function dayKeyOf(iso: string, timeZone?: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
+  if (Number.isNaN(date.getTime())) return "";
   return dateKeyInTimeZone(date, timeZone);
 }
 
@@ -71,18 +77,27 @@ export function buildMonthGrid(year: number, monthIndex: number): MonthCell[] {
 }
 
 /** e.g. "October 2026". */
-export function monthLabel(year: number, monthIndex: number, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(
-    new Date(year, monthIndex, 1)
-  );
+export function monthLabel(
+  year: number,
+  monthIndex: number,
+  locale?: string,
+): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, monthIndex, 1));
 }
 
 /** Localised short weekday names, Monday first. */
 export function weekdayHeaders(locale?: string): string[] {
   const monday = new Date(2024, 0, 1); // 1 Jan 2024 is a Monday
-  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
+    const date = new Date(
+      monday.getFullYear(),
+      monday.getMonth(),
+      monday.getDate() + index,
+    );
     return formatter.format(date);
   });
 }
@@ -90,20 +105,20 @@ export function weekdayHeaders(locale?: string): string[] {
 /** e.g. "Friday, October 2, 2026". */
 export function formatFullDate(date: string, locale?: string): string {
   return new Intl.DateTimeFormat(locale, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   }).format(parseLocalDate(date));
 }
 
 /** e.g. "Wed, 30 Sep 2026" — menu and toast heading for one day. */
 export function formatShortFullDate(date: string, locale?: string): string {
   return new Intl.DateTimeFormat(locale, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   }).format(parseLocalDate(date));
 }
 
@@ -111,7 +126,7 @@ export function formatShortFullDate(date: string, locale?: string): string {
 export function shiftMonth(
   year: number,
   monthIndex: number,
-  delta: number
+  delta: number,
 ): { year: number; month: number } {
   const date = new Date(year, monthIndex + delta, 1);
   return { year: date.getFullYear(), month: date.getMonth() };
@@ -121,22 +136,37 @@ export function shiftMonth(
  * First day that can hold data for this commitment: its creation day, or the
  * earliest recorded day if history predates it (e.g. an import).
  */
-export function habitStartKey(habit: HabitDayData, timeZone?: string): string | null {
-  const recorded = [...habit.completedDates, ...habit.failedDates, ...habit.skippedDates].sort();
+export function habitStartKey(
+  habit: HabitDayData,
+  timeZone?: string,
+): string | null {
+  const recorded = [
+    ...habit.completedDates,
+    ...habit.failedDates,
+    ...habit.skippedDates,
+  ].sort();
   const created = habit.createdAt ? dayKeyOf(habit.createdAt, timeZone) : null;
-  if (recorded.length && created) return recorded[0] < created ? recorded[0] : created;
+  if (recorded.length && created)
+    return recorded[0] < created ? recorded[0] : created;
   if (recorded.length) return recorded[0];
   return created;
 }
 
 /** Newest-first list of months from the first tracked month through `today`. */
-export function monthsThrough(startKey: string, today: string): { year: number; month: number }[] {
+export function monthsThrough(
+  startKey: string,
+  today: string,
+): { year: number; month: number }[] {
   const start = parseLocalDate(startKey);
   const end = parseLocalDate(today);
   const first = new Date(start.getFullYear(), start.getMonth(), 1);
   const cursor = new Date(end.getFullYear(), end.getMonth(), 1);
   const months: { year: number; month: number }[] = [];
-  while (cursor.getFullYear() > first.getFullYear() || (cursor.getFullYear() === first.getFullYear() && cursor.getMonth() >= first.getMonth())) {
+  while (
+    cursor.getFullYear() > first.getFullYear() ||
+    (cursor.getFullYear() === first.getFullYear() &&
+      cursor.getMonth() >= first.getMonth())
+  ) {
     months.push({ year: cursor.getFullYear(), month: cursor.getMonth() });
     cursor.setMonth(cursor.getMonth() - 1);
   }
@@ -148,14 +178,19 @@ export function monthsThrough(startKey: string, today: string): { year: number; 
  * future > recorded status > before the commitment existed (not started) >
  * nothing recorded.
  */
-export function dayStatus(habit: HabitDayData, date: string, today: string, timeZone?: string): DayStatus {
-  if (date > today) return 'FUTURE';
+export function dayStatus(
+  habit: HabitDayData,
+  date: string,
+  today: string,
+  timeZone?: string,
+): DayStatus {
+  if (date > today) return "FUTURE";
   const created = habit.createdAt ? dayKeyOf(habit.createdAt, timeZone) : null;
-  if (created && date < created) return 'NOT_STARTED';
-  if (habit.completedDates.includes(date)) return 'COMPLETED';
-  if (habit.failedDates.includes(date)) return 'FAILED';
-  if (habit.skippedDates.includes(date)) return 'SKIPPED';
-  return 'EMPTY';
+  if (created && date < created) return "NOT_STARTED";
+  if (habit.completedDates.includes(date)) return "COMPLETED";
+  if (habit.failedDates.includes(date)) return "FAILED";
+  if (habit.skippedDates.includes(date)) return "SKIPPED";
+  return "EMPTY";
 }
 
 /** Today and the previous `EDIT_WINDOW_DAYS` days only — never the future. */
@@ -179,23 +214,23 @@ export function buildWeekDateKeys(today: string): string[] {
 export function buildWeekDays(
   habit: HabitDayData,
   today: string,
-  timeZone?: string
+  timeZone?: string,
 ): WeekDay[] {
   return buildWeekDateKeys(today).map((date) => {
     const status = dayStatus(habit, date, today, timeZone);
     return {
       date,
       status,
-      editable: status !== 'NOT_STARTED' && isEditableDay(date, today),
+      editable: status !== "NOT_STARTED" && isEditableDay(date, today),
     };
   });
 }
 
 /** Cycle order: check in -> failed -> leave -> clear. */
 export function nextDayStatus(current: DayStatus): EditableStatus {
-  if (current === 'COMPLETED') return 'FAILED';
-  if (current === 'FAILED') return 'SKIPPED';
-  return 'COMPLETED';
+  if (current === "COMPLETED") return "FAILED";
+  if (current === "FAILED") return "SKIPPED";
+  return "COMPLETED";
 }
 
 export interface MonthSummary {
@@ -214,7 +249,7 @@ export function monthSummary(
   year: number,
   monthIndex: number,
   today: string,
-  timeZone?: string
+  timeZone?: string,
 ): MonthSummary {
   const created = habit.createdAt ? dayKeyOf(habit.createdAt, timeZone) : null;
   let checked = 0;
@@ -227,9 +262,9 @@ export function monthSummary(
     if (created && cell.date < created) continue;
     eligible += 1;
     const status = dayStatus(habit, cell.date, today, timeZone);
-    if (status === 'COMPLETED') checked += 1;
-    else if (status === 'FAILED') failed += 1;
-    else if (status === 'SKIPPED') leave += 1;
+    if (status === "COMPLETED") checked += 1;
+    else if (status === "FAILED") failed += 1;
+    else if (status === "SKIPPED") leave += 1;
   }
   return {
     checked,

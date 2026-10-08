@@ -1,4 +1,4 @@
-import { getLocalDateString } from './date';
+import { getLocalDateString } from "./date";
 
 export interface Archivedment {
   id: string;
@@ -6,10 +6,10 @@ export interface Archivedment {
   title: string;
   description?: string;
   date: string;
-  source: 'manual' | 'goal';
+  source: "manual" | "goal";
 }
 
-const KEY = 'archivedments';
+const KEY = "archivedments";
 
 export function readArchivedments(): Archivedment[] {
   try {
@@ -29,7 +29,9 @@ function writeAll(items: Archivedment[]): void {
   }
 }
 
-export function addArchivedment(item: Omit<Archivedment, 'id' | 'date' | 'source'> & { date?: string }): Archivedment {
+export function addArchivedment(
+  item: Omit<Archivedment, "id" | "date" | "source"> & { date?: string },
+): Archivedment {
   const items = readArchivedments();
   const entry: Archivedment = {
     id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -37,14 +39,18 @@ export function addArchivedment(item: Omit<Archivedment, 'id' | 'date' | 'source
     title: item.title,
     description: item.description || undefined,
     date: item.date || getLocalDateString(),
-    source: 'manual',
+    source: "manual",
   };
   items.unshift(entry);
   writeAll(items);
   return entry;
 }
 
-export function archiveGoal(goal: { id: string; title: string; description?: string }): boolean {
+export function archiveGoal(goal: {
+  id: string;
+  title: string;
+  description?: string;
+}): boolean {
   const items = readArchivedments();
   if (items.some((item) => item.id === goal.id)) return false;
   items.unshift({
@@ -52,7 +58,7 @@ export function archiveGoal(goal: { id: string; title: string; description?: str
     title: goal.title,
     description: goal.description || undefined,
     date: getLocalDateString(),
-    source: 'goal',
+    source: "goal",
   });
   writeAll(items);
   return true;

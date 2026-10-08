@@ -1,23 +1,23 @@
-import fs from 'fs';
-import path from 'path';
-import { defineConfig, loadEnv, type Plugin } from 'vite';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
+import fs from "fs";
+import path from "path";
+import { defineConfig, loadEnv, type Plugin } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // GitHub Pages has no server-side rewrites: it serves 404.html for unknown
 // paths. Copying index.html there makes refresh on a deep link boot the SPA.
 function spaFallback404(): Plugin {
   return {
-    name: 'spa-404-fallback',
+    name: "spa-404-fallback",
     closeBundle() {
       const candidates = [
-        path.resolve(process.cwd(), 'dist'),
-        path.resolve(process.cwd(), 'frontend/dist'),
+        path.resolve(process.cwd(), "dist"),
+        path.resolve(process.cwd(), "frontend/dist"),
       ];
       for (const dir of candidates) {
-        const indexFile = path.join(dir, 'index.html');
+        const indexFile = path.join(dir, "index.html");
         if (fs.existsSync(indexFile)) {
-          fs.copyFileSync(indexFile, path.join(dir, '404.html'));
+          fs.copyFileSync(indexFile, path.join(dir, "404.html"));
           return;
         }
       }
@@ -26,25 +26,24 @@ function spaFallback404(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  if (mode === 'production') {
+  if (mode === "production") {
     const apiUrl =
-      process.env.VITE_API_URL ??
-      loadEnv(mode, process.cwd(), '').VITE_API_URL;
+      process.env.VITE_API_URL ?? loadEnv(mode, process.cwd(), "").VITE_API_URL;
     let parsedApiUrl: URL;
     try {
       parsedApiUrl = new URL(apiUrl);
     } catch {
       throw new Error(
-        'Production builds require VITE_API_URL=https://api.cheeryhub.space/api.'
+        "Production builds require VITE_API_URL=https://api.cheeryhub.space/api.",
       );
     }
     if (
-      parsedApiUrl.protocol !== 'https:' ||
-      parsedApiUrl.hostname !== 'api.cheeryhub.space' ||
-      parsedApiUrl.pathname.replace(/\/+$/, '') !== '/api'
+      parsedApiUrl.protocol !== "https:" ||
+      parsedApiUrl.hostname !== "api.cheeryhub.space" ||
+      parsedApiUrl.pathname.replace(/\/+$/, "") !== "/api"
     ) {
       throw new Error(
-        'Production builds require VITE_API_URL=https://api.cheeryhub.space/api.'
+        "Production builds require VITE_API_URL=https://api.cheeryhub.space/api.",
       );
     }
   }
@@ -54,28 +53,33 @@ export default defineConfig(({ mode }) => {
     // '/' for the custom domain cheeryhub.space (or any root deploy).
     // Set VITE_BASE=/cheeryhub-manager/ when publishing to
     // username.github.io/cheeryhub-manager so asset URLs resolve there.
-    base: process.env.VITE_BASE || '/',
+    base: process.env.VITE_BASE || "/",
     build: {
       rollupOptions: {
         output: {
           // Split heavy dependencies out of the entry chunk so the shell can be
           // cached and re-downloaded independently of app code.
           manualChunks(id: string) {
-            if (!id.includes('node_modules')) return undefined;
-            if (id.includes('lucide-react')) return 'vendor-lucide';
+            if (!id.includes("node_modules")) return undefined;
+            if (id.includes("lucide-react")) return "vendor-lucide";
             if (
-              id.includes('recharts') ||
-              id.includes('victory') ||
-              id.includes('d3-') ||
-              id.includes('internmap') ||
-              id.includes('delaunator') ||
-              id.includes('robust-predicates')
+              id.includes("recharts") ||
+              id.includes("victory") ||
+              id.includes("d3-") ||
+              id.includes("internmap") ||
+              id.includes("delaunator") ||
+              id.includes("robust-predicates")
             ) {
-              return 'vendor-charts';
+              return "vendor-charts";
             }
-            if (id.includes('socket.io') || id.includes('engine.io')) return 'vendor-socket';
-            if (/node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
-              return 'vendor-react';
+            if (id.includes("socket.io") || id.includes("engine.io"))
+              return "vendor-socket";
+            if (
+              /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(
+                id,
+              )
+            ) {
+              return "vendor-react";
             }
             return undefined;
           },
@@ -85,12 +89,12 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: {
-        '/api': {
-          target: 'http://localhost:4000',
+        "/api": {
+          target: "http://localhost:4000",
           changeOrigin: true,
         },
-        '/socket.io': {
-          target: 'http://localhost:4000',
+        "/socket.io": {
+          target: "http://localhost:4000",
           ws: true,
           changeOrigin: true,
         },

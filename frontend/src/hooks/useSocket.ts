@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { connectSocket, disconnectSocket, getSocket, onSocketEvent, emitSocketEvent } from '../services/socket';
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  connectSocket,
+  disconnectSocket,
+  getSocket,
+  onSocketEvent,
+  emitSocketEvent,
+} from "../services/socket";
 
 export function useSocket(userId: string | null) {
   const [connected, setConnected] = useState(false);
@@ -21,23 +27,26 @@ export function useSocket(userId: string | null) {
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
 
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
     if (socket.connected) setConnected(true);
 
     return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
       handlersRef.current.forEach((cleanup) => cleanup());
       handlersRef.current = [];
     };
   }, [userId]);
 
-  const on = useCallback(<T,>(event: string, handler: (data: T) => void): (() => void) => {
-    const cleanup = onSocketEvent(event, handler);
-    handlersRef.current.push(cleanup);
-    return cleanup;
-  }, []);
+  const on = useCallback(
+    <T>(event: string, handler: (data: T) => void): (() => void) => {
+      const cleanup = onSocketEvent(event, handler);
+      handlersRef.current.push(cleanup);
+      return cleanup;
+    },
+    [],
+  );
 
   const emit = useCallback((event: string, data: unknown) => {
     emitSocketEvent(event, data);

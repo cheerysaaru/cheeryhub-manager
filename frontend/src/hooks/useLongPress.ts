@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from "react";
 
 export const LONG_PRESS_MS = 600;
 
@@ -9,7 +9,10 @@ type LongPressOptions = { ms?: number };
  * exposing `pressing` so the caller can show visual feedback while charging.
  * The click that follows a completed long press is swallowed.
  */
-export function useLongPress(onLongPress: () => void, options: LongPressOptions = {}) {
+export function useLongPress(
+  onLongPress: () => void,
+  options: LongPressOptions = {},
+) {
   const ms = options.ms ?? LONG_PRESS_MS;
   const [pressing, setPressing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -35,7 +38,7 @@ export function useLongPress(onLongPress: () => void, options: LongPressOptions 
         callbackRef.current();
       }, ms);
     },
-    [ms]
+    [ms],
   );
 
   const onClickCapture = useCallback((event: React.MouseEvent) => {
@@ -56,7 +59,7 @@ export function useLongPress(onLongPress: () => void, options: LongPressOptions 
       clear();
       callbackRef.current();
     },
-    [clear]
+    [clear],
   );
 
   const handlers = {

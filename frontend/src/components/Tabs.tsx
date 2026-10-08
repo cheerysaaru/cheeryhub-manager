@@ -1,5 +1,5 @@
-import { useState, createContext, useContext } from 'react';
-import { HTMLAttributes, forwardRef } from 'react';
+import { useState, createContext, useContext } from "react";
+import { HTMLAttributes, forwardRef } from "react";
 
 export interface TabsProps extends HTMLAttributes<HTMLDivElement> {
   defaultValue?: string;
@@ -18,12 +18,27 @@ export interface TabsContentProps extends HTMLAttributes<HTMLDivElement> {
   value: string;
 }
 
-const TabsContext = createContext<{ value: string; onChange: (value: string) => void } | null>(null);
+const TabsContext = createContext<{
+  value: string;
+  onChange: (value: string) => void;
+} | null>(null);
 
 export const Tabs = forwardRef<HTMLDivElement, TabsProps>(
-  ({ defaultValue, value: controlledValue, onValueChange, children, className = '', ...props }, ref) => {
+  (
+    {
+      defaultValue,
+      value: controlledValue,
+      onValueChange,
+      children,
+      className = "",
+      ...props
+    },
+    ref,
+  ) => {
     const isControlled = controlledValue !== undefined;
-    const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue || '');
+    const [uncontrolledValue, setUncontrolledValue] = useState(
+      defaultValue || "",
+    );
     const value = isControlled ? controlledValue : uncontrolledValue;
 
     const handleChange = (newValue: string) => {
@@ -33,15 +48,17 @@ export const Tabs = forwardRef<HTMLDivElement, TabsProps>(
 
     return (
       <TabsContext.Provider value={{ value, onChange: handleChange }}>
-        <div ref={ref} className={`tabs ${className}`} {...props}>{children}</div>
+        <div ref={ref} className={`tabs ${className}`} {...props}>
+          {children}
+        </div>
       </TabsContext.Provider>
     );
-  }
+  },
 );
-Tabs.displayName = 'Tabs';
+Tabs.displayName = "Tabs";
 
 export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
-  ({ className = '', children, ...props }, ref) => (
+  ({ className = "", children, ...props }, ref) => (
     <div
       ref={ref}
       className={`tabs-list ${className}`}
@@ -50,14 +67,14 @@ export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     >
       {children}
     </div>
-  )
+  ),
 );
-TabsList.displayName = 'TabsList';
+TabsList.displayName = "TabsList";
 
 export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(
-  ({ value, disabled, className = '', children, ...props }, ref) => {
+  ({ value, disabled, className = "", children, ...props }, ref) => {
     const context = useContext(TabsContext);
-    if (!context) throw new Error('TabsTrigger must be used within Tabs');
+    if (!context) throw new Error("TabsTrigger must be used within Tabs");
     const { value: currentValue, onChange } = context;
     const isActive = currentValue === value;
 
@@ -77,14 +94,14 @@ export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(
         {children}
       </button>
     );
-  }
+  },
 );
-TabsTrigger.displayName = 'TabsTrigger';
+TabsTrigger.displayName = "TabsTrigger";
 
 export const TabsContent = forwardRef<HTMLDivElement, TabsContentProps>(
-  ({ value, className = '', children, ...props }, ref) => {
+  ({ value, className = "", children, ...props }, ref) => {
     const context = useContext(TabsContext);
-    if (!context) throw new Error('TabsContent must be used within Tabs');
+    if (!context) throw new Error("TabsContent must be used within Tabs");
     const { value: currentValue } = context;
     const isActive = currentValue === value;
 
@@ -102,6 +119,6 @@ export const TabsContent = forwardRef<HTMLDivElement, TabsContentProps>(
         {children}
       </div>
     );
-  }
+  },
 );
-TabsContent.displayName = 'TabsContent';
+TabsContent.displayName = "TabsContent";

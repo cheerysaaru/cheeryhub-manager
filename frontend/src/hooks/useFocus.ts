@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api, asArray } from '../services/api';
-import type { FocusSession } from '../types';
-import { useSocket } from './useSocket';
+import { useCallback, useEffect, useState } from "react";
+import { api, asArray } from "../services/api";
+import type { FocusSession } from "../types";
+import { useSocket } from "./useSocket";
 
 export function useFocus(userId: string | null) {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
@@ -13,11 +13,24 @@ export function useFocus(userId: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api<FocusSession[]>('/focus/history');
-      setSessions(asArray<FocusSession>(data)
-        .filter((session): session is FocusSession => Boolean(session && typeof session === 'object' && typeof session.id === 'string' && typeof session.status === 'string' && typeof session.startedAt === 'string')));
+      const data = await api<FocusSession[]>("/focus/history");
+      setSessions(
+        asArray<FocusSession>(data).filter((session): session is FocusSession =>
+          Boolean(
+            session &&
+            typeof session === "object" &&
+            typeof session.id === "string" &&
+            typeof session.status === "string" &&
+            typeof session.startedAt === "string",
+          ),
+        ),
+      );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load focus sessions.');
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not load focus sessions.",
+      );
     } finally {
       setLoading(false);
     }
@@ -25,11 +38,15 @@ export function useFocus(userId: string | null) {
 
   useEffect(() => {
     fetchSessions();
-    const cleanup = on<FocusSession>('focus:created', (session) => {
-      setSessions((prev) => (prev.some((s) => s.id === session.id) ? prev : [session, ...prev]));
+    const cleanup = on<FocusSession>("focus:created", (session) => {
+      setSessions((prev) =>
+        prev.some((s) => s.id === session.id) ? prev : [session, ...prev],
+      );
     });
-    const cleanup2 = on<FocusSession>('focus:completed', (session) => {
-      setSessions((prev) => prev.map((s) => (s.id === session.id ? session : s)));
+    const cleanup2 = on<FocusSession>("focus:completed", (session) => {
+      setSessions((prev) =>
+        prev.map((s) => (s.id === session.id ? session : s)),
+      );
     });
     return () => {
       cleanup();
@@ -37,17 +54,24 @@ export function useFocus(userId: string | null) {
     };
   }, [fetchSessions, on]);
 
-  const start = useCallback(async (durationMinutes: number, taskId?: string) => {
-    const session = await api<FocusSession>('/focus/start', {
-      method: 'POST',
-      body: JSON.stringify({ durationMinutes, taskId }),
-    });
-    setSessions((prev) => (prev.some((s) => s.id === session.id) ? prev : [session, ...prev]));
-    return session;
-  }, []);
+  const start = useCallback(
+    async (durationMinutes: number, taskId?: string) => {
+      const session = await api<FocusSession>("/focus/start", {
+        method: "POST",
+        body: JSON.stringify({ durationMinutes, taskId }),
+      });
+      setSessions((prev) =>
+        prev.some((s) => s.id === session.id) ? prev : [session, ...prev],
+      );
+      return session;
+    },
+    [],
+  );
 
   const complete = useCallback(async (id: string) => {
-    const session = await api<FocusSession>(`/focus/${id}/complete`, { method: 'POST' });
+    const session = await api<FocusSession>(`/focus/${id}/complete`, {
+      method: "POST",
+    });
     setSessions((prev) => prev.map((s) => (s.id === id ? session : s)));
     return session;
   }, []);

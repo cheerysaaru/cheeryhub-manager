@@ -7,21 +7,21 @@
  * refresh on them never 404s.
  */
 export const ROUTES = {
-  dashboard: '/',
-  tasks: '/tasks',
-  commitments: '/commitments',
-  commitmentsHistory: '/commitments/history',
-  goals: '/goals',
-  skills: '/skills',
-  achievements: '/achievements',
-  focus: '/focus',
-  journal: '/journal',
-  reminders: '/reminders',
-  analytics: '/analytics',
-  brand: '/brand',
-  finance: '/finance',
-  settings: '/settings',
-  admin: '/admin',
+  dashboard: "/",
+  tasks: "/tasks",
+  commitments: "/commitments",
+  commitmentsHistory: "/commitments/history",
+  goals: "/goals",
+  skills: "/skills",
+  achievements: "/achievements",
+  focus: "/focus",
+  journal: "/journal",
+  reminders: "/reminders",
+  analytics: "/analytics",
+  brand: "/brand",
+  finance: "/finance",
+  settings: "/settings",
+  admin: "/admin",
 } as const;
 
 /**

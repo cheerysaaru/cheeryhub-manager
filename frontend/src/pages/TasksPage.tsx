@@ -1,21 +1,29 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarClock, Circle, Plus, RotateCcw, Trash2, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useTasks } from '../hooks/useTasks';
-import { useToast } from '../components/Toast';
-import { Button } from '../components/Button';
-import { Modal, ConfirmDialog } from '../components/Modal';
-import { TaskRow } from '../components/TaskRow';
-import { ApiLoadError } from '../components/ApiLoadError';
-import { SkeletonTaskList } from '../components/Skeleton';
-import { DeadlinePicker } from '../components/DeadlinePicker';
-import { ContextMenu, useContextMenu } from '../components/ContextMenu';
-import { formatShortDate, todayISO } from '../utils/date';
-import { formatDeadline } from '../utils/deadline';
-import type { Task } from '../types';
+import { useCallback, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  Circle,
+  Plus,
+  RotateCcw,
+  Trash2,
+  X,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { useTasks } from "../hooks/useTasks";
+import { useToast } from "../components/Toast";
+import { Button } from "../components/Button";
+import { Modal, ConfirmDialog } from "../components/Modal";
+import { TaskRow } from "../components/TaskRow";
+import { ApiLoadError } from "../components/ApiLoadError";
+import { SkeletonTaskList } from "../components/Skeleton";
+import { DeadlinePicker } from "../components/DeadlinePicker";
+import { ContextMenu, useContextMenu } from "../components/ContextMenu";
+import { formatShortDate, todayISO } from "../utils/date";
+import { formatDeadline } from "../utils/deadline";
+import type { Task } from "../types";
 
-type Tab = 'active' | 'trash';
+type Tab = "active" | "trash";
 
 const PAGE_SIZE = 50;
 
@@ -41,8 +49,8 @@ export default function TasksPage() {
     extend: extendTask,
   } = useTasks(user?.id ?? null);
 
-  const [tab, setTab] = useState<Tab>('active');
-  const [title, setTitle] = useState('');
+  const [tab, setTab] = useState<Tab>("active");
+  const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState<string | null>(null);
   const [deadlineOpen, setDeadlineOpen] = useState(false);
   const [overdueTask, setOverdueTask] = useState<Task | null>(null);
@@ -53,18 +61,32 @@ export default function TasksPage() {
   const taskMenu = useContextMenu();
 
   const activeTasks = useMemo(
-    () => tasks.filter((t) => t.status !== 'ARCHIVED' && !t.deletedAt),
-    [tasks]
+    () => tasks.filter((t) => t.status !== "ARCHIVED" && !t.deletedAt),
+    [tasks],
   );
   const overdueCount = useMemo(
-    () => activeTasks.filter((t) => t.isOverdue && t.status !== 'COMPLETED').length,
-    [activeTasks]
+    () =>
+      activeTasks.filter((t) => t.isOverdue && t.status !== "COMPLETED").length,
+    [activeTasks],
   );
-  const visibleTasks = useMemo(() => activeTasks.slice(0, visibleCount), [activeTasks, visibleCount]);
+  const visibleTasks = useMemo(
+    () => activeTasks.slice(0, visibleCount),
+    [activeTasks, visibleCount],
+  );
   const hiddenTaskCount = activeTasks.length - visibleTasks.length;
 
-  const onToggleTask = useCallback((task: Task) => { void checkIn(task.id, !task.checkedToday); }, [checkIn]);
-  const onDoneTask = useCallback((task: Task) => { void completeTask(task.id); }, [completeTask]);
+  const onToggleTask = useCallback(
+    (task: Task) => {
+      void checkIn(task.id, !task.checkedToday);
+    },
+    [checkIn],
+  );
+  const onDoneTask = useCallback(
+    (task: Task) => {
+      void completeTask(task.id);
+    },
+    [completeTask],
+  );
 
   const handleAddTask = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -74,18 +96,24 @@ export default function TasksPage() {
       const created = await createTask({
         title: trimmed,
         scheduledDate: todayISO(),
-        priority: 'MEDIUM',
+        priority: "MEDIUM",
         dueAt: dueAt ?? undefined,
       });
-      setTitle('');
+      setTitle("");
       setDueAt(null);
       toast({
-        type: 'success',
-        title: 'Task added',
-        message: created.dueAt ? `${trimmed} · due ${formatDeadline(created.dueAt)}` : trimmed,
+        type: "success",
+        title: "Task added",
+        message: created.dueAt
+          ? `${trimmed} · due ${formatDeadline(created.dueAt)}`
+          : trimmed,
       });
     } catch (error) {
-      toast({ type: 'error', title: 'Could not add task', message: error instanceof Error ? error.message : 'Please try again.' });
+      toast({
+        type: "error",
+        title: "Could not add task",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     }
   };
 
@@ -93,11 +121,19 @@ export default function TasksPage() {
     if (!overdueTask) return;
     try {
       await extendTask(overdueTask.id, iso);
-      toast({ type: 'success', title: 'Deadline extended', message: `New deadline: ${formatDeadline(iso)}` });
+      toast({
+        type: "success",
+        title: "Deadline extended",
+        message: `New deadline: ${formatDeadline(iso)}`,
+      });
       setExtendOpen(false);
       setOverdueTask(null);
     } catch (error) {
-      toast({ type: 'error', title: 'Could not extend deadline', message: error instanceof Error ? error.message : 'Please try again.' });
+      toast({
+        type: "error",
+        title: "Could not extend deadline",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     }
   };
 
@@ -105,19 +141,31 @@ export default function TasksPage() {
     if (!overdueTask) return;
     try {
       await markNotCompleted(overdueTask.id);
-      toast({ type: 'info', title: 'Marked as not completed', message: overdueTask.title });
+      toast({
+        type: "info",
+        title: "Marked as not completed",
+        message: overdueTask.title,
+      });
       setOverdueTask(null);
     } catch (error) {
-      toast({ type: 'error', title: 'Could not update task', message: error instanceof Error ? error.message : 'Please try again.' });
+      toast({
+        type: "error",
+        title: "Could not update task",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     }
   };
 
   const handleRestore = async (task: Task) => {
     try {
       await restoreTask(task.id);
-      toast({ type: 'success', title: 'Task restored', message: task.title });
+      toast({ type: "success", title: "Task restored", message: task.title });
     } catch (error) {
-      toast({ type: 'error', title: 'Could not restore task', message: error instanceof Error ? error.message : 'Please try again.' });
+      toast({
+        type: "error",
+        title: "Could not restore task",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     }
   };
 
@@ -125,9 +173,17 @@ export default function TasksPage() {
     if (!purgeTarget) return;
     try {
       await purgeTask(purgeTarget.id);
-      toast({ type: 'success', title: 'Task deleted', message: purgeTarget.title });
+      toast({
+        type: "success",
+        title: "Task deleted",
+        message: purgeTarget.title,
+      });
     } catch (error) {
-      toast({ type: 'error', title: 'Could not delete task', message: error instanceof Error ? error.message : 'Please try again.' });
+      toast({
+        type: "error",
+        title: "Could not delete task",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setPurgeTarget(null);
     }
@@ -137,10 +193,18 @@ export default function TasksPage() {
     if (!deleteTarget) return;
     try {
       await removeTask(deleteTarget.id);
-      toast({ type: 'success', title: 'Moved to trash', message: deleteTarget.title });
+      toast({
+        type: "success",
+        title: "Moved to trash",
+        message: deleteTarget.title,
+      });
       void fetchTrash();
     } catch (error) {
-      toast({ type: 'error', title: 'Could not delete task', message: error instanceof Error ? error.message : 'Please try again.' });
+      toast({
+        type: "error",
+        title: "Could not delete task",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setDeleteTarget(null);
     }
@@ -153,7 +217,8 @@ export default function TasksPage() {
           <p className="eyebrow">Tasks</p>
           <h1>Everything on your plate</h1>
           <p className="header-date">
-            {activeTasks.length} active · {overdueCount} overdue · {trash.length} in trash
+            {activeTasks.length} active · {overdueCount} overdue ·{" "}
+            {trash.length} in trash
           </p>
         </div>
         <Link to="/" className="panel-link">
@@ -166,27 +231,30 @@ export default function TasksPage() {
         <button
           type="button"
           role="tab"
-          aria-selected={tab === 'active'}
-          className={`page-tab ${tab === 'active' ? 'active' : ''}`}
-          onClick={() => setTab('active')}
+          aria-selected={tab === "active"}
+          className={`page-tab ${tab === "active" ? "active" : ""}`}
+          onClick={() => setTab("active")}
         >
           Active
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={tab === 'trash'}
-          className={`page-tab ${tab === 'trash' ? 'active' : ''}`}
+          aria-selected={tab === "trash"}
+          className={`page-tab ${tab === "trash" ? "active" : ""}`}
           onClick={() => {
-            setTab('trash');
+            setTab("trash");
             void fetchTrash();
           }}
         >
-          <Trash2 size={14} /> Trash {trash.length > 0 && <span className="page-tab-count">{trash.length}</span>}
+          <Trash2 size={14} /> Trash{" "}
+          {trash.length > 0 && (
+            <span className="page-tab-count">{trash.length}</span>
+          )}
         </button>
       </div>
 
-      {tab === 'active' && (
+      {tab === "active" && (
         <section className="panel task-panel" aria-label="Active tasks">
           <form className="task-form" onSubmit={handleAddTask}>
             <div className="task-form-row">
@@ -200,20 +268,30 @@ export default function TasksPage() {
                 />
                 <button
                   type="button"
-                  className={`deadline-btn ${dueAt ? 'has-deadline' : ''}`}
+                  className={`deadline-btn ${dueAt ? "has-deadline" : ""}`}
                   onClick={() => setDeadlineOpen(true)}
-                  aria-label={dueAt ? `Deadline ${formatDeadline(dueAt)}. Change deadline` : 'Choose a deadline'}
-                  title={dueAt ? formatDeadline(dueAt) : 'Choose a deadline'}
+                  aria-label={
+                    dueAt
+                      ? `Deadline ${formatDeadline(dueAt)}. Change deadline`
+                      : "Choose a deadline"
+                  }
+                  title={dueAt ? formatDeadline(dueAt) : "Choose a deadline"}
                 >
                   <CalendarClock size={18} />
                 </button>
               </div>
-              <Button type="submit" size="md" loading={creating}><Plus size={18} /> Add Task</Button>
+              <Button type="submit" size="md" loading={creating}>
+                <Plus size={18} /> Add Task
+              </Button>
             </div>
             {dueAt && (
               <p className="deadline-summary">
                 Due {formatDeadline(dueAt)}
-                <button type="button" onClick={() => setDueAt(null)} aria-label="Clear deadline">
+                <button
+                  type="button"
+                  onClick={() => setDueAt(null)}
+                  aria-label="Clear deadline"
+                >
                   <X size={12} />
                 </button>
               </p>
@@ -246,7 +324,11 @@ export default function TasksPage() {
           )}
           {hiddenTaskCount > 0 && (
             <div className="list-more">
-              <Button variant="secondary" size="sm" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              >
                 Show {Math.min(PAGE_SIZE, hiddenTaskCount)} more
               </Button>
             </div>
@@ -254,7 +336,7 @@ export default function TasksPage() {
         </section>
       )}
 
-      {tab === 'trash' && (
+      {tab === "trash" && (
         <section className="panel trash-panel" aria-label="Trashed tasks">
           {trash.length === 0 ? (
             <div className="empty-state">
@@ -268,13 +350,25 @@ export default function TasksPage() {
                 <li key={task.id} className="trash-row">
                   <div className="trash-info">
                     <strong>{task.title}</strong>
-                    <span>{task.scheduledDate ? formatShortDate(task.scheduledDate) : ''}</span>
+                    <span>
+                      {task.scheduledDate
+                        ? formatShortDate(task.scheduledDate)
+                        : ""}
+                    </span>
                   </div>
                   <div className="trash-actions">
-                    <Button variant="ghost" size="sm" onClick={() => void handleRestore(task)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void handleRestore(task)}
+                    >
                       <RotateCcw size={14} /> Restore
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => setPurgeTarget(task)}>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => setPurgeTarget(task)}
+                    >
                       <Trash2 size={14} /> Delete forever
                     </Button>
                   </div>
@@ -290,7 +384,9 @@ export default function TasksPage() {
         onClose={taskMenu.close}
         onDelete={() => {
           if (!taskMenu.menu) return;
-          const task = activeTasks.find((t) => t.title === taskMenu.menu?.label);
+          const task = activeTasks.find(
+            (t) => t.title === taskMenu.menu?.label,
+          );
           if (task) setDeleteTarget(task);
         }}
         deleteLabel="Move to trash"
@@ -308,15 +404,23 @@ export default function TasksPage() {
       <Modal
         isOpen={!!overdueTask && !extendOpen}
         onClose={() => setOverdueTask(null)}
-        title={overdueTask?.title ?? ''}
+        title={overdueTask?.title ?? ""}
         description="This task is past its deadline. What would you like to do?"
         size="sm"
       >
         <div className="overdue-menu">
-          <Button type="button" variant="primary" onClick={() => setExtendOpen(true)}>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setExtendOpen(true)}
+          >
             <CalendarClock size={16} /> Give more time
           </Button>
-          <Button type="button" variant="secondary" onClick={() => void handleMarkNotCompleted()}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleMarkNotCompleted()}
+          >
             <X size={16} /> Mark as not completed
           </Button>
         </div>

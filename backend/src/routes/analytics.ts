@@ -1,12 +1,15 @@
-import type { AppRequest } from '../types/index';
-import { Database } from '../db/client';
+import type { AppRequest } from "../types/index";
+import { Database } from "../db/client";
 
 export async function getAnalytics(req: AppRequest): Promise<Response> {
   if (!req.user) {
-    return new Response(JSON.stringify({
-      error: 'Unauthorized',
-      code: 'AUTH_REQUIRED',
-    }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    return new Response(
+      JSON.stringify({
+        error: "Unauthorized",
+        code: "AUTH_REQUIRED",
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   const userId = req.user.id;
@@ -18,47 +21,51 @@ export async function getAnalytics(req: AppRequest): Promise<Response> {
     // Count tasks
     const tasksResult = await db.first(
       `SELECT COUNT(*) as count FROM Task WHERE userId = ? AND deletedAt IS NULL`,
-      [userId]
+      [userId],
     );
 
     // Count habits
     const habitsResult = await db.first(
       `SELECT COUNT(*) as count FROM Habit WHERE userId = ? AND deletedAt IS NULL`,
-      [userId]
+      [userId],
     );
 
     // Count goals
     const goalsResult = await db.first(
       `SELECT COUNT(*) as count FROM Goal WHERE userId = ? AND deletedAt IS NULL`,
-      [userId]
+      [userId],
     );
 
     // Count skills
     const skillsResult = await db.first(
       `SELECT COUNT(*) as count FROM Skill WHERE userId = ? AND deletedAt IS NULL`,
-      [userId]
+      [userId],
     );
 
     // Get XP data
     const xpResult = await db.first(
       `SELECT SUM(CASE WHEN type = 'earn' THEN amount ELSE -amount END) as total
        FROM XPTransaction WHERE userId = ?`,
-      [userId]
+      [userId],
     );
 
     // Get this week's habit completions
     const now = new Date();
-    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+    const weekStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - now.getDay() + 1,
+    );
     const completionsResult = await db.first(
       `SELECT COUNT(*) as count FROM HabitDayEvent
        WHERE habitId IN (SELECT id FROM Habit WHERE userId = ? AND deletedAt IS NULL)
        AND date >= ? AND status = 'checked_in'`,
-      [userId, weekStart.toISOString().split('T')[0]]
+      [userId, weekStart.toISOString().split("T")[0]],
     );
 
     const analytics = {
       user: {
-        name: user?.name || 'User',
+        name: user?.name || "User",
         email: user?.email,
         xp: user?.xp || 0,
       },
@@ -78,59 +85,68 @@ export async function getAnalytics(req: AppRequest): Promise<Response> {
     };
 
     // Get today's data
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     const completedHabitsToday = await db.first(
       `SELECT COUNT(*) as count FROM HabitDayEvent
        WHERE habitId IN (SELECT id FROM Habit WHERE userId = ? AND deletedAt IS NULL)
        AND date = ? AND status = 'checked_in'`,
-      [userId, today]
+      [userId, today],
     );
 
     const completedTasksToday = await db.first(
       `SELECT COUNT(*) as count FROM Task
        WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NOT NULL
        AND DATE(completedAt) = ?`,
-      [userId, today]
+      [userId, today],
     );
 
     const overdueTasksResult = await db.first(
       `SELECT COUNT(*) as count FROM Task
        WHERE userId = ? AND deletedAt IS NULL AND completedAt IS NULL
        AND dueDate < ?`,
-      [userId, today]
+      [userId, today],
     );
 
     analytics.today.completedHabits = completedHabitsToday?.count || 0;
     analytics.today.completedTasks = completedTasksToday?.count || 0;
     analytics.today.tasksOverdue = overdueTasksResult?.count || 0;
 
-  return new Response(JSON.stringify({ data: analytics }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-  } catch (error) {
-    console.error('Error getting analytics:', error);
-    return new Response(JSON.stringify({ error: 'Failed to get analytics', code: 'INTERNAL_ERROR' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ data: analytics }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
+  } catch (error) {
+    console.error("Error getting analytics:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Failed to get analytics",
+        code: "INTERNAL_ERROR",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
 
 export async function getChartData(req: AppRequest): Promise<Response> {
   if (!req.user) {
-    return new Response(JSON.stringify({
-      error: 'Unauthorized',
-      code: 'AUTH_REQUIRED',
-    }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    return new Response(
+      JSON.stringify({
+        error: "Unauthorized",
+        code: "AUTH_REQUIRED",
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   const userId = req.user.id;
   const db = new Database(req.env?.DB!);
-  const type = (req.query?.type as string) || 'xp';
+  const type = (req.query?.type as string) || "xp";
 
   try {
-    if (type === 'xp') {
+    if (type === "xp") {
       // Get XP over time (last 30 days)
       const now = new Date();
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -142,14 +158,14 @@ export async function getChartData(req: AppRequest): Promise<Response> {
          WHERE userId = ?1 AND createdAt >= ?2
          GROUP BY DATE(createdAt)
          ORDER BY date ASC`,
-        [userId, thirtyDaysAgo.toISOString()]
+        [userId, thirtyDaysAgo.toISOString()],
       );
 
       return new Response(JSON.stringify({ data }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       });
-    } else if (type === 'habits') {
+    } else if (type === "habits") {
       // Get habit completion rate over time
       const now = new Date();
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -161,25 +177,33 @@ export async function getChartData(req: AppRequest): Promise<Response> {
          WHERE userId = ?1 AND date >= ?2
          GROUP BY DATE(date)
          ORDER BY date ASC`,
-        [userId, thirtyDaysAgo.toISOString()]
+        [userId, thirtyDaysAgo.toISOString()],
       );
 
       return new Response(JSON.stringify({ data }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       });
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid type parameter', code: 'VALIDATION_ERROR' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        error: "Invalid type parameter",
+        code: "VALIDATION_ERROR",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error('Error getting chart data:', error);
-    return new Response(JSON.stringify({ error: 'Failed to get chart data', code: 'INTERNAL_ERROR' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error("Error getting chart data:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Failed to get chart data",
+        code: "INTERNAL_ERROR",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
-

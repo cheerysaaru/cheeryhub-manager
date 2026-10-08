@@ -1,11 +1,13 @@
-import { io, Socket } from 'socket.io-client';
+import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
-const ALLOWED_PROTOCOLS = ['http:', 'https:', 'ws:', 'wss:'];
+const ALLOWED_PROTOCOLS = ["http:", "https:", "ws:", "wss:"];
 
 /** Normalized socket URL, or null when realtime must stay off. */
-export function resolveSocketUrl(configured: string | undefined): string | null {
+export function resolveSocketUrl(
+  configured: string | undefined,
+): string | null {
   const value = configured?.trim();
   if (!value) return null;
   try {
@@ -14,7 +16,9 @@ export function resolveSocketUrl(configured: string | undefined): string | null 
     if (url.search || url.hash) return null;
     return url.toString();
   } catch {
-    console.error('[Socket] VITE_SOCKET_URL must be an absolute http(s)/ws(s) URL; realtime is disabled.');
+    console.error(
+      "[Socket] VITE_SOCKET_URL must be an absolute http(s)/ws(s) URL; realtime is disabled.",
+    );
     return null;
   }
 }
@@ -28,7 +32,7 @@ export function connectSocket(_userId: string): Socket | null {
   try {
     socket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 3,
       reconnectionDelay: 1000,
@@ -37,21 +41,21 @@ export function connectSocket(_userId: string): Socket | null {
     });
   } catch (error) {
     // A realtime client must never take the app down with it.
-    console.error('[Socket] Could not create the realtime client:', error);
+    console.error("[Socket] Could not create the realtime client:", error);
     socket = null;
     return null;
   }
 
-  socket.on('connect', () => {
-    console.log('[Socket] Connected:', socket?.id);
+  socket.on("connect", () => {
+    console.log("[Socket] Connected:", socket?.id);
   });
 
-  socket.on('disconnect', (reason: string) => {
-    console.log('[Socket] Disconnected:', reason);
+  socket.on("disconnect", (reason: string) => {
+    console.log("[Socket] Disconnected:", reason);
   });
 
-  socket.on('connect_error', (error: Error) => {
-    console.error('[Socket] Connection error:', error.message);
+  socket.on("connect_error", (error: Error) => {
+    console.error("[Socket] Connection error:", error.message);
   });
 
   return socket;
@@ -68,7 +72,10 @@ export function getSocket(): Socket | null {
   return socket;
 }
 
-export function onSocketEvent<T>(event: string, handler: (data: T) => void): () => void {
+export function onSocketEvent<T>(
+  event: string,
+  handler: (data: T) => void,
+): () => void {
   const s = socket;
   if (!s) return () => {};
   s.on(event, handler);

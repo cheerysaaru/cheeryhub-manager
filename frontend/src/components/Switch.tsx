@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, forwardRef } from "react";
 
 export interface SwitchProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -6,8 +6,8 @@ export interface SwitchProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
-  ({ label, description, className = '', id, ...props }, ref) => {
-    const switchId = id || label?.toLowerCase().replace(/\s+/g, '-');
+  ({ label, description, className = "", id, ...props }, ref) => {
+    const switchId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
     return (
       <label className={`switch-wrapper ${className}`} htmlFor={switchId}>
@@ -25,12 +25,14 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
         {(label || description) && (
           <div className="switch-label">
             {label && <span className="switch-label-text">{label}</span>}
-            {description && <span className="switch-description">{description}</span>}
+            {description && (
+              <span className="switch-description">{description}</span>
+            )}
           </div>
         )}
       </label>
     );
-  }
+  },
 );
 
-Switch.displayName = 'Switch';
+Switch.displayName = "Switch";

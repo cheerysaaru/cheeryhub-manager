@@ -1,41 +1,41 @@
-import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { useAuth } from '../hooks/useAuth';
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Button } from "../components/Button";
+import { Input } from "../components/Input";
+import { useAuth } from "../hooks/useAuth";
 import {
   PASSWORD_RULES,
   USERNAME_RULES,
   passwordProblem,
   usernameProblem,
-} from '../utils/validation';
+} from "../utils/validation";
 
-type Mode = 'signin' | 'register' | 'forgot';
+type Mode = "signin" | "register" | "forgot";
 
 function strengthOf(password: string): { score: number; label: string } {
-  if (!password) return { score: 0, label: '' };
+  if (!password) return { score: 0, label: "" };
   let score = 0;
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[!@#$%^&*]/.test(password)) score++;
-  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
-  return { score, label: labels[score] ?? '' };
+  const labels = ["", "Weak", "Fair", "Good", "Strong"];
+  return { score, label: labels[score] ?? "" };
 }
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const { login, register, forgotPassword } = useAuth();
-  const [mode, setMode] = useState<Mode>('signin');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [resetEmail, setResetEmail] = useState('');
-  const [error, setError] = useState('');
-  const sessionExpired = searchParams.get('session') === 'expired';
+  const [mode, setMode] = useState<Mode>("signin");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [error, setError] = useState("");
+  const sessionExpired = searchParams.get("session") === "expired";
   const [notice, setNotice] = useState(() =>
-    sessionExpired ? 'Your session has expired. Please sign in again.' : ''
+    sessionExpired ? "Your session has expired. Please sign in again." : "",
   );
   const [loading, setLoading] = useState(false);
 
@@ -43,18 +43,18 @@ export default function AuthPage() {
 
   function resetState(next: Mode) {
     setMode(next);
-    setError('');
-    setNotice('');
+    setError("");
+    setNotice("");
   }
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       await login(username.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in');
+      setError(err instanceof Error ? err.message : "Unable to sign in");
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ export default function AuthPage() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     const name = username.trim();
     const usernameError = usernameProblem(name);
     if (usernameError) {
@@ -75,14 +75,16 @@ export default function AuthPage() {
       return;
     }
     if (password !== confirm) {
-      setError('Passwords do not match.');
+      setError("Passwords do not match.");
       return;
     }
     setLoading(true);
     try {
       await register(name, email.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to create your account');
+      setError(
+        err instanceof Error ? err.message : "Unable to create your account",
+      );
     } finally {
       setLoading(false);
     }
@@ -90,14 +92,16 @@ export default function AuthPage() {
 
   async function handleForgot(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       const message = await forgotPassword(resetEmail.trim());
       setNotice(message);
-      setResetEmail('');
+      setResetEmail("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to send the reset link');
+      setError(
+        err instanceof Error ? err.message : "Unable to send the reset link",
+      );
     } finally {
       setLoading(false);
     }
@@ -112,9 +116,11 @@ export default function AuthPage() {
           <br />
           <em>in motion.</em>
         </h1>
-        <p className="muted">Your tasks, rituals, focus, and reflection in one durable home.</p>
+        <p className="muted">
+          Your tasks, rituals, focus, and reflection in one durable home.
+        </p>
 
-        {mode === 'signin' && (
+        {mode === "signin" && (
           <form onSubmit={handleSignIn} className="auth-form">
             <Input
               label="Username"
@@ -137,17 +143,25 @@ export default function AuthPage() {
               Enter dashboard
             </Button>
             <div className="auth-links">
-              <button type="button" className="link-button" onClick={() => resetState('register')}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => resetState("register")}
+              >
                 Create an account
               </button>
-              <button type="button" className="link-button" onClick={() => resetState('forgot')}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => resetState("forgot")}
+              >
                 Forgot password?
               </button>
             </div>
           </form>
         )}
 
-        {mode === 'register' && (
+        {mode === "register" && (
           <form onSubmit={handleRegister} className="auth-form">
             <Input
               label="Username"
@@ -180,7 +194,10 @@ export default function AuthPage() {
               <div className="password-strength" aria-live="polite">
                 <div className="strength-track">
                   {[1, 2, 3, 4].map((step) => (
-                    <span key={step} className={`strength-seg ${strength.score >= step ? `on level-${strength.score}` : ''}`} />
+                    <span
+                      key={step}
+                      className={`strength-seg ${strength.score >= step ? `on level-${strength.score}` : ""}`}
+                    />
                   ))}
                 </div>
                 <small>{strength.label}</small>
@@ -193,7 +210,11 @@ export default function AuthPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password"
-              error={confirm && confirm !== password ? 'Passwords do not match.' : undefined}
+              error={
+                confirm && confirm !== password
+                  ? "Passwords do not match."
+                  : undefined
+              }
               required
             />
             <p className="auth-hint">{PASSWORD_RULES}</p>
@@ -201,14 +222,18 @@ export default function AuthPage() {
               Create account
             </Button>
             <div className="auth-links">
-              <button type="button" className="link-button" onClick={() => resetState('signin')}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => resetState("signin")}
+              >
                 Back to sign in
               </button>
             </div>
           </form>
         )}
 
-        {mode === 'forgot' && (
+        {mode === "forgot" && (
           <form onSubmit={handleForgot} className="auth-form">
             <Input
               label="Email"
@@ -226,7 +251,11 @@ export default function AuthPage() {
               Send reset link
             </Button>
             <div className="auth-links">
-              <button type="button" className="link-button" onClick={() => resetState('signin')}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => resetState("signin")}
+              >
                 Back to sign in
               </button>
             </div>
@@ -234,11 +263,18 @@ export default function AuthPage() {
         )}
 
         {notice && (
-          <p className={sessionExpired ? 'error-message' : 'success-message'} role={sessionExpired ? 'alert' : 'status'}>
+          <p
+            className={sessionExpired ? "error-message" : "success-message"}
+            role={sessionExpired ? "alert" : "status"}
+          >
             {notice}
           </p>
         )}
-        {error && <p className="error-message" role="alert">{error}</p>}
+        {error && (
+          <p className="error-message" role="alert">
+            {error}
+          </p>
+        )}
       </section>
     </main>
   );

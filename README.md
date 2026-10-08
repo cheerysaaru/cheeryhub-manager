@@ -29,21 +29,21 @@ Default seed login (development only): `you@example.com` / password from `SEED_P
 
 Variables are validated with Zod at startup — the server **exits with a readable message** (variable names only, never values) if `JWT_SECRET` or `DATABASE_URL` is missing/invalid, and `GET /api/health` reports which variables are set as booleans. Templates: [`.env.example`](.env.example) (local) and [`backend/.env.example`](backend/.env.example) (full inventory).
 
-| Variable | Required | Where it is read | Default |
-| --- | --- | --- | --- |
-| `JWT_SECRET` | yes (32+ chars, not the template placeholder) | Node server + Worker (secret) | — |
-| `DATABASE_URL` | Node server only (Worker uses the D1 binding) | `prisma/schema.prisma`, boot check | — |
-| `NODE_ENV` | no | both | `development` |
-| `PORT` | no | Node server | `4000` |
-| `FRONTEND_URL` | no | CORS + Socket.IO + Helmet `connect-src` (comma-separated origins) | `http://localhost:5173` |
-| `APP_URL` | no | links in outgoing email | first `FRONTEND_URL` origin |
-| `EMAIL_API_KEY` | optional | Resend; email silently skipped when unset | — |
-| `EMAIL_FROM` | no | Resend sender | `Productivity <onboarding@resend.dev>` |
-| `COOKIE_SECURE` / `COOKIE_SAME_SITE` / `COOKIE_DOMAIN` | no | auth cookie | `production→secure`, `lax` |
-| `RATE_LIMIT_*`, `AUTH_RATE_LIMIT_MAX`, `LOGIN_RATE_LIMIT_MAX`, `REGISTER_RATE_LIMIT_MAX` | no | rate limiter | see `backend/.env.example` |
-| `VITE_API_URL` | frontend build | browser → API base URL | `http://localhost:4000/api` locally; production fallback is `https://api.cheeryhub.space/api` |
-| `VITE_SOCKET_URL` | frontend build | optional Socket.IO service URL | unset (realtime disabled) |
-| `VITE_BASE` | frontend build | Vite base path | `/` for the custom domain |
+| Variable                                                                                 | Required                                      | Where it is read                                                  | Default                                                                                       |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`                                                                             | yes (32+ chars, not the template placeholder) | Node server + Worker (secret)                                     | —                                                                                             |
+| `DATABASE_URL`                                                                           | Node server only (Worker uses the D1 binding) | `prisma/schema.prisma`, boot check                                | —                                                                                             |
+| `NODE_ENV`                                                                               | no                                            | both                                                              | `development`                                                                                 |
+| `PORT`                                                                                   | no                                            | Node server                                                       | `4000`                                                                                        |
+| `FRONTEND_URL`                                                                           | no                                            | CORS + Socket.IO + Helmet `connect-src` (comma-separated origins) | `http://localhost:5173`                                                                       |
+| `APP_URL`                                                                                | no                                            | links in outgoing email                                           | first `FRONTEND_URL` origin                                                                   |
+| `EMAIL_API_KEY`                                                                          | optional                                      | Resend; email silently skipped when unset                         | —                                                                                             |
+| `EMAIL_FROM`                                                                             | no                                            | Resend sender                                                     | `Productivity <onboarding@resend.dev>`                                                        |
+| `COOKIE_SECURE` / `COOKIE_SAME_SITE` / `COOKIE_DOMAIN`                                   | no                                            | auth cookie                                                       | `production→secure`, `lax`                                                                    |
+| `RATE_LIMIT_*`, `AUTH_RATE_LIMIT_MAX`, `LOGIN_RATE_LIMIT_MAX`, `REGISTER_RATE_LIMIT_MAX` | no                                            | rate limiter                                                      | see `backend/.env.example`                                                                    |
+| `VITE_API_URL`                                                                           | frontend build                                | browser → API base URL                                            | `http://localhost:4000/api` locally; production fallback is `https://api.cheeryhub.space/api` |
+| `VITE_SOCKET_URL`                                                                        | frontend build                                | optional Socket.IO service URL                                    | unset (realtime disabled)                                                                     |
+| `VITE_BASE`                                                                              | frontend build                                | Vite base path                                                    | `/` for the custom domain                                                                     |
 
 How each platform supplies them:
 

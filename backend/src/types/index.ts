@@ -1,4 +1,4 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 
 export interface AppEnv {
   DB: D1Database;
@@ -52,5 +52,3 @@ export interface AppRequest extends Request {
   query?: Record<string, string>;
   env?: AppEnv;
 }
-
-

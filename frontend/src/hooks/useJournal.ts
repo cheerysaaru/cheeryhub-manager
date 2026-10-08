@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, asArray } from '../services/api';
-import type { JournalEntry } from '../types';
-import { useSocket } from './useSocket';
+import { useCallback, useEffect, useState } from "react";
+import { api, ApiError, asArray } from "../services/api";
+import type { JournalEntry } from "../types";
+import { useSocket } from "./useSocket";
 
 export function useJournal(userId: string | null) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -12,11 +12,23 @@ export function useJournal(userId: string | null) {
   const fetchEntries = useCallback(async () => {
     setError(null);
     try {
-      const data = await api<JournalEntry[]>('/journal');
-      setEntries(asArray<JournalEntry>(data)
-        .filter((entry): entry is JournalEntry => Boolean(entry && typeof entry === 'object' && typeof entry.id === 'string' && typeof entry.date === 'string')));
+      const data = await api<JournalEntry[]>("/journal");
+      setEntries(
+        asArray<JournalEntry>(data).filter((entry): entry is JournalEntry =>
+          Boolean(
+            entry &&
+            typeof entry === "object" &&
+            typeof entry.id === "string" &&
+            typeof entry.date === "string",
+          ),
+        ),
+      );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load journal entries.');
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not load journal entries.",
+      );
     } finally {
       setLoading(false);
     }
@@ -24,10 +36,16 @@ export function useJournal(userId: string | null) {
 
   useEffect(() => {
     fetchEntries();
-    const cleanup = on<JournalEntry>('journal:created', (entry) => {
-      setEntries((prev) => (prev.some((e) => e.id === entry.id || (entry.date && e.date === entry.date)) ? prev : [entry, ...prev]));
+    const cleanup = on<JournalEntry>("journal:created", (entry) => {
+      setEntries((prev) =>
+        prev.some(
+          (e) => e.id === entry.id || (entry.date && e.date === entry.date),
+        )
+          ? prev
+          : [entry, ...prev],
+      );
     });
-    const cleanup2 = on<JournalEntry>('journal:updated', (entry) => {
+    const cleanup2 = on<JournalEntry>("journal:updated", (entry) => {
       setEntries((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));
     });
     return () => {
@@ -46,26 +64,34 @@ export function useJournal(userId: string | null) {
   }, []);
 
   const save = useCallback(async (data: Partial<JournalEntry>) => {
-    const entry = await api<JournalEntry>('/journal', {
-      method: 'POST',
+    const entry = await api<JournalEntry>("/journal", {
+      method: "POST",
       body: JSON.stringify(data),
     });
     setEntries((prev) => {
-      const exists = prev.some((e) => e.id === entry.id || (entry.date && e.date === entry.date));
-      if (exists) return prev.map((e) => (e.id === entry.id || e.date === entry.date ? entry : e));
+      const exists = prev.some(
+        (e) => e.id === entry.id || (entry.date && e.date === entry.date),
+      );
+      if (exists)
+        return prev.map((e) =>
+          e.id === entry.id || e.date === entry.date ? entry : e,
+        );
       return [entry, ...prev];
     });
     return entry;
   }, []);
 
-  const update = useCallback(async (id: string, data: Partial<JournalEntry>) => {
-    const entry = await api<JournalEntry>(`/journal/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    setEntries((prev) => prev.map((e) => (e.id === id ? entry : e)));
-    return entry;
-  }, []);
+  const update = useCallback(
+    async (id: string, data: Partial<JournalEntry>) => {
+      const entry = await api<JournalEntry>(`/journal/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+      setEntries((prev) => prev.map((e) => (e.id === id ? entry : e)));
+      return entry;
+    },
+    [],
+  );
 
   return { entries, loading, error, fetchEntries, getByDate, save, update };
 }

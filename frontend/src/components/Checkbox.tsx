@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, forwardRef } from "react";
 
 export interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -6,8 +6,8 @@ export interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ label, description, className = '', id, ...props }, ref) => {
-    const checkboxId = id || label?.toLowerCase().replace(/\s+/g, '-');
+  ({ label, description, className = "", id, ...props }, ref) => {
+    const checkboxId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
     return (
       <label className={`checkbox-wrapper ${className}`} htmlFor={checkboxId}>
@@ -19,19 +19,28 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           {...props}
         />
         <span className="checkbox-box" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="16" height="16">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            width="16"
+            height="16"
+          >
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </span>
         {(label || description) && (
           <div className="checkbox-label">
             {label && <span className="checkbox-label-text">{label}</span>}
-            {description && <span className="checkbox-description">{description}</span>}
+            {description && (
+              <span className="checkbox-description">{description}</span>
+            )}
           </div>
         )}
       </label>
     );
-  }
+  },
 );
 
-Checkbox.displayName = 'Checkbox';
+Checkbox.displayName = "Checkbox";

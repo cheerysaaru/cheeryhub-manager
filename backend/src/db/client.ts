@@ -1,5 +1,5 @@
-import type { D1Database, D1Result } from '@cloudflare/workers-types';
-import { v4 as uuidv4 } from 'uuid';
+import type { D1Database, D1Result } from "@cloudflare/workers-types";
+import { v4 as uuidv4 } from "uuid";
 
 export interface DbUser {
   id: string;
@@ -49,21 +49,23 @@ export class Database {
   async createUser(user: Partial<DbUser>): Promise<DbUser> {
     const id = user.id || uuidv4();
     const now = new Date().toISOString();
-    
+
     await this.db
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO "User" 
         (id, name, email, passwordHash, timezone, createdAt, updatedAt)
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-      `)
+      `,
+      )
       .bind(
         id,
-        user.name || 'User',
+        user.name || "User",
         user.email,
         user.passwordHash,
-        user.timezone || 'UTC',
+        user.timezone || "UTC",
         now,
-        now
+        now,
       )
       .run();
 
@@ -72,18 +74,20 @@ export class Database {
 
   async updateUser(id: string, updates: Partial<DbUser>): Promise<void> {
     const sets = Object.keys(updates)
-      .filter(k => k !== 'id')
+      .filter((k) => k !== "id")
       .map((k, i) => `"${k}" = ?${i + 1}`)
-      .join(', ');
+      .join(", ");
 
     if (!sets) return;
 
-    const values = Object.values(updates).filter(v => v !== undefined);
+    const values = Object.values(updates).filter((v) => v !== undefined);
     values.push(new Date().toISOString()); // updatedAt
     values.push(id); // id for WHERE clause
 
     await this.db
-      .prepare(`UPDATE "User" SET ${sets}, "updatedAt" = ?${values.length - 1} WHERE id = ?${values.length}`)
+      .prepare(
+        `UPDATE "User" SET ${sets}, "updatedAt" = ?${values.length - 1} WHERE id = ?${values.length}`,
+      )
       .bind(...values)
       .run();
   }

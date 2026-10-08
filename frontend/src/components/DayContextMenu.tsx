@@ -1,8 +1,15 @@
-import { CheckCircle2, CircleX, Coffee, RotateCcw } from 'lucide-react';
-import { ContextMenu, type ContextMenuState, type MenuItem } from './ContextMenu';
-import { formatShortFullDate, type DayStatus } from '../utils/commitmentCalendar';
+import { CheckCircle2, CircleX, Coffee, RotateCcw } from "lucide-react";
+import {
+  ContextMenu,
+  type ContextMenuState,
+  type MenuItem,
+} from "./ContextMenu";
+import {
+  formatShortFullDate,
+  type DayStatus,
+} from "../utils/commitmentCalendar";
 
-export type DayAction = 'undo' | 'checkin' | 'fail' | 'leave';
+export type DayAction = "undo" | "checkin" | "fail" | "leave";
 
 export interface DayMenuTarget extends ContextMenuState {
   habitId: string;
@@ -22,40 +29,49 @@ export interface DayContextMenuProps {
  * available from that day's current status. Locked/future days never get a
  * target, so only editable days can open it.
  */
-export function DayContextMenu({ target, pending, onClose, onAction }: DayContextMenuProps) {
+export function DayContextMenu({
+  target,
+  pending,
+  onClose,
+  onAction,
+}: DayContextMenuProps) {
   if (!target) return null;
 
   const items: MenuItem[] = [];
-  if (target.status !== 'EMPTY' && target.status !== 'NOT_STARTED' && target.status !== 'FUTURE') {
+  if (
+    target.status !== "EMPTY" &&
+    target.status !== "NOT_STARTED" &&
+    target.status !== "FUTURE"
+  ) {
     items.push({
-      key: 'undo',
-      label: 'Undo (clear)',
+      key: "undo",
+      label: "Undo (clear)",
       icon: <RotateCcw size={15} />,
-      onClick: () => onAction(target.habitId, target.date, 'undo'),
+      onClick: () => onAction(target.habitId, target.date, "undo"),
     });
   }
-  if (target.status !== 'COMPLETED') {
+  if (target.status !== "COMPLETED") {
     items.push({
-      key: 'checkin',
-      label: 'Check in',
+      key: "checkin",
+      label: "Check in",
       icon: <CheckCircle2 size={15} />,
-      onClick: () => onAction(target.habitId, target.date, 'checkin'),
+      onClick: () => onAction(target.habitId, target.date, "checkin"),
     });
   }
-  if (target.status !== 'FAILED') {
+  if (target.status !== "FAILED") {
     items.push({
-      key: 'fail',
-      label: 'Mark as failed',
+      key: "fail",
+      label: "Mark as failed",
       icon: <CircleX size={15} />,
-      onClick: () => onAction(target.habitId, target.date, 'fail'),
+      onClick: () => onAction(target.habitId, target.date, "fail"),
     });
   }
-  if (target.status !== 'SKIPPED') {
+  if (target.status !== "SKIPPED") {
     items.push({
-      key: 'leave',
-      label: 'Mark as leave',
+      key: "leave",
+      label: "Mark as leave",
       icon: <Coffee size={15} />,
-      onClick: () => onAction(target.habitId, target.date, 'leave'),
+      onClick: () => onAction(target.habitId, target.date, "leave"),
     });
   }
 
@@ -63,7 +79,9 @@ export function DayContextMenu({ target, pending, onClose, onAction }: DayContex
     <ContextMenu
       state={target}
       title={formatShortFullDate(target.date)}
-      items={items.map((item) => (pending ? { ...item, disabled: true } : item))}
+      items={items.map((item) =>
+        pending ? { ...item, disabled: true } : item,
+      )}
       onClose={onClose}
     />
   );

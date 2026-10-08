@@ -1,12 +1,15 @@
-import type { AppRequest } from '../types/index';
-import { Database } from '../db/client';
+import type { AppRequest } from "../types/index";
+import { Database } from "../db/client";
 
 export async function exportData(req: AppRequest): Promise<Response> {
   if (!req.user) {
-    return new Response(JSON.stringify({
-      error: 'Unauthorized',
-      code: 'AUTH_REQUIRED',
-    }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    return new Response(
+      JSON.stringify({
+        error: "Unauthorized",
+        code: "AUTH_REQUIRED",
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   try {
@@ -16,22 +19,22 @@ export async function exportData(req: AppRequest): Promise<Response> {
     if (!user) {
       return new Response(
         JSON.stringify({
-          error: 'User not found',
-          code: 'NOT_FOUND',
+          error: "User not found",
+          code: "NOT_FOUND",
         }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { status: 404, headers: { "Content-Type": "application/json" } },
       );
     }
 
     // Export all user data
     const tasks = await db.all(
-      'SELECT * FROM Task WHERE userId = ?1 ORDER BY createdAt DESC',
-      [req.user.id]
+      "SELECT * FROM Task WHERE userId = ?1 ORDER BY createdAt DESC",
+      [req.user.id],
     );
 
     const habits = await db.all(
-      'SELECT * FROM Habit WHERE userId = ?1 ORDER BY createdAt DESC',
-      [req.user.id]
+      "SELECT * FROM Habit WHERE userId = ?1 ORDER BY createdAt DESC",
+      [req.user.id],
     );
 
     const habitEvents = await db.all(
@@ -39,27 +42,27 @@ export async function exportData(req: AppRequest): Promise<Response> {
        JOIN Habit h ON hde.habitId = h.id
        WHERE h.userId = ?1
        ORDER BY hde.date DESC`,
-      [req.user.id]
+      [req.user.id],
     );
 
     const goals = await db.all(
-      'SELECT * FROM Goal WHERE userId = ?1 ORDER BY createdAt DESC',
-      [req.user.id]
+      "SELECT * FROM Goal WHERE userId = ?1 ORDER BY createdAt DESC",
+      [req.user.id],
     );
 
     const skills = await db.all(
-      'SELECT * FROM Skill WHERE userId = ?1 ORDER BY createdAt DESC',
-      [req.user.id]
+      "SELECT * FROM Skill WHERE userId = ?1 ORDER BY createdAt DESC",
+      [req.user.id],
     );
 
     const notifications = await db.all(
-      'SELECT * FROM Notification WHERE userId = ?1 ORDER BY createdAt DESC LIMIT 100',
-      [req.user.id]
+      "SELECT * FROM Notification WHERE userId = ?1 ORDER BY createdAt DESC LIMIT 100",
+      [req.user.id],
     );
 
     const transactions = await db.all(
-      'SELECT * FROM XPTransaction WHERE userId = ?1 ORDER BY createdAt DESC',
-      [req.user.id]
+      "SELECT * FROM XPTransaction WHERE userId = ?1 ORDER BY createdAt DESC",
+      [req.user.id],
     );
 
     const backup = {
@@ -96,28 +99,34 @@ export async function exportData(req: AppRequest): Promise<Response> {
     return new Response(JSON.stringify(backup, null, 2), {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="cheeryhub-backup-${new Date().toISOString().split('T')[0]}.json"`,
+        "Content-Type": "application/json",
+        "Content-Disposition": `attachment; filename="cheeryhub-backup-${new Date().toISOString().split("T")[0]}.json"`,
       },
     });
   } catch (error) {
-    console.error('Error exporting data:', error);
-    return new Response(JSON.stringify({
-      error: 'Failed to export data',
-      code: 'INTERNAL_ERROR',
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error("Error exporting data:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Failed to export data",
+        code: "INTERNAL_ERROR",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
 
 export async function getBackupHistory(req: AppRequest): Promise<Response> {
   if (!req.user) {
-    return new Response(JSON.stringify({
-      error: 'Unauthorized',
-      code: 'AUTH_REQUIRED',
-    }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    return new Response(
+      JSON.stringify({
+        error: "Unauthorized",
+        code: "AUTH_REQUIRED",
+      }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   try {
@@ -131,14 +140,16 @@ export async function getBackupHistory(req: AppRequest): Promise<Response> {
          (SELECT COUNT(*) FROM Goal WHERE userId = ?1) as goalCount,
          (SELECT SUM(amount) FROM XPTransaction WHERE userId = ?1 AND type = 'earn') as totalXPEarned
        `,
-      [req.user.id]
+      [req.user.id],
     );
 
     return new Response(
       JSON.stringify({
         data: {
           lastBackupDate: new Date().toISOString(),
-          nextBackupDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          nextBackupDate: new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
           stats: {
             taskCount: stats?.taskCount || 0,
             habitCount: stats?.habitCount || 0,
@@ -149,19 +160,20 @@ export async function getBackupHistory(req: AppRequest): Promise<Response> {
       }),
       {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   } catch (error) {
-    console.error('Error getting backup history:', error);
-    return new Response(JSON.stringify({
-      error: 'Failed to get backup history',
-      code: 'INTERNAL_ERROR',
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error("Error getting backup history:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Failed to get backup history",
+        code: "INTERNAL_ERROR",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
-
-

@@ -1,7 +1,7 @@
-import type { AppRequest } from '../types/index';
-import { sign, verify } from '../utils/jwt';
-import { hashPassword, verifyPassword } from '../utils/password';
-import { Database } from '../db/client';
+import type { AppRequest } from "../types/index";
+import { sign, verify } from "../utils/jwt";
+import { hashPassword, verifyPassword } from "../utils/password";
+import { Database } from "../db/client";
 
 interface RegisterPayload {
   name: string;
@@ -23,45 +23,87 @@ export async function register(req: AppRequest): Promise<Response> {
     if (!name?.trim() || !email?.trim() || !password) {
       return new Response(
         JSON.stringify({
-          error: 'Missing required fields: name, email, password',
-          code: 'INVALID_REQUEST',
+          error: "Missing required fields: name, email, password",
+          code: "INVALID_REQUEST",
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
     if (password.length < 6) {
       return new Response(
         JSON.stringify({
-          error: 'Password must be at least 6 characters',
-          code: 'INVALID_REQUEST',
+          error: "Password must be at least 6 characters",
+          code: "INVALID_REQUEST",
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const db = new Database(req.env!.DB);
-    const existing = await db.getUserByEmail(email.toLowerCase());
+    try {
+      const db = new Database(req.env!.DB);
+      const existing = await db.getUserByEmail(email.toLowerCase());
 
-    if (existing) {
-      return new Response(
-        JSON.stringify({
-          error: 'Email already registered',
-          code: 'INVALID_REQUEST',
-        }),
-        { status: 409, headers: { 'Content-Type': 'application/json' } }
+      if (existing) {
+        return new Response(
+          JSON.stringify({
+            error: "Email already registered",
+            code: "INVALID_REQUEST",
+          }),
+          { status: 409, headers: { "Content-Type": "application/json" } },
+        );
+      }
+    } catch (dbError) {
+      console.error(
+        "[auth.register] getUserByEmail failed:",
+        dbError instanceof Error ? dbError.message : String(dbError),
       );
+      throw dbError;
     }
 
-    const passwordHash = await hashPassword(password);
-    const user = await db.createUser({
-      name: name.trim(),
-      email: email.toLowerCase(),
-      passwordHash,
-      timezone: timezone || 'UTC',
-    });
+    let passwordHash: string;
+    try {
+      passwordHash = await hashPassword(password);
+    } catch (hashError) {
+      console.error(
+        "[auth.register] hashPassword failed:",
+        hashError instanceof Error ? hashError.message : String(hashError),
+      );
+      throw hashError;
+    }
 
-    const token = sign({ userId: user.id, email: user.email }, (req.env?.JWT_SECRET || 'secret') as string);
+    let user;
+    try {
+      const db = new Database(req.env!.DB);
+      user = await db.createUser({
+        name: name.trim(),
+        email: email.toLowerCase(),
+        passwordHash,
+        timezone: timezone || "UTC",
+      });
+    } catch (createError) {
+      console.error(
+        "[auth.register] createUser failed:",
+        createError instanceof Error
+          ? createError.message
+          : String(createError),
+      );
+      throw createError;
+    }
+
+    let token: string;
+    try {
+      token = sign(
+        { id: user.id, email: user.email },
+        (req.env?.JWT_SECRET || "secret") as string,
+      );
+    } catch (signError) {
+      console.error(
+        "[auth.register] sign token failed:",
+        signError instanceof Error ? signError.message : String(signError),
+      );
+      throw signError;
+    }
 
     return new Response(
       JSON.stringify({
@@ -78,19 +120,22 @@ export async function register(req: AppRequest): Promise<Response> {
       {
         status: 201,
         headers: {
-          'Content-Type': 'application/json',
-          'Set-Cookie': `auth=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+          "Content-Type": "application/json",
+          "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
         },
-      }
+      },
     );
   } catch (error) {
-    console.error('[auth.register]', error);
+    console.error(
+      "[auth.register] caught error:",
+      error instanceof Error ? error.message : String(error),
+    );
     return new Response(
       JSON.stringify({
-        error: 'Registration failed',
-        code: 'INTERNAL_ERROR',
+        error: "Registration failed",
+        code: "INTERNAL_ERROR",
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }
@@ -103,41 +148,85 @@ export async function login(req: AppRequest): Promise<Response> {
     if (!email?.trim() || !password) {
       return new Response(
         JSON.stringify({
-          error: 'Email and password are required',
-          code: 'INVALID_REQUEST',
+          error: "Email and password are required",
+          code: "INVALID_REQUEST",
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const db = new Database(req.env!.DB);
-    const user = await db.getUserByEmail(email.toLowerCase());
+    let user;
+    try {
+      const db = new Database(req.env!.DB);
+      user = await db.getUserByEmail(email.toLowerCase());
+    } catch (dbError) {
+      console.error(
+        "[auth.login] getUserByEmail failed:",
+        dbError instanceof Error ? dbError.message : String(dbError),
+      );
+      throw dbError;
+    }
 
     if (!user || !user.passwordHash) {
       return new Response(
         JSON.stringify({
-          error: 'Invalid email or password',
-          code: 'INVALID_REQUEST',
+          error: "Invalid email or password",
+          code: "INVALID_REQUEST",
         }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const passwordValid = await verifyPassword(password, user.passwordHash);
+    let passwordValid: boolean;
+    try {
+      passwordValid = await verifyPassword(password, user.passwordHash);
+    } catch (verifyError) {
+      console.error(
+        "[auth.login] verifyPassword failed:",
+        verifyError instanceof Error
+          ? verifyError.message
+          : String(verifyError),
+      );
+      throw verifyError;
+    }
+
     if (!passwordValid) {
       return new Response(
         JSON.stringify({
-          error: 'Invalid email or password',
-          code: 'INVALID_REQUEST',
+          error: "Invalid email or password",
+          code: "INVALID_REQUEST",
         }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const token = sign({ userId: user.id, email: user.email }, (req.env?.JWT_SECRET || 'secret') as string);
+    let token: string;
+    try {
+      token = sign(
+        { id: user.id, email: user.email },
+        (req.env?.JWT_SECRET || "secret") as string,
+      );
+    } catch (signError) {
+      console.error(
+        "[auth.login] sign token failed:",
+        signError instanceof Error ? signError.message : String(signError),
+      );
+      throw signError;
+    }
 
     // Update last login
-    await db.updateUser(user.id, { lastLoginAt: new Date().toISOString() });
+    try {
+      const db = new Database(req.env!.DB);
+      await db.updateUser(user.id, { lastLoginAt: new Date().toISOString() });
+    } catch (updateError) {
+      console.error(
+        "[auth.login] updateUser failed:",
+        updateError instanceof Error
+          ? updateError.message
+          : String(updateError),
+      );
+      // Don't throw - this is not critical for login success
+    }
 
     return new Response(
       JSON.stringify({
@@ -154,19 +243,22 @@ export async function login(req: AppRequest): Promise<Response> {
       {
         status: 200,
         headers: {
-          'Content-Type': 'application/json',
-          'Set-Cookie': `auth=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+          "Content-Type": "application/json",
+          "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
         },
-      }
+      },
     );
   } catch (error) {
-    console.error('[auth.login]', error);
+    console.error(
+      "[auth.login] caught error:",
+      error instanceof Error ? error.message : String(error),
+    );
     return new Response(
       JSON.stringify({
-        error: 'Login failed',
-        code: 'INTERNAL_ERROR',
+        error: "Login failed",
+        code: "INTERNAL_ERROR",
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }
@@ -174,15 +266,16 @@ export async function login(req: AppRequest): Promise<Response> {
 export async function logout(req: AppRequest): Promise<Response> {
   return new Response(
     JSON.stringify({
-      data: { message: 'Logged out successfully' },
+      data: { message: "Logged out successfully" },
     }),
     {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'Set-Cookie': 'auth=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0',
+        "Content-Type": "application/json",
+        "Set-Cookie":
+          "auth=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0",
       },
-    }
+    },
   );
 }
 
@@ -191,10 +284,10 @@ export async function me(req: AppRequest): Promise<Response> {
     if (!req.user) {
       return new Response(
         JSON.stringify({
-          error: 'Unauthorized',
-          code: 'AUTH_REQUIRED',
+          error: "Unauthorized",
+          code: "AUTH_REQUIRED",
         }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -204,10 +297,10 @@ export async function me(req: AppRequest): Promise<Response> {
     if (!user) {
       return new Response(
         JSON.stringify({
-          error: 'User not found',
-          code: 'INVALID_REQUEST',
+          error: "User not found",
+          code: "INVALID_REQUEST",
         }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { status: 404, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -226,16 +319,16 @@ export async function me(req: AppRequest): Promise<Response> {
           pushNotifications: user.pushNotifications !== false,
         },
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error('[auth.me]', error);
+    console.error("[auth.me]", error);
     return new Response(
       JSON.stringify({
-        error: 'Failed to get user info',
-        code: 'INTERNAL_ERROR',
+        error: "Failed to get user info",
+        code: "INTERNAL_ERROR",
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }
@@ -243,11 +336,11 @@ export async function me(req: AppRequest): Promise<Response> {
 export async function refresh(req: AppRequest): Promise<Response> {
   try {
     // Extract token from cookies or Authorization header
-    const authHeader = req.headers?.get('authorization') || '';
-    const cookieHeader = req.headers?.get('cookie') || '';
-    let token = '';
+    const authHeader = req.headers?.get("authorization") || "";
+    const cookieHeader = req.headers?.get("cookie") || "";
+    let token = "";
 
-    if (authHeader.startsWith('Bearer ')) {
+    if (authHeader.startsWith("Bearer ")) {
       token = authHeader.slice(7);
     } else {
       const match = cookieHeader.match(/auth=([^;]+)/);
@@ -257,21 +350,21 @@ export async function refresh(req: AppRequest): Promise<Response> {
     if (!token) {
       return new Response(
         JSON.stringify({
-          error: 'No valid session',
-          code: 'AUTH_REQUIRED',
+          error: "No valid session",
+          code: "AUTH_REQUIRED",
         }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const payload = verify(token, (req.env?.JWT_SECRET || 'secret') as string);
+    const payload = verify(token, (req.env?.JWT_SECRET || "secret") as string);
     if (!payload) {
       return new Response(
         JSON.stringify({
-          error: 'Invalid or expired session',
-          code: 'SESSION_EXPIRED',
+          error: "Invalid or expired session",
+          code: "SESSION_EXPIRED",
         }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -280,14 +373,17 @@ export async function refresh(req: AppRequest): Promise<Response> {
     if (!user) {
       return new Response(
         JSON.stringify({
-          error: 'User not found',
-          code: 'AUTH_REQUIRED',
+          error: "User not found",
+          code: "AUTH_REQUIRED",
         }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const newToken = sign({ userId: user.id, email: user.email }, (req.env?.JWT_SECRET || 'secret') as string);
+    const newToken = sign(
+      { userId: user.id, email: user.email },
+      (req.env?.JWT_SECRET || "secret") as string,
+    );
 
     return new Response(
       JSON.stringify({
@@ -304,21 +400,19 @@ export async function refresh(req: AppRequest): Promise<Response> {
       {
         status: 200,
         headers: {
-          'Content-Type': 'application/json',
-          'Set-Cookie': `auth=${newToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+          "Content-Type": "application/json",
+          "Set-Cookie": `auth=${newToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
         },
-      }
+      },
     );
   } catch (error) {
-    console.error('[auth.refresh]', error);
+    console.error("[auth.refresh]", error);
     return new Response(
       JSON.stringify({
-        error: 'Session refresh failed',
-        code: 'INTERNAL_ERROR',
+        error: "Session refresh failed",
+        code: "INTERNAL_ERROR",
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }
-
-

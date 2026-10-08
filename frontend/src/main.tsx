@@ -1,32 +1,32 @@
-import { StrictMode, lazy, Suspense, useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import './styles.css';
-import { useAuth, AuthProvider } from './hooks/useAuth';
-import { useSocket } from './hooks/useSocket';
-import { syncPendingWrites } from './services/api';
-import { Layout } from './components/Layout';
-import { AppErrorBoundary } from './components/AppErrorBoundary';
-import { Button } from './components/Button';
-import { ToastProvider } from './components/Toast';
-import { getTheme, applyTheme } from './utils/theme';
-import AuthPage from './pages/AuthPage';
-import ResetPage from './pages/ResetPage';
-import DashboardPage from './pages/DashboardPage';
+import { StrictMode, lazy, Suspense, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import "./styles.css";
+import { useAuth, AuthProvider } from "./hooks/useAuth";
+import { useSocket } from "./hooks/useSocket";
+import { syncPendingWrites } from "./services/api";
+import { Layout } from "./components/Layout";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import { Button } from "./components/Button";
+import { ToastProvider } from "./components/Toast";
+import { getTheme, applyTheme } from "./utils/theme";
+import AuthPage from "./pages/AuthPage";
+import ResetPage from "./pages/ResetPage";
+import DashboardPage from "./pages/DashboardPage";
 
-const TasksPage = lazy(() => import('./pages/TasksPage'));
-const CommitmentsPage = lazy(() => import('./pages/CommitmentsPage'));
-const GoalsPage = lazy(() => import('./pages/GoalsPage'));
-const SkillsPage = lazy(() => import('./pages/SkillsPage'));
-const ArchivedmentsPage = lazy(() => import('./pages/ArchivedmentsPage'));
-const FocusPage = lazy(() => import('./pages/FocusPage'));
-const JournalPage = lazy(() => import('./pages/JournalPage'));
-const RemindersPage = lazy(() => import('./pages/RemindersPage'));
-const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
-const BrandPage = lazy(() => import('./pages/BrandPage'));
-const FinancePage = lazy(() => import('./pages/FinancePage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const AdminPage = lazy(() => import('./pages/AdminPage'));
+const TasksPage = lazy(() => import("./pages/TasksPage"));
+const CommitmentsPage = lazy(() => import("./pages/CommitmentsPage"));
+const GoalsPage = lazy(() => import("./pages/GoalsPage"));
+const SkillsPage = lazy(() => import("./pages/SkillsPage"));
+const ArchivedmentsPage = lazy(() => import("./pages/ArchivedmentsPage"));
+const FocusPage = lazy(() => import("./pages/FocusPage"));
+const JournalPage = lazy(() => import("./pages/JournalPage"));
+const RemindersPage = lazy(() => import("./pages/RemindersPage"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
+const BrandPage = lazy(() => import("./pages/BrandPage"));
+const FinancePage = lazy(() => import("./pages/FinancePage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 
 function PageLoading() {
   return (
@@ -39,7 +39,7 @@ function PageLoading() {
 
 function AdminRoute() {
   const { user } = useAuth();
-  if (user?.role !== 'ADMIN') {
+  if (user?.role !== "ADMIN") {
     return <Navigate to="/" replace />;
   }
   return <AdminPage />;
@@ -47,11 +47,13 @@ function AdminRoute() {
 
 applyTheme(getTheme());
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
     void navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)
-      .catch((error: unknown) => console.warn('[service-worker] Registration failed:', error));
+      .catch((error: unknown) =>
+        console.warn("[service-worker] Registration failed:", error),
+      );
   });
 }
 
@@ -62,21 +64,23 @@ function App() {
   useEffect(() => {
     const syncWrites = () => {
       void syncPendingWrites().catch((error: unknown) => {
-        console.error('[api] Could not sync pending writes:', error);
+        console.error("[api] Could not sync pending writes:", error);
       });
     };
     syncWrites();
     const online = () => {
       void syncPendingWrites()
         .then(() => window.location.reload())
-        .catch((error: unknown) => console.error('[api] Could not sync pending writes:', error));
+        .catch((error: unknown) =>
+          console.error("[api] Could not sync pending writes:", error),
+        );
     };
     const offline = () => {};
-    window.addEventListener('online', online);
-    window.addEventListener('offline', offline);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
     return () => {
-      window.removeEventListener('online', online);
-      window.removeEventListener('offline', offline);
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
     };
   }, []);
 
@@ -120,11 +124,17 @@ function App() {
           {/* History is the canonical commitments page; /commitments keeps old
               notification links (and refreshes) working. */}
           <Route path="/commitments/history" element={<CommitmentsPage />} />
-          <Route path="/commitments" element={<Navigate to="/commitments/history" replace />} />
+          <Route
+            path="/commitments"
+            element={<Navigate to="/commitments/history" replace />}
+          />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/achievements" element={<ArchivedmentsPage />} />
-          <Route path="/archivedments" element={<Navigate to="/achievements" replace />} />
+          <Route
+            path="/archivedments"
+            element={<Navigate to="/achievements" replace />}
+          />
           <Route path="/focus" element={<FocusPage />} />
           <Route path="/journal" element={<JournalPage />} />
           <Route path="/reminders" element={<RemindersPage />} />
@@ -140,7 +150,7 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AppErrorBoundary>
       <ToastProvider>
@@ -151,5 +161,5 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </ToastProvider>
     </AppErrorBoundary>
-  </StrictMode>
+  </StrictMode>,
 );

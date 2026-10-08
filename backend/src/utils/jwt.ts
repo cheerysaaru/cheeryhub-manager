@@ -6,26 +6,26 @@ const textDecoder = new TextDecoder();
 
 async function sha256(message: string): Promise<string> {
   const data = textEncoder.encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function base64UrlEncode(str: string): string {
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 function base64UrlDecode(str: string): string {
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (str.length % 4) str += '=';
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (str.length % 4) str += "=";
   return atob(str);
 }
 
 export function sign(payload: Record<string, any>, secret: string): string {
-  const header = { alg: 'HS256', typ: 'JWT' };
+  const header = { alg: "HS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + 7 * 24 * 60 * 60; // 7 days
-  
+
   const tokenPayload = {
     ...payload,
     iat: now,
@@ -43,9 +43,12 @@ export function sign(payload: Record<string, any>, secret: string): string {
   return `${signatureInput}.${signature}`;
 }
 
-export function verify(token: string, secret: string): Record<string, any> | null {
+export function verify(
+  token: string,
+  secret: string,
+): Record<string, any> | null {
   try {
-    const parts = token.split('.');
+    const parts = token.split(".");
     if (parts.length !== 3) return null;
 
     const [headerEncoded, payloadEncoded, signatureEncoded] = parts;
@@ -66,7 +69,7 @@ export function verify(token: string, secret: string): Record<string, any> | nul
 
     return payload;
   } catch (error) {
-    console.error('[jwt] verification error:', error);
+    console.error("[jwt] verification error:", error);
     return null;
   }
 }
