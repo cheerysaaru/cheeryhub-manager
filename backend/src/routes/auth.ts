@@ -30,7 +30,8 @@ function safeEqual(a: string, b: string): boolean {
 function cookieAttrs(req: AppRequest, maxAge: number): string {
   const proto = req.headers.get("x-forwarded-proto") || "http";
   const isSecure = proto === "https";
-  return `Path=/; HttpOnly; ${isSecure ? "Secure; " : ""}SameSite=Lax; Max-Age=${maxAge}`;
+  // Set Domain=localhost explicitly so cookie works across ports on localhost
+  return `Path=/; HttpOnly; Domain=localhost; ${isSecure ? "Secure; " : ""}SameSite=Lax; Max-Age=${maxAge}`;
 }
 
 /**
