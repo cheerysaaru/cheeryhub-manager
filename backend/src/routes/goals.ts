@@ -1,6 +1,7 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 import { resolveSessionUser } from "../middleware/session";
+import { evaluateGoals } from "../lib/points";
 
 interface Goal {
   id: string;
@@ -95,6 +96,9 @@ export async function createGoal(req: AppRequest): Promise<Response> {
     [goalId],
   );
 
+  // Award/withdraw goal points (completion, on-time, or past-deadline miss).
+  await evaluateGoals(db, session.userId);
+
   return new Response(JSON.stringify({ data: goal }), {
     status: 201,
     headers: { "Content-Type": "application/json" },
@@ -160,6 +164,9 @@ export async function updateGoal(req: AppRequest): Promise<Response> {
     'SELECT id, userId, title, description, deadline as targetDate, progress, status, createdAt, updatedAt FROM "Goal" WHERE id = ?1',
     [id],
   );
+
+  // Re-evaluate this user's goals against the ledger after the change.
+  await evaluateGoals(db, req.user.id);
 
   return new Response(JSON.stringify({ data: updated }), {
     status: 200,

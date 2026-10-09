@@ -22,6 +22,23 @@ export const POINTS_TASK_MISSED = -5;
 /** Commitment not checked in for a day, for past or today (signed). */
 export const POINTS_COMMITMENT_MISSED = -5;
 
+/** Goal completed on or before its deadline. */
+export const POINTS_GOAL_COMPLETED = 50;
+
+/** Goal past its deadline without completion (signed, applied once). */
+export const POINTS_GOAL_MISSED = -25;
+
+/**
+ * Achievement XP. Every value is a constant here so the frontend toast and the
+ * backend ledger can never disagree: `xp` on a shared achievement definition is
+ * always one of these numbers.
+ */
+export const POINTS_ACHIEVEMENT_BRONZE = 25;
+export const POINTS_ACHIEVEMENT_SILVER = 50;
+export const POINTS_ACHIEVEMENT_GOLD = 100;
+/** XP for an achievement the user adds by hand from the Achievements page. */
+export const POINTS_ACHIEVEMENT_MANUAL = 25;
+
 /**
  * Level N → N+1 costs POINTS_LEVEL_BASE × N points:
  * 1→2 = 100, 2→3 = 200, 3→4 = 300. Extra points carry over.
@@ -31,7 +48,13 @@ export const POINTS_LEVEL_BASE = 100;
 export type PointEventType = "EARN" | "PENALTY";
 
 export type PointEventReason =
-  "TASK_COMPLETED" | "COMMITMENT_CHECKIN" | "TASK_MISSED" | "COMMITMENT_MISSED";
+  | "TASK_COMPLETED"
+  | "COMMITMENT_CHECKIN"
+  | "TASK_MISSED"
+  | "COMMITMENT_MISSED"
+  | "GOAL_COMPLETED"
+  | "GOAL_MISSED"
+  | "ACHIEVEMENT";
 
 export interface LevelProgress {
   level: number;
@@ -84,6 +107,12 @@ export function reasonLabel(reason: string): string {
       return "Missed task";
     case "COMMITMENT_MISSED":
       return "Missed commitment";
+    case "GOAL_COMPLETED":
+      return "Goal completed";
+    case "GOAL_MISSED":
+      return "Missed goal";
+    case "ACHIEVEMENT":
+      return "Achievement unlocked";
     default:
       return reason;
   }

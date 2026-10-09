@@ -1,3 +1,8 @@
+import type {
+  PointEventReason as SharedPointEventReason,
+  PointEventType as SharedPointEventType,
+} from "../../../shared/points";
+
 export interface User {
   id: string;
   name: string;
@@ -169,10 +174,9 @@ export interface XPTransaction {
   createdAt: string;
 }
 
-export type PointEventType = "EARN" | "PENALTY";
+export type PointEventType = SharedPointEventType;
 
-export type PointEventReason =
-  "TASK_COMPLETED" | "COMMITMENT_CHECKIN" | "TASK_MISSED" | "COMMITMENT_MISSED";
+export type PointEventReason = SharedPointEventReason;
 
 /** One row of the points ledger (shared with backend PointEvent). */
 export interface PointEvent {

@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 
-// AUTO-GENERATED from backend/migrations/*.sql + 0006 additions.
+// AUTO-GENERATED from backend/migrations/*.sql (0001-0007) + 0006 additions.
 // Idempotent schema bootstrap: run once per isolate on cold start so the
 // deployed worker is correct even when the D1 migration step could not run.
 export const CREATE_TABLES = [
@@ -25,6 +25,10 @@ export const CREATE_TABLES = [
   'CREATE TABLE IF NOT EXISTS "HabitDayEvent" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "habitId" TEXT NOT NULL,     "date" DATETIME NOT NULL,     "fromStatus" TEXT,     "toStatus" TEXT NOT NULL,     "pointsDelta" INTEGER NOT NULL DEFAULT 0,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "HabitDayEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,     CONSTRAINT "HabitDayEvent_habitId_fkey" FOREIGN KEY ("habitId") REFERENCES "Habit" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Notification" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "type" TEXT NOT NULL,     "title" TEXT NOT NULL,     "body" TEXT,     "link" TEXT,     "readAt" DATETIME,     "dedupeKey" TEXT NOT NULL,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Achievement" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "key" TEXT NOT NULL, "name" TEXT NOT NULL, "description" TEXT, "icon" TEXT, "unlockedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "Achievement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE)',
+  // Migration 0007_achievement_unique_key: one row per (user, key) so an
+  // unlock (and its XP) can only ever be recorded once.
+  'CREATE UNIQUE INDEX IF NOT EXISTS "Achievement_userId_key_key" ON "Achievement"("userId", "key")',
+  'CREATE INDEX IF NOT EXISTS "Achievement_userId_idx" ON "Achievement"("userId")',
   // Points ledger (migration 0006_point_events). The unique index is the
   // idempotency guarantee: the same event can never be counted twice.
   'CREATE TABLE IF NOT EXISTS "PointEvent" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "type" TEXT NOT NULL,     "amount" INTEGER NOT NULL,     "reason" TEXT NOT NULL,     "sourceId" TEXT NOT NULL,     "dayKey" TEXT NOT NULL,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "PointEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',

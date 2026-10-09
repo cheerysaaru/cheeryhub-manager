@@ -19,6 +19,8 @@ import {
 import {
   POINTS_COMMITMENT_CHECKIN,
   POINTS_COMMITMENT_MISSED,
+  POINTS_GOAL_COMPLETED,
+  POINTS_GOAL_MISSED,
   POINTS_TASK_COMPLETED,
   POINTS_TASK_MISSED,
   dayKeyInPointsZone,
@@ -71,6 +73,14 @@ interface HabitDueRow {
 interface CompletionRow {
   habitId: string;
   status: string;
+}
+
+interface GoalRow {
+  id: string;
+  status: string | null;
+  progress: number | null;
+  deadline: string | null;
+  updatedAt: string | null;
 }
 
 /**
@@ -214,6 +224,111 @@ export async function removeCheckinEvents(
 }
 
 /**
+ * Unlocked achievement → its XP, once. The ledger key is the achievement key,
+ * so a repeat unlock of the same key can never be counted twice.
+ */
+export async function recordAchievement(
+  db: Database,
+  userId: string,
+  achievementKey: string,
+  xp: number,
+  dayKey: string = dayKeyInPointsZone(new Date()),
+): Promise<void> {
+  if (xp <= 0) return;
+  await insertEvent(
+    db,
+    userId,
+    "EARN",
+    xp,
+    "ACHIEVEMENT",
+    achievementKey,
+    dayKey,
+  );
+}
+
+/**
+ * Derives the goal points for a user from the Goal rows themselves:
+ *  - completed on or before the deadline → +50 on the completion day,
+ *  - past the deadline without completion → -25 on the deadline day, once,
+ *  - a goal that is completed never keeps a miss (mirrors the task rule).
+ *
+ * Only editable deadline days are ever penalised; earnings are inserted
+ * directly and are idempotent through the ledger's unique key.
+ */
+export async function evaluateGoals(
+  db: Database,
+  userId: string,
+): Promise<void> {
+  const today = todayInCheckinZone();
+  const goals = await db.all<GoalRow>(
+    `SELECT id, status, progress, deadline, updatedAt FROM "Goal" WHERE userId = ?1`,
+    [userId],
+  );
+
+  for (const goal of goals) {
+    const completed =
+      (goal.status ?? "").toUpperCase() === "COMPLETED" ||
+      Number(goal.progress ?? 0) >= 100;
+    const deadlineDay = goal.deadline
+      ? dayKeyInPointsZone(goal.deadline)
+      : null;
+
+    if (completed) {
+      await deleteEvents(db, {
+        userId,
+        reason: "GOAL_MISSED",
+        sourceId: goal.id,
+      });
+      const completionDay = dayKeyInPointsZone(goal.updatedAt ?? new Date());
+      const onTime = !deadlineDay || completionDay <= deadlineDay;
+      if (onTime) {
+        await insertEvent(
+          db,
+          userId,
+          "EARN",
+          POINTS_GOAL_COMPLETED,
+          "GOAL_COMPLETED",
+          goal.id,
+          completionDay,
+        );
+      }
+      continue;
+    }
+
+    if (!deadlineDay) {
+      // No deadline: nothing can be late, so no miss may remain.
+      await deleteEvents(db, {
+        userId,
+        reason: "GOAL_MISSED",
+        sourceId: goal.id,
+      });
+      continue;
+    }
+    if (deadlineDay > today) {
+      // Deadline ahead (or moved ahead): any recorded miss is stale.
+      await deleteEvents(db, {
+        userId,
+        reason: "GOAL_MISSED",
+        sourceId: goal.id,
+      });
+      continue;
+    }
+    if (deadlineDay === today) continue; // penalised only after the day ends
+    if (!isCheckInEditable(deadlineDay)) continue; // older days are frozen
+
+    await insertEvent(
+      db,
+      userId,
+      "PENALTY",
+      POINTS_GOAL_MISSED,
+      "GOAL_MISSED",
+      goal.id,
+      deadlineDay,
+    );
+  }
+}
+
+/**
  * Derives the missed penalties for one day: inserts PENALTY events for items
  * that were not completed / not checked in, and deletes them when the item is
  * later completed for that day.
@@ -333,6 +448,7 @@ export async function evaluateDays(
   userId: string,
   dayKeys: Array<string | null | undefined>,
 ): Promise<void> {
+  await evaluateGoals(db, userId);
   const seen = new Set<string>();
   for (const dayKey of dayKeys) {
     if (!dayKey || seen.has(dayKey)) continue;
@@ -346,6 +462,7 @@ export async function evaluateEditableDays(
   db: Database,
   userId: string,
 ): Promise<void> {
+  await evaluateGoals(db, userId);
   const today = todayInCheckinZone();
   for (let i = 0; i <= EDIT_WINDOW_DAYS; i++) {
     await evaluateDay(db, userId, shiftDayKey(today, -i));

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useGoals } from "../hooks/useGoals";
+import { usePoints } from "../hooks/usePoints";
 import { useTasks } from "../hooks/useTasks";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -27,7 +28,8 @@ import { archiveGoal } from "../utils/archivedments";
 import { ApiLoadError } from "../components/ApiLoadError";
 import { asArray } from "../services/api";
 import type { Goal, GoalMilestone } from "../types";
-import { daysUntil } from "../utils/date";
+import { daysUntil, todayISO } from "../utils/date";
+import { POINTS_GOAL_COMPLETED } from "../../../shared/points";
 
 export default function GoalsPage() {
   const { user } = useAuth();
@@ -45,6 +47,7 @@ export default function GoalsPage() {
     deleteMilestone,
   } = useGoals(user?.id ?? null);
   const { tasks, error: tasksError, fetchTasks } = useTasks(user?.id ?? null);
+  const { refresh: refreshPoints } = usePoints(user?.id ?? null);
   const [showForm, setShowForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null);
@@ -103,6 +106,8 @@ export default function GoalsPage() {
       archivedId = created?.id;
     }
     setShowForm(false);
+    // Goal points are derived server-side; refresh so the badge moves now.
+    void refreshPoints();
     if (data.progress === 100 && (!editingGoal || editingGoal.progress < 100)) {
       const archived = archiveGoal({
         id: archivedId ?? `goal-draft-${Date.now()}`,
@@ -110,9 +115,13 @@ export default function GoalsPage() {
         description: data.description,
       });
       if (archived) {
+        const deadline = data.deadline || editingGoal?.deadline;
+        const onTime = !deadline || deadline.slice(0, 10) >= todayISO();
         toast({
           type: "success",
-          title: `"${data.title}" completed! Added to Achievements.`,
+          title: `"${data.title}" completed! Added to Achievements${
+            onTime ? ` (+${POINTS_GOAL_COMPLETED} points)` : ""
+          }.`,
         });
       }
     }
@@ -143,6 +152,7 @@ export default function GoalsPage() {
         ? Math.round((completedCount / milestones.length) * 100)
         : 0;
     await update(goal.id, { progress: newProgress });
+    void refreshPoints();
     if (newProgress === 100 && goal.progress < 100) {
       const archived = archiveGoal({
         id: goal.id,
@@ -150,9 +160,13 @@ export default function GoalsPage() {
         description: goal.description ?? undefined,
       });
       if (archived) {
+        const deadline = goal.deadline;
+        const onTime = !deadline || deadline.slice(0, 10) >= todayISO();
         toast({
           type: "success",
-          title: `"${goal.title}" completed! Added to Achievements.`,
+          title: `"${goal.title}" completed! Added to Achievements${
+            onTime ? ` (+${POINTS_GOAL_COMPLETED} points)` : ""
+          }.`,
         });
       }
     }
