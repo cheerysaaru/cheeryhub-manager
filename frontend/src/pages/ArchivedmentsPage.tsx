@@ -14,8 +14,17 @@ import {
   addArchivedment,
   type Archivedment,
 } from "../utils/archivedments";
-import { api } from "../services/api";
+import { api, ApiError } from "../services/api";
+import { achievementKeyFromTitle } from "../../../shared/achievements";
 import { todayISO, parseLocalDate } from "../utils/date";
+
+interface UnlockResult {
+  id: string;
+  key: string;
+  name: string;
+  /** Points the server just credited for this unlock. */
+  xpAwarded: number;
+}
 
 function formatAchievedDate(dateStr: string): string {
   return parseLocalDate(dateStr).toLocaleDateString(undefined, {
@@ -71,32 +80,67 @@ export default function ArchivedmentsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
-    const entry = addArchivedment({
+    const title = form.title.trim();
+    const description = form.description.trim();
+    const date = form.date || todayISO();
+
+    // Database first: the unlock (and its XP) only happen on the server, and
+    // the local copy is written only after that save succeeded.
+    const unlock = async (key: string) =>
+      api<UnlockResult>("/achievements/unlock", {
+        method: "POST",
+        body: JSON.stringify({
+          key,
+          title,
+          description: description || undefined,
+          icon: form.emoji.trim() || undefined,
+          date,
+        }),
+      });
+
+    let saved: UnlockResult;
+    try {
+      saved = await unlock(achievementKeyFromTitle(title));
+    } catch (caught) {
+      // Same title unlocked before: that key is taken — give it a fresh one.
+      if (caught instanceof ApiError && caught.status === 409) {
+        try {
+          saved = await unlock(
+            `${achievementKeyFromTitle(title)}-${Date.now().toString(36)}`,
+          );
+        } catch (retry) {
+          toast({
+            type: "error",
+            title: "Achievement not saved",
+            message:
+              retry instanceof Error ? retry.message : "Please try again.",
+          });
+          return;
+        }
+      } else {
+        toast({
+          type: "error",
+          title: "Achievement not saved",
+          message:
+            caught instanceof Error ? caught.message : "Please try again.",
+        });
+        return;
+      }
+    }
+
+    addArchivedment({
       emoji: form.emoji.trim(),
-      title: form.title.trim(),
-      description: form.description.trim(),
-      date: form.date || todayISO(),
+      title,
+      description,
+      date,
     });
     setItems(readArchivedments());
     setShowForm(false);
-    // Award +5 points for the achievement (idempotent on the server).
-    try {
-      await api("/achievements/unlock", {
-        method: "POST",
-        body: JSON.stringify({ id: entry.id, title: entry.title }),
-      });
-      toast({
-        type: "success",
-        title: "Achievement added",
-        message: `${entry.title} · +5 points`,
-      });
-    } catch (caught) {
-      toast({
-        type: "error",
-        title: "Achievement saved locally, but XP was not awarded",
-        message: caught instanceof Error ? caught.message : "Please try again.",
-      });
-    }
+    toast({
+      type: "success",
+      title: "Achievement added",
+      message: `${title} · +${saved.xpAwarded} points`,
+    });
   }
 
   return (

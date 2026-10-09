@@ -1,5 +1,14 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
+import { recordAchievement } from "../lib/points";
+import {
+  ACHIEVEMENT_DEFINITIONS,
+  MANUAL_ACHIEVEMENT_XP,
+  achievementKeyFromTitle,
+  findAchievement,
+  isValidAchievementKey,
+} from "../../../shared/achievements";
+import { dayKeyInPointsZone } from "../../../shared/points";
 
 interface Achievement {
   id: string;
@@ -12,86 +21,27 @@ interface Achievement {
   createdAt: string;
 }
 
-const ACHIEVEMENT_DEFINITIONS: Array<{
-  key: string;
-  name: string;
-  description: string;
-  icon: string;
-}> = [
-  {
-    key: "first_task",
-    name: "Getting Started",
-    description: "Complete your first task",
-    icon: "🎯",
-  },
-  {
-    key: "task_streak_7",
-    name: "Week Warrior",
-    description: "Complete tasks for 7 days in a row",
-    icon: "🔥",
-  },
-  {
-    key: "task_streak_30",
-    name: "Monthly Master",
-    description: "Complete tasks for 30 days in a row",
-    icon: "🏆",
-  },
-  {
-    key: "habit_streak_7",
-    name: "Habit Builder",
-    description: "Maintain a habit for 7 days",
-    icon: "🌱",
-  },
-  {
-    key: "habit_streak_30",
-    name: "Habit Master",
-    description: "Maintain a habit for 30 days",
-    icon: "🌳",
-  },
-  {
-    key: "xp_100",
-    name: "Rising Star",
-    description: "Earn 100 XP",
-    icon: "⭐",
-  },
-  {
-    key: "xp_1000",
-    name: "XP Champion",
-    description: "Earn 1,000 XP",
-    icon: "💎",
-  },
-  {
-    key: "xp_10000",
-    name: "Legend",
-    description: "Earn 10,000 XP",
-    icon: "👑",
-  },
-  {
-    key: "goals_1",
-    name: "Goal Setter",
-    description: "Create your first goal",
-    icon: "🎯",
-  },
-  {
-    key: "goals_5",
-    name: "Goal Achiever",
-    description: "Complete 5 goals",
-    icon: "🏁",
-  },
-  {
-    key: "focus_100",
-    name: "Deep Worker",
-    description: "Complete 100 focus minutes",
-    icon: "🧘",
-  },
-];
+interface UnlockPayload {
+  key?: string;
+  title?: string;
+  description?: string;
+  icon?: string;
+  /** Date the achievement was achieved (YYYY-MM-DD); defaults to today. */
+  date?: string;
+}
+
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+function json(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 export async function listAchievements(req: AppRequest): Promise<Response> {
   if (!req.user) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
+    return json({ error: "Unauthorized", code: "AUTH_REQUIRED" }, 401);
   }
 
   const db = new Database(req.env.DB);
@@ -104,46 +54,58 @@ export async function listAchievements(req: AppRequest): Promise<Response> {
 
   const unlockedKeys = new Set(unlocked.map((a) => a.key));
 
-  // Merge with definitions
-  const achievements = ACHIEVEMENT_DEFINITIONS.map((def) => ({
+  // Catalog first, then any achievement the user added by hand (their keys are
+  // not in the catalog but are still real, unlocked achievements).
+  const catalog = ACHIEVEMENT_DEFINITIONS.map((def) => ({
     ...def,
     unlocked: unlockedKeys.has(def.key),
     unlockedAt: unlocked.find((a) => a.key === def.key)?.unlockedAt || null,
   }));
+  const custom = unlocked
+    .filter((a) => !findAchievement(a.key))
+    .map((entry) => ({ ...entry, xp: MANUAL_ACHIEVEMENT_XP, unlocked: true }));
 
-  return new Response(JSON.stringify({ data: achievements }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return json({ data: [...catalog, ...custom] }, 200);
 }
 
 export async function unlockAchievement(req: AppRequest): Promise<Response> {
   if (!req.user) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
+    return json({ error: "Unauthorized", code: "AUTH_REQUIRED" }, 401);
   }
 
-  const { key } = req.body as { key: string };
+  const body = (req.body ?? {}) as UnlockPayload;
+  const title = body.title?.trim();
 
+  // The key is required: the UI either sends a catalog key or one generated
+  // from the title. Both are validated before anything is written.
+  const key = (
+    body.key ?? (title ? achievementKeyFromTitle(title) : "")
+  ).trim();
   if (!key) {
-    return new Response(
-      JSON.stringify({
-        error: "Missing required field: key",
-        code: "VALIDATION_ERROR",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
+    return json(
+      { error: "Missing required field: key", code: "VALIDATION_ERROR" },
+      400,
+    );
+  }
+  if (!isValidAchievementKey(key)) {
+    return json(
+      { error: "Invalid achievement key", code: "VALIDATION_ERROR" },
+      400,
     );
   }
 
-  const def = ACHIEVEMENT_DEFINITIONS.find((a) => a.key === key);
-  if (!def) {
-    return new Response(
-      JSON.stringify({ error: "Invalid achievement key", code: "NOT_FOUND" }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
+  const def = findAchievement(key);
+  if (!def && !title) {
+    return json(
+      { error: "Missing required field: title", code: "VALIDATION_ERROR" },
+      400,
     );
   }
+
+  const name = def?.name ?? title!;
+  const description = def?.description ?? body.description ?? null;
+  const icon = def?.icon ?? body.icon ?? "🏅";
+  const xp = def?.xp ?? MANUAL_ACHIEVEMENT_XP;
 
   const db = new Database(req.env.DB);
 
@@ -154,18 +116,23 @@ export async function unlockAchievement(req: AppRequest): Promise<Response> {
   );
 
   if (existing) {
-    return new Response(
-      JSON.stringify({
+    return json(
+      {
         error: "Achievement already unlocked",
         code: "CONFLICT",
-      }),
-      { status: 409, headers: { "Content-Type": "application/json" } },
+      },
+      409,
     );
   }
 
   const achievementId = crypto.randomUUID();
   const now = new Date().toISOString();
+  const dayKey =
+    body.date && DAY_KEY.test(body.date)
+      ? body.date
+      : dayKeyInPointsZone(new Date());
 
+  // Save to the database first — XP is only awarded after a successful save.
   await db.run(
     `INSERT INTO "Achievement" (id, userId, key, name, description, icon, unlockedAt, createdAt)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
@@ -173,10 +140,10 @@ export async function unlockAchievement(req: AppRequest): Promise<Response> {
       achievementId,
       req.user.id,
       key,
-      def.name,
-      def.description,
-      def.icon,
-      now,
+      name,
+      description,
+      icon,
+      `${dayKey}T12:00:00.000Z`,
       now,
     ],
   );
@@ -186,8 +153,8 @@ export async function unlockAchievement(req: AppRequest): Promise<Response> {
     [achievementId],
   );
 
-  return new Response(JSON.stringify({ data: achievement }), {
-    status: 201,
-    headers: { "Content-Type": "application/json" },
-  });
+  // Then the XP: idempotent through the (userId, reason, sourceId, dayKey) key.
+  await recordAchievement(db, req.user.id, key, xp, dayKey);
+
+  return json({ data: { ...(achievement ?? {}), xpAwarded: xp } }, 201);
 }
