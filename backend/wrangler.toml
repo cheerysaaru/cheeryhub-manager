@@ -35,10 +35,10 @@ workers_dev = true
 routes = []
 
 [env.staging.vars]
-FRONTEND_URL = "http://127.0.0.1:4173,http://localhost:4173"
+FRONTEND_URL = "http://localhost:5173,http://127.0.0.1:5173"
 NODE_ENV = "development"
 EMAIL_FROM = "Productivity <onboarding@resend.dev>"
-APP_URL = "http://127.0.0.1:4173"
+APP_URL = "http://localhost:5173"
 COOKIE_SECURE = "false"
 COOKIE_SAME_SITE = "lax"
 

@@ -88,6 +88,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
+      host: "0.0.0.0",
       // The app imports a shared module outside frontend/ (../../shared), so
       // allow the dev server to serve files from the repo root too.
       fs: {
@@ -100,19 +101,11 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:4000",
           changeOrigin: true,
-          cookieDomainRewrite: false,
-          headers: {
-            "x-forwarded-proto": "http",
-          },
         },
         "/socket.io": {
           target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:4000",
           ws: true,
           changeOrigin: true,
-          cookieDomainRewrite: false,
-          headers: {
-            "x-forwarded-proto": "http",
-          },
         },
       },
     },
