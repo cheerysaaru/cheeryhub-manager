@@ -21,7 +21,6 @@ interface AuthContextValue {
   loading: boolean;
   authError: string | null;
   login: (email: string, password: string) => Promise<User>;
-  adminLogin: (username: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<User>;
   forgotPassword: (email: string) => Promise<string>;
   resetPassword: (token: string, newPassword: string) => Promise<string>;
@@ -158,17 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [adoptUser],
   );
 
-  const adminLogin = useCallback(
-    async (username: string, password: string) => {
-      const result = await api<{ user: User }>("/auth/admin-login", {
-        method: "POST",
-        body: JSON.stringify({ username, password }),
-      });
-      return adoptUser(requireUser(result, "continue"));
-    },
-    [adoptUser],
-  );
-
   const register = useCallback(
     async (name: string, email: string, password: string) => {
       const result = await api<{ user: User }>("/auth/register", {
@@ -220,7 +208,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       authError,
       login,
-      adminLogin,
       register,
       forgotPassword,
       resetPassword,
@@ -232,7 +219,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       authError,
       login,
-      adminLogin,
       register,
       forgotPassword,
       resetPassword,

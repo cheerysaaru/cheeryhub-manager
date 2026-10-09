@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
@@ -10,7 +10,7 @@ import {
   usernameProblem,
 } from "../utils/validation";
 
-type Mode = "signin" | "register" | "forgot" | "admin";
+type Mode = "signin" | "register" | "forgot";
 
 function strengthOf(password: string): { score: number; label: string } {
   if (!password) return { score: 0, label: "" };
@@ -25,8 +25,7 @@ function strengthOf(password: string): { score: number; label: string } {
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { login, adminLogin, register, forgotPassword } = useAuth();
+  const { login, register, forgotPassword } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -86,20 +85,6 @@ export default function AuthPage() {
       setError(
         err instanceof Error ? err.message : "Unable to create your account",
       );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleAdminSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await adminLogin(username.trim(), password);
-      navigate("/admin", { replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to sign in");
     } finally {
       setLoading(false);
     }
@@ -171,13 +156,6 @@ export default function AuthPage() {
                 onClick={() => resetState("forgot")}
               >
                 Forgot password?
-              </button>
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => resetState("admin")}
-              >
-                Admin sign in
               </button>
             </div>
           </form>
@@ -271,40 +249,6 @@ export default function AuthPage() {
             </p>
             <Button type="submit" size="lg" loading={loading}>
               Send reset link
-            </Button>
-            <div className="auth-links">
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => resetState("signin")}
-              >
-                Back to sign in
-              </button>
-            </div>
-          </form>
-        )}
-
-        {mode === "admin" && (
-          <form onSubmit={handleAdminSignIn} className="auth-form">
-            <Input
-              label="Admin username"
-              placeholder="Admin username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              required
-            />
-            <Input
-              label="Admin password"
-              type="password"
-              placeholder="Admin password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-            <Button type="submit" size="lg" loading={loading}>
-              Enter admin console
             </Button>
             <div className="auth-links">
               <button

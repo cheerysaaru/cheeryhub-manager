@@ -4,7 +4,6 @@ import { friendlyDbError } from "./middleware/session";
 import { ensureSchema } from "./db/bootstrap";
 import * as authRoutes from "./routes/auth";
 import * as authPasswordRoutes from "./routes/auth-password";
-import * as adminAuthRoutes from "./routes/admin-auth";
 import * as healthRoutes from "./routes/health";
 import * as tasksRoutes from "./routes/tasks";
 import * as habitsRoutes from "./routes/habits";
@@ -130,11 +129,6 @@ async function handleRequest(
       response = await authRoutes.logout(appReq);
     } else if (pathname === "/api/auth/refresh" && request.method === "POST") {
       response = await authRoutes.refresh(appReq);
-    } else if (
-      pathname === "/api/auth/admin-login" &&
-      request.method === "POST"
-    ) {
-      response = await adminAuthRoutes.adminLogin(appReq);
     } else if (pathname === "/api/auth/me" && request.method === "GET") {
       // Me endpoint - check auth first
       const authResult = await verifyAuth(appReq);

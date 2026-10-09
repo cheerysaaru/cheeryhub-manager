@@ -3015,7 +3015,7 @@ textarea::placeholder {
   .type-toggle {
     grid-template-columns: 1fr;
   }
-.category-bar {
+  .category-bar {
     grid-template-columns: 1fr;
   }
   .dashboard-page input,

@@ -24,7 +24,7 @@ const USER_ROLES = new Set(["USER", "ADMIN"]);
 const USER_STATUSES = new Set(["ACTIVE", "DISABLED"]);
 
 /** Enforce admin on every admin route using the verified session token. */
-function requireAdmin(req: AppRequest): Response | null {
+export function requireAdmin(req: AppRequest): Response | null {
   if (!req.user) {
     return errorResponse("Unauthorized", 401, "AUTH_REQUIRED");
   }
