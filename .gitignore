@@ -24,3 +24,6 @@ backups/
 
 test-results/
 playwright-report/
+
+# scratch debug e2e specs (never commit)
+frontend/e2e/debug-*.spec.ts

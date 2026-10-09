@@ -14,3 +14,4 @@ frontend/public/sw.js
 
 test-results/
 playwright-report/
+frontend/e2e/debug-*.spec.ts

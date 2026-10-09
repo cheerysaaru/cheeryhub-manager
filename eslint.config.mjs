@@ -20,6 +20,7 @@ export default tseslint.config(
       "backend/.wrangler/**",
       "test-results/**",
       "playwright-report/**",
+      "frontend/e2e/debug-*.spec.ts",
     ],
   },
   js.configs.recommended,

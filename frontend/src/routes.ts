@@ -14,15 +14,19 @@ export const ROUTES = {
   goals: "/goals",
   skills: "/skills",
   achievements: "/achievements",
-  focus: "/focus",
-  journal: "/journal",
-  reminders: "/reminders",
   analytics: "/analytics",
   brand: "/brand",
   finance: "/finance",
   settings: "/settings",
   admin: "/admin",
 } as const;
+
+/**
+ * Tabs that were removed from the product (Journal, Focus, Reminders). Their
+ * paths still resolve — main.tsx redirects them to the dashboard so old links
+ * and bookmarks keep working. The backend routes and their tables stay intact.
+ */
+export const LEGACY_TAB_PATHS = ["/focus", "/journal", "/reminders"] as const;
 
 /**
  * Paths that are not navbar entries but must still resolve directly (the

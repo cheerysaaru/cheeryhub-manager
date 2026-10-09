@@ -22,9 +22,6 @@ const CommitmentsPage = lazy(() => import("./pages/CommitmentsPage"));
 const GoalsPage = lazy(() => import("./pages/GoalsPage"));
 const SkillsPage = lazy(() => import("./pages/SkillsPage"));
 const ArchivedmentsPage = lazy(() => import("./pages/ArchivedmentsPage"));
-const FocusPage = lazy(() => import("./pages/FocusPage"));
-const JournalPage = lazy(() => import("./pages/JournalPage"));
-const RemindersPage = lazy(() => import("./pages/RemindersPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const BrandPage = lazy(() => import("./pages/BrandPage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
@@ -180,30 +177,11 @@ function App() {
             path="/archivedments"
             element={<Navigate to="/achievements" replace />}
           />
-          <Route
-            path="/focus"
-            element={
-              <TabErrorBoundary name="Focus">
-                <FocusPage />
-              </TabErrorBoundary>
-            }
-          />
-          <Route
-            path="/journal"
-            element={
-              <TabErrorBoundary name="Journal">
-                <JournalPage />
-              </TabErrorBoundary>
-            }
-          />
-          <Route
-            path="/reminders"
-            element={
-              <TabErrorBoundary name="Reminders">
-                <RemindersPage />
-              </TabErrorBoundary>
-            }
-          />
+          {/* Removed tabs (Focus, Journal, Reminders) keep their old URLs but
+              always land on the dashboard — the underlying data is untouched. */}
+          <Route path="/focus" element={<Navigate to="/" replace />} />
+          <Route path="/journal" element={<Navigate to="/" replace />} />
+          <Route path="/reminders" element={<Navigate to="/" replace />} />
           <Route
             path="/analytics"
             element={
