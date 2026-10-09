@@ -1,4 +1,3 @@
-import { Flame } from "lucide-react";
 import type { StreakInfo } from "../hooks/useAnalytics";
 
 const RING_RADIUS = 27;
@@ -40,8 +39,11 @@ export function HeaderStats({
           title={streakTooltip}
           aria-label={streakTooltip}
         >
-          <Flame size={16} aria-hidden="true" />
+          <span className="streak-pill-label">Streak</span>
           <span className="streak-pill-count">{streak.current}</span>
+          <span className="streak-pill-fire" aria-hidden="true">
+            🔥
+          </span>
         </div>
       )}
       <button

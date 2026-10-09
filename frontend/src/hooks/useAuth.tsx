@@ -39,10 +39,17 @@ export function browserTimezone(): string {
 }
 
 function requireUser(
-  payload: { user: User } | null | undefined,
+  payload: { user: User } | Partial<User> | null | undefined,
   action: string,
 ): User {
-  const fetched = payload?.user;
+  // /auth/login and /auth/register answer { data: { user } }, while /auth/me
+  // answers { data: <user> }. Accept both so a hard reload restores the
+  // session no matter which shape the deployed worker sends.
+  const nested =
+    payload && typeof payload === "object" && "user" in payload
+      ? (payload as { user: User }).user
+      : undefined;
+  const fetched = nested ?? (payload as User | null | undefined);
   if (
     !fetched ||
     typeof fetched !== "object" ||

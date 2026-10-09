@@ -1,11 +1,15 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
+import { shiftDayKey, todayInCheckinZone } from "../../../shared/checkin";
 
-interface StreakData {
-  id: string;
-  title: string;
+/** What the dashboard header renders: "Streak 3 🔥". */
+export interface StreakSummary {
+  /** Consecutive days with a completed task, ending today or yesterday. */
   current: number;
-  longest: number;
+  /** Longest run of consecutive task-completion days ever. */
+  best: number;
+  /** Whether a task was completed today. */
+  todayActive: boolean;
 }
 
 interface HabitRow {
@@ -14,16 +18,16 @@ interface HabitRow {
   name: string;
 }
 
-interface StreakHabitRow {
-  id: string;
-  title: string;
-  createdAt: string;
-}
-
 interface CheckInPayload {
   date?: string;
 }
 
+/**
+ * The streak is derived from the points ledger — a day counts when at least
+ * one task was completed that day. Nothing is stored, so it can never drift.
+ * A missing day breaks the streak; today still counts as unbroken until it
+ * ends.
+ */
 export async function getStreaks(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -37,19 +41,43 @@ export async function getStreaks(req: AppRequest): Promise<Response> {
 
   try {
     const db = new Database(req.env.DB!);
-    const habits = await db.all<StreakHabitRow>(
-      'SELECT id, name as title, createdAt FROM "Habit" WHERE userId = ?1 AND deletedAt IS NULL ORDER BY createdAt DESC LIMIT 10',
+    const rows = await db.all<{ dayKey: string }>(
+      `SELECT DISTINCT dayKey FROM "PointEvent"
+        WHERE userId = ?1 AND reason = 'TASK_COMPLETED'`,
       [req.user.id],
     );
 
-    const streaks: StreakData[] = habits.map((habit) => ({
-      id: habit.id,
-      title: habit.title,
-      current: 0,
-      longest: 0,
-    }));
+    const activeDays = new Set(rows.map((row) => row.dayKey));
+    const today = todayInCheckinZone();
+    const todayActive = activeDays.has(today);
 
-    return new Response(JSON.stringify({ data: streaks }), {
+    // Current run: start at today when it is active, otherwise the streak is
+    // still alive if yesterday was (today simply has not happened yet).
+    const start = todayActive ? today : shiftDayKey(today, -1);
+    let current = 0;
+    if (activeDays.has(start)) {
+      let cursor = start;
+      while (activeDays.has(cursor)) {
+        current += 1;
+        cursor = shiftDayKey(cursor, -1);
+      }
+    }
+
+    // Best run over the whole ledger (longest consecutive sequence).
+    const sorted = [...activeDays].sort();
+    let best = 0;
+    let run = 0;
+    let previous: string | null = null;
+    for (const dayKey of sorted) {
+      run =
+        previous !== null && shiftDayKey(previous, 1) === dayKey ? run + 1 : 1;
+      previous = dayKey;
+      if (run > best) best = run;
+    }
+
+    const data: StreakSummary = { current, best, todayActive };
+
+    return new Response(JSON.stringify({ data }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
