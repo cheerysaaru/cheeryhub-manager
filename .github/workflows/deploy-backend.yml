@@ -36,14 +36,18 @@ jobs:
       - name: Type-check Worker
         run: npm run build --workspace backend
 
-      - name: Apply D1 migrations
-        run: npx wrangler d1 migrations apply personal-productivity-db --remote --config backend/wrangler.toml
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy --config backend/wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Deploy to Cloudflare Workers
-        run: npx wrangler deploy --config backend/wrangler.toml
+      # Best-effort: the worker self-heals required columns/tables on cold start
+      # (backend/src/db/bootstrap.ts), so a migration/API hiccup must not block
+      # shipping the worker. Never abort the run if this step fails.
+      - name: Apply D1 migrations (best-effort)
+        continue-on-error: true
+        run: npx wrangler d1 migrations apply personal-productivity-db --remote --config backend/wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

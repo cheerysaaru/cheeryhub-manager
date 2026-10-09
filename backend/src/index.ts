@@ -1,6 +1,7 @@
 import type { AppRequest, AppEnv } from "./types/index";
 import { verifyAuth } from "./middleware/auth";
 import { friendlyDbError } from "./middleware/session";
+import { ensureSchema } from "./db/bootstrap";
 import * as authRoutes from "./routes/auth";
 import * as authPasswordRoutes from "./routes/auth-password";
 import * as adminAuthRoutes from "./routes/admin-auth";
@@ -96,6 +97,10 @@ async function handleRequest(
   }
 
   try {
+    // Guarantee the columns/tables the current code needs exist even when the
+    // CI migration step couldn't reach the remote DB. Idempotent + cached.
+    await ensureSchema(env.DB);
+
     const { pathname, searchParams } = parseUrl(request.url);
     const body = await parseJsonBody(request);
 
