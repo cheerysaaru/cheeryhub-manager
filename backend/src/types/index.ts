@@ -2,7 +2,9 @@ import type { D1Database } from "@cloudflare/workers-types";
 
 export interface AppEnv {
   DB: D1Database;
+  USER_DO: DurableObjectNamespace;
   JWT_SECRET: string;
+  MIGRATION_SECRET?: string;
   NODE_ENV?: string;
   FRONTEND_URL?: string;
   EMAIL_API_KEY?: string;

@@ -48,3 +48,13 @@ database_name = "cheeryhub-staging-db"
 database_id = "252f2084-f40d-4c93-91ff-1f7c08f05854"
 migrations_dir = "migrations"
 
+# One Durable Object per user (SQLite-backed) for per-user isolation.
+[[durable_objects.bindings]]
+name = "USER_DO"
+class_name = "UserDO"
+
+# SQLite-backed Durable Object class.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UserDO"]
+

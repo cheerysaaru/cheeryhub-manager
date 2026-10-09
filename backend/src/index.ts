@@ -2,6 +2,10 @@ import type { AppRequest, AppEnv } from "./types/index";
 import { verifyAuth } from "./middleware/auth";
 import { friendlyDbError } from "./middleware/session";
 import { ensureSchema } from "./db/bootstrap";
+import { UserDO } from "./durableObjects/UserDO";
+import { getUserDO } from "./durableObjects/getUserDO";
+
+export { UserDO };
 import * as authRoutes from "./routes/auth";
 import * as authPasswordRoutes from "./routes/auth-password";
 import * as healthRoutes from "./routes/health";
@@ -118,8 +122,86 @@ async function handleRequest(
 
     let response: Response | undefined;
 
+    // Internal migration (operator tool) — protected by MIGRATION_SECRET.
+    // Never gated by a user session; it moves existing per-user rows from the
+    // backup into each user's own Durable Object.
+    if (pathname === "/api/internal/migrate" && request.method === "POST") {
+      const provided = request.headers.get("x-migration-secret") ?? "";
+      if (!env.MIGRATION_SECRET || provided !== env.MIGRATION_SECRET) {
+        response = new Response(
+          JSON.stringify({
+            error: { code: "UNAUTHORIZED", message: "Unauthorized" },
+            code: "UNAUTHORIZED",
+          }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        );
+      } else {
+        const body = (appReq.body ?? {}) as {
+          users?: Array<{
+            id: string;
+            data: Record<string, Array<Record<string, unknown>>>;
+          }>;
+          dryRun?: boolean;
+        };
+        const roster = body.users ?? [];
+        const perUser: Record<string, Record<string, number>> = {};
+        // Expected counts straight from the backup (what should land per user).
+        for (const u of roster) {
+          const counts: Record<string, number> = {};
+          for (const [table, rows] of Object.entries(u.data ?? {})) {
+            counts[table] = Array.isArray(rows) ? rows.length : 0;
+          }
+          perUser[u.id] = counts;
+        }
+
+        if (body.dryRun) {
+          response = new Response(JSON.stringify({ dryRun: true, perUser }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        } else {
+          const written: Record<string, Record<string, number>> = {};
+          const mismatches: string[] = [];
+          for (const u of roster) {
+            const stub = getUserDO(env, u.id);
+            const res = (await stub.importAll(u.data ?? {})) as {
+              imported: Record<string, number>;
+            };
+            written[u.id] = res.imported;
+            for (const [table, expected] of Object.entries(perUser[u.id])) {
+              const got = res.imported[table] ?? 0;
+              if (got !== expected) {
+                mismatches.push(
+                  `user ${u.id}: ${table} expected ${expected}, wrote ${got}`,
+                );
+              }
+            }
+          }
+          if (mismatches.length > 0) {
+            response = new Response(
+              JSON.stringify({
+                error: {
+                  code: "COUNT_MISMATCH",
+                  message: "Migration counts did not match the backup",
+                },
+                code: "COUNT_MISMATCH",
+                mismatches,
+                written,
+              }),
+              { status: 409, headers: { "Content-Type": "application/json" } },
+            );
+          } else {
+            response = new Response(
+              JSON.stringify({ ok: true, written, perUser }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            );
+          }
+        }
+      }
+    }
+
     // Public routes
-    if (pathname === "/api/health" && request.method === "GET") {
+    else if (pathname === "/api/health" && request.method === "GET") {
       response = await healthRoutes.health(appReq);
     } else if (pathname === "/api/auth/register" && request.method === "POST") {
       response = await authRoutes.register(appReq);

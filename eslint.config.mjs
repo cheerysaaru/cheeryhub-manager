@@ -18,6 +18,8 @@ export default tseslint.config(
       "deploy/**",
       "scripts/**",
       "backend/.wrangler/**",
+      "test-results/**",
+      "playwright-report/**",
     ],
   },
   js.configs.recommended,
