@@ -1,6 +1,12 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 import { resolveSessionUser } from "../middleware/session";
+import { isCheckInEditable, todayInCheckinZone } from "../../../shared/checkin";
+import {
+  recordCheckin,
+  refreshPoints,
+  removeCheckinEvents,
+} from "../lib/points";
 
 // The Habit contract is defined by the Prisma model + the frontend `Habit`
 // type: the canonical field is `name`. The `title` column (added in migration
@@ -178,7 +184,20 @@ export async function completeHabit(req: AppRequest): Promise<Response> {
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
-  const completionDate = date || new Date().toISOString().split("T")[0];
+  const completionDate = date || todayInCheckinZone();
+  if (!isCheckInEditable(completionDate)) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "DATE_NOT_EDITABLE",
+          message:
+            "Only today, yesterday and the day before yesterday can be checked in.",
+        },
+        code: "DATE_NOT_EDITABLE",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
   const now = new Date().toISOString();
   const existing = await db.first(
     'SELECT id FROM "HabitCompletion" WHERE habitId = ?1 AND date = ?2',
@@ -193,6 +212,11 @@ export async function completeHabit(req: AppRequest): Promise<Response> {
       [crypto.randomUUID(), id, req.user.id, completionDate, "completed", now],
     );
   }
+
+  // Points: +10 for this day (idempotent), and the day is recalculated so
+  // any missed penalty it carried is removed.
+  await recordCheckin(db, req.user.id, id, completionDate);
+  const points = await refreshPoints(db, req.user.id, [completionDate]);
 
   const completions = await db.all<HabitCompletion>(
     'SELECT id, habitId, date, status, completedAt FROM "HabitCompletion" WHERE habitId = ?1 ORDER BY date DESC LIMIT 365',
@@ -220,6 +244,7 @@ export async function completeHabit(req: AppRequest): Promise<Response> {
           ? `Already checked in for ${completionDate}`
           : `Checked in for ${completionDate}`,
       },
+      points,
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
@@ -387,7 +412,20 @@ async function setDayStatus(
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
-  const day = date || new Date().toISOString().split("T")[0];
+  const day = date || todayInCheckinZone();
+  if (!isCheckInEditable(day)) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "DATE_NOT_EDITABLE",
+          message:
+            "Only today, yesterday and the day before yesterday can be edited.",
+        },
+        code: "DATE_NOT_EDITABLE",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
   const now = new Date().toISOString();
   if (status === null) {
     await db.run(
@@ -402,6 +440,17 @@ async function setDayStatus(
       [crypto.randomUUID(), id, req.user.id, day, status, now],
     );
   }
+
+  // Points: a check-in that is cleared/failed/skipped withdraws its +10;
+  // setting "completed" awards it. Then the day is recalculated so the
+  // missed penalty matches the final status.
+  if (status === "completed") {
+    await recordCheckin(db, req.user.id, id, day);
+  } else {
+    await removeCheckinEvents(db, req.user.id, id, day);
+  }
+  const points = await refreshPoints(db, req.user.id, [day]);
+
   const completions = await db.all<HabitCompletion>(
     'SELECT id, habitId, date, status, completedAt FROM "HabitCompletion" WHERE habitId = ?1 ORDER BY date DESC LIMIT 365',
     [id],
@@ -426,6 +475,7 @@ async function setDayStatus(
         currentStreak,
         totalCompletions: completions.length,
       },
+      points,
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );

@@ -19,6 +19,7 @@ import {
   type DayMenuTarget,
 } from "../components/DayContextMenu";
 import { SkeletonRows } from "../components/Skeleton";
+import { isCheckInEditable } from "../../../shared/checkin";
 import {
   STATUS_LABEL,
   LOCKED_TOOLTIP,
@@ -28,7 +29,6 @@ import {
   dayStatus,
   formatShortFullDate,
   habitStartKey,
-  isEditableDay,
   monthsThrough,
   monthLabel,
   monthSummary,
@@ -70,7 +70,7 @@ function WindowCell({
   }) => void;
 }) {
   const status = dayStatus(habit, date, today, timeZone);
-  const editable = status !== "NOT_STARTED" && isEditableDay(date, today);
+  const editable = isCheckInEditable(date);
   const parsed = parseLocalDate(date);
   return (
     <button
@@ -160,8 +160,7 @@ function MonthSection({
             );
           }
           const status = dayStatus(habit, cell.date, today, timeZone);
-          const editable =
-            status !== "NOT_STARTED" && isEditableDay(cell.date, today);
+          const editable = isCheckInEditable(cell.date);
           const title =
             !editable &&
             cell.date <= today &&

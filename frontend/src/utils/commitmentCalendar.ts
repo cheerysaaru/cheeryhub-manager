@@ -9,9 +9,9 @@ import {
   parseLocalDate,
   shiftDate,
 } from "./date";
+import { isCheckInEditable, EDIT_WINDOW_DAYS } from "../../../shared/checkin";
 
-/** Users may fix today and the last 2 days — mirrors the server window. */
-export const EDIT_WINDOW_DAYS = 2;
+export { EDIT_WINDOW_DAYS };
 
 /** Tooltip shown on locked (too old) days in the UI. */
 export const LOCKED_TOOLTIP = `Locked after ${EDIT_WINDOW_DAYS} days`;
@@ -193,10 +193,13 @@ export function dayStatus(
   return "EMPTY";
 }
 
-/** Today and the previous `EDIT_WINDOW_DAYS` days only — never the future. */
-export function isEditableDay(date: string, today: string): boolean {
-  if (date > today) return false;
-  return date >= shiftDate(today, -EDIT_WINDOW_DAYS);
+/**
+ * Today, yesterday, and the day before yesterday (Asia/Colombo) are editable;
+ * older days and the future are locked. Delegates to the ONE shared rule so the
+ * frontend and backend never disagree.
+ */
+export function isEditableDay(date: string, _today?: string): boolean {
+  return isCheckInEditable(date);
 }
 
 export interface WeekDay {
@@ -215,13 +218,16 @@ export function buildWeekDays(
   habit: HabitDayData,
   today: string,
   timeZone?: string,
+  now: Date = new Date(),
 ): WeekDay[] {
   return buildWeekDateKeys(today).map((date) => {
     const status = dayStatus(habit, date, today, timeZone);
+    // Editable purely by the Colombo day window — NOT by "before creation".
+    // This is what lets yesterday/day-before be backfilled right away.
     return {
       date,
       status,
-      editable: status !== "NOT_STARTED" && isEditableDay(date, today),
+      editable: isCheckInEditable(date, now),
     };
   });
 }

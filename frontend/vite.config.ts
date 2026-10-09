@@ -88,6 +88,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
+      // The app imports a shared module outside frontend/ (../../shared), so
+      // allow the dev server to serve files from the repo root too.
+      fs: {
+        allow: [path.resolve(process.cwd(), ".."), process.cwd()],
+      },
       proxy: {
         // Point this at the wrangler dev server (default 8787). Override with
         // VITE_API_PROXY_TARGET=http://localhost:4000 if you run wrangler on a

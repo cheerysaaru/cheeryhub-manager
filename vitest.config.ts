@@ -5,7 +5,11 @@ export default defineConfig({
     jsx: "automatic",
   },
   test: {
-    include: ["backend/src/**/*.test.ts", "frontend/src/**/*.test.{ts,tsx}"],
+    include: [
+      "shared/**/*.test.ts",
+      "backend/src/**/*.test.ts",
+      "frontend/src/**/*.test.{ts,tsx}",
+    ],
     environment: "node",
   },
 });
