@@ -90,26 +90,46 @@ let bootstrapped: Promise<void> | null = null;
 export function ensureSchema(db: D1Database): Promise<void> {
   if (!bootstrapped) {
     bootstrapped = (async () => {
-      for (const stmt of CREATE_TABLES) {
-        try {
-          await db.prepare(stmt).run();
-        } catch {
-          /* exists */
-        }
-      }
-      for (const { ddl } of ADD_COLUMNS) {
-        try {
-          await db.prepare(ddl).run();
-        } catch {
-          /* duplicate column */
-        }
-      }
+      const allDdl = [
+        "PRAGMA foreign_keys = OFF",
+        ...CREATE_TABLES,
+        ...ADD_COLUMNS.map(({ ddl }) => ddl),
+      ];
       try {
-        await db
-          .prepare('UPDATE "Habit" SET "title" = "name" WHERE "title" IS NULL')
-          .run();
-      } catch {
-        /* ignore */
+        // Single atomic batch: FK enforcement off during creation lets child
+        // tables be created before their parents in one pass.
+        await db.batch([
+          ...allDdl.map((ddl) => db.prepare(ddl)),
+          db.prepare(
+            'UPDATE "Habit" SET "title" = "name" WHERE "title" IS NULL',
+          ),
+          db.prepare("PRAGMA foreign_keys = ON"),
+        ]);
+      } catch (batchError) {
+        console.error(
+          "[bootstrap] batch failed; retrying per-statement",
+          batchError,
+        );
+        for (const ddl of allDdl) {
+          try {
+            await db.prepare(ddl).run();
+          } catch (error) {
+            console.error(
+              "[bootstrap] statement failed",
+              ddl.slice(0, 48),
+              error,
+            );
+          }
+        }
+        try {
+          await db
+            .prepare(
+              'UPDATE "Habit" SET "title" = "name" WHERE "title" IS NULL',
+            )
+            .run();
+        } catch {
+          /* ignore */
+        }
       }
     })();
   }
