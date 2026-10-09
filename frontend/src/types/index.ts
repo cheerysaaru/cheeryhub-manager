@@ -169,6 +169,35 @@ export interface XPTransaction {
   createdAt: string;
 }
 
+export type PointEventType = "EARN" | "PENALTY";
+
+export type PointEventReason =
+  "TASK_COMPLETED" | "COMMITMENT_CHECKIN" | "TASK_MISSED" | "COMMITMENT_MISSED";
+
+/** One row of the points ledger (shared with backend PointEvent). */
+export interface PointEvent {
+  id: string;
+  userId: string;
+  type: PointEventType;
+  amount: number;
+  reason: PointEventReason;
+  sourceId: string;
+  dayKey: string;
+  createdAt: string;
+}
+
+/** GET /points summary: totals, level progress and recent events. */
+export interface PointsSummary {
+  totalEarned: number;
+  totalLost: number;
+  net: number;
+  currentTotal: number;
+  level: number;
+  pointsIntoLevel: number;
+  pointsNeededForNextLevel: number;
+  events: PointEvent[];
+}
+
 export interface DailyStats {
   id: string;
   userId: string;

@@ -1,5 +1,4 @@
 import { Flame } from "lucide-react";
-import { pointsToNextLevel } from "../utils/points";
 import type { StreakInfo } from "../hooks/useAnalytics";
 
 const RING_RADIUS = 27;
@@ -10,6 +9,8 @@ export interface HeaderStatsProps {
   totalXP: number;
   level: number;
   xpInLevel: number;
+  /** Cost of the current level (ring denominator); defaults to 100. */
+  pointsNeeded?: number;
   onOpenPoints: () => void;
 }
 
@@ -22,12 +23,14 @@ export function HeaderStats({
   totalXP,
   level,
   xpInLevel,
+  pointsNeeded = 100,
   onOpenPoints,
 }: HeaderStatsProps) {
   const dayWord = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
   const streakTooltip = streak
     ? `Current streak: ${dayWord(streak.current)} · Best streak: ${dayWord(streak.best)}`
     : undefined;
+  const toNext = Math.max(pointsNeeded - xpInLevel, 0);
 
   return (
     <div className="header-stats">
@@ -47,7 +50,7 @@ export function HeaderStats({
         onClick={onOpenPoints}
         aria-haspopup="dialog"
         aria-label={`Level ${level}, ${totalXP} points. Open points breakdown`}
-        title={`${totalXP} points · ${pointsToNextLevel(totalXP)} to level ${level + 1}`}
+        title={`${totalXP} points · ${toNext} to level ${level + 1}`}
       >
         <svg
           className="level-ring"
@@ -69,7 +72,8 @@ export function HeaderStats({
             strokeDasharray={RING_CIRCUMFERENCE}
             strokeDashoffset={
               RING_CIRCUMFERENCE *
-              (1 - Math.min(Math.max(xpInLevel, 0), 100) / 100)
+              (1 -
+                Math.min(Math.max(xpInLevel, 0), pointsNeeded) / pointsNeeded)
             }
           />
         </svg>

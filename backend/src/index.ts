@@ -21,6 +21,7 @@ import * as backupRoutes from "./routes/backup";
 import * as journalRoutes from "./routes/journal";
 import * as focusRoutes from "./routes/focus";
 import * as xpRoutes from "./routes/xp";
+import * as pointsRoutes from "./routes/points";
 import * as adminRoutes from "./routes/admin";
 import * as achievementsRoutes from "./routes/achievements";
 
@@ -525,6 +526,8 @@ async function handleRequest(
         response = await xpRoutes.getXpHistory(appReq);
       } else if (pathname === "/api/xp" && request.method === "GET") {
         response = await xpRoutes.getXpHistory(appReq);
+      } else if (pathname === "/api/points" && request.method === "GET") {
+        response = await pointsRoutes.getPoints(appReq);
       } else if (
         pathname === "/api/analytics/charts" &&
         request.method === "GET"

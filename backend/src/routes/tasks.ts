@@ -1,6 +1,14 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
 import { resolveSessionUser } from "../middleware/session";
+import { todayInCheckinZone } from "../../../shared/checkin";
+import {
+  evaluateDays,
+  recordTaskCompleted,
+  refreshPoints,
+  removeTaskCompletedEvents,
+  taskDueDay,
+} from "../lib/points";
 
 interface Task {
   id: string;
@@ -11,6 +19,7 @@ interface Task {
   status: string;
   priority: string;
   scheduledDate?: string;
+  dueAt?: string;
   scheduledTime?: string;
   deadlineTime?: string;
   recurrence: string;
@@ -261,6 +270,9 @@ export async function updateTask(req: AppRequest): Promise<Response> {
     );
   }
 
+  const oldStatus = task.status;
+  const oldDueDay = taskDueDay(task);
+
   const sets = Object.keys(updates)
     .map((k, i) => `"${k}" = ?${i + 1}`)
     .join(", ");
@@ -279,6 +291,37 @@ export async function updateTask(req: AppRequest): Promise<Response> {
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
   ]);
+
+  // Points: a status change or a due-day change rewrites the ledger for the
+  // affected day(s). Only completion status transitions matter here.
+  const newStatus = updated?.status ?? oldStatus;
+  const newDueDay = taskDueDay(updated ?? task);
+  const statusChanged = newStatus !== oldStatus;
+  const dueDayChanged = newDueDay !== oldDueDay;
+  if (statusChanged || dueDayChanged) {
+    if (newStatus === "COMPLETED") {
+      const rawCompletedAt =
+        (updates.completedAt as string | null | undefined) ??
+        updated?.completedAt;
+      await recordTaskCompleted(
+        db,
+        req.user.id,
+        id,
+        rawCompletedAt ? new Date(rawCompletedAt) : new Date(),
+      );
+    } else if (oldStatus === "COMPLETED") {
+      await removeTaskCompletedEvents(db, req.user.id, id);
+    }
+    const points = await refreshPoints(db, req.user.id, [
+      todayInCheckinZone(),
+      oldDueDay,
+      newDueDay,
+    ]);
+    return new Response(JSON.stringify({ data: updated, points }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   return new Response(JSON.stringify({ data: updated }), {
     status: 200,
@@ -352,14 +395,22 @@ export async function completeTask(req: AppRequest): Promise<Response> {
 
   const now = new Date().toISOString();
   await db.run(
-    'UPDATE "Task" SET status = "COMPLETED", completedAt = ?1, updatedAt = ?2 WHERE id = ?3',
+    `UPDATE "Task" SET status = 'COMPLETED', completedAt = ?1, updatedAt = ?2 WHERE id = ?3`,
     [now, now, id],
   );
+
+  // Points: +10 on the completion day first, then recalculate both the
+  // completion day and the due day (a completed task is never penalised).
+  await recordTaskCompleted(db, req.user.id, id, new Date(now));
+  const points = await refreshPoints(db, req.user.id, [
+    todayInCheckinZone(),
+    taskDueDay(task),
+  ]);
 
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
   ]);
-  return new Response(JSON.stringify({ data: updated }), {
+  return new Response(JSON.stringify({ data: updated, points }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -389,14 +440,27 @@ export async function checkInTask(req: AppRequest): Promise<Response> {
   }
 
   const now = new Date().toISOString();
+  const wasCompleted = task.status === "COMPLETED";
   await db.run(
-    'UPDATE "Task" SET status = "IN_PROGRESS", updatedAt = ?1 WHERE id = ?2',
+    `UPDATE "Task" SET status = 'IN_PROGRESS', updatedAt = ?1 WHERE id = ?2`,
     [now, id],
   );
 
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
   ]);
+  if (wasCompleted) {
+    // Re-opened: its +10 is withdrawn and its due day recalculated.
+    await removeTaskCompletedEvents(db, req.user.id, id);
+    const points = await refreshPoints(db, req.user.id, [
+      todayInCheckinZone(),
+      taskDueDay(task),
+    ]);
+    return new Response(JSON.stringify({ data: updated, points }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   return new Response(JSON.stringify({ data: updated }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
@@ -430,11 +494,18 @@ export async function extendTask(req: AppRequest): Promise<Response> {
     );
   }
 
+  const oldDueDay = taskDueDay(task);
   const newExtendedAt = extendedAt || dueAt || new Date().toISOString();
   await db.run(
     'UPDATE "Task" SET extendedAt = ?1, dueAt = ?2, updatedAt = ?3 WHERE id = ?4',
     [newExtendedAt, newExtendedAt, new Date().toISOString(), id],
   );
+  // The deadline moved: recalculate both the old and the new due day
+  // (only editable days are ever touched — see evaluateDay).
+  await evaluateDays(db, req.user.id, [
+    oldDueDay,
+    taskDueDay({ dueAt: newExtendedAt }),
+  ]);
 
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
@@ -469,14 +540,27 @@ export async function startTaskTimer(req: AppRequest): Promise<Response> {
   }
 
   const now = new Date().toISOString();
+  const wasCompleted = task.status === "COMPLETED";
   await db.run(
-    'UPDATE "Task" SET timerStartedAt = ?1, status = "IN_PROGRESS", updatedAt = ?2 WHERE id = ?3',
+    `UPDATE "Task" SET timerStartedAt = ?1, status = 'IN_PROGRESS', updatedAt = ?2 WHERE id = ?3`,
     [now, now, id],
   );
 
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
   ]);
+  if (wasCompleted) {
+    // Starting a timer re-opens a completed task: withdraw its +10.
+    await removeTaskCompletedEvents(db, req.user.id, id);
+    const points = await refreshPoints(db, req.user.id, [
+      todayInCheckinZone(),
+      taskDueDay(task),
+    ]);
+    return new Response(JSON.stringify({ data: updated, points }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   return new Response(JSON.stringify({ data: updated }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
@@ -579,13 +663,20 @@ export async function markNotCompletedTask(req: AppRequest): Promise<Response> {
   }
   const now = new Date().toISOString();
   await db.run(
-    'UPDATE "Task" SET status = "NOT_COMPLETED", completedAt = NULL, deletedAt = ?1, updatedAt = ?2 WHERE id = ?3',
+    `UPDATE "Task" SET status = 'NOT_COMPLETED', completedAt = NULL, deletedAt = ?1, updatedAt = ?2 WHERE id = ?3`,
     [now, now, id],
   );
+  // Points: the +10 is withdrawn; the due day is recalculated (a
+  // NOT_COMPLETED task counts as a miss once the day has ended).
+  await removeTaskCompletedEvents(db, req.user.id, id);
+  const points = await refreshPoints(db, req.user.id, [
+    todayInCheckinZone(),
+    taskDueDay(task),
+  ]);
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
   ]);
-  return new Response(JSON.stringify({ data: updated }), {
+  return new Response(JSON.stringify({ data: updated, points }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });

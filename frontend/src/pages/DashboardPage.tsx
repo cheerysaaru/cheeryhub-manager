@@ -22,6 +22,7 @@ import { useTasks } from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
 import { useGoals } from "../hooks/useGoals";
 import { useAnalytics } from "../hooks/useAnalytics";
+import { usePoints } from "../hooks/usePoints";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Progress } from "../components/Progress";
@@ -46,9 +47,9 @@ import { Skeleton, SkeletonRows } from "../components/Skeleton";
 import { DeadlinePicker } from "../components/DeadlinePicker";
 import { formatDate, formatShortDate, greeting, todayISO } from "../utils/date";
 import { ROUTES } from "../routes";
-import { levelFor, pointsIntoLevel, pointsToNextLevel } from "../utils/points";
-import { xpBreakdown, xpEarnedSpent } from "../utils/xpBreakdown";
+import { pointsBreakdown } from "../utils/points";
 import { formatDeadline } from "../utils/deadline";
+import { reasonLabel } from "../../../shared/points";
 import { getDisplayName } from "../utils/profile";
 import type { Task } from "../types";
 
@@ -91,12 +92,17 @@ export default function DashboardPage() {
   } = useHabits(user?.id ?? null, user?.timezone);
   const { goals, error: goalsError, fetchGoals } = useGoals(user?.id ?? null);
   const {
-    xp,
     streak,
     error: analyticsError,
     fetchAnalytics,
   } = useAnalytics(user?.id ?? null);
-  const loadError = tasksError ?? habitsError ?? goalsError ?? analyticsError;
+  const {
+    points,
+    error: pointsError,
+    refresh: refreshPoints,
+  } = usePoints(user?.id ?? null);
+  const loadError =
+    tasksError ?? habitsError ?? goalsError ?? analyticsError ?? pointsError;
 
   const [taskForm, setTaskForm] = useState({ title: "" });
   const [dueAt, setDueAt] = useState<string | null>(null);
@@ -115,9 +121,23 @@ export default function DashboardPage() {
   const [purgeTarget, setPurgeTarget] = useState<Task | null>(null);
   const [pointsOpen, setPointsOpen] = useState(false);
   const [dayMenu, setDayMenu] = useState<DayMenuTarget | null>(null);
-  const runDayAction = useDayActions(
+  const dayActions = useDayActions(
     { complete: completeHabit, clearToday, failToday, skipToday },
     toast,
+  );
+  // Every commitment day action is a check-in write: refresh the points
+  // summary once the server confirms it.
+  const runDayAction = useCallback(
+    async (
+      habitId: string,
+      date: string,
+      action: Parameters<typeof dayActions>[2],
+    ) => {
+      const ok = await dayActions(habitId, date, action);
+      if (ok) void refreshPoints();
+      return ok;
+    },
+    [dayActions, refreshPoints],
   );
 
   const activeTasks = useMemo(
@@ -152,26 +172,34 @@ export default function DashboardPage() {
 
   const onToggleTask = useCallback(
     (task: Task) => {
-      void checkIn(task.id, !task.checkedToday);
+      void checkIn(task.id, !task.checkedToday).then(() => {
+        void refreshPoints();
+      });
     },
-    [checkIn],
+    [checkIn, refreshPoints],
   );
   const onDoneTask = useCallback(
     (task: Task) => {
-      void completeTask(task.id);
+      void completeTask(task.id).then(() => {
+        void refreshPoints();
+      });
     },
-    [completeTask],
+    [completeTask, refreshPoints],
   );
-  const totalXP = xp?.total ?? 0;
-  const level = levelFor(totalXP);
-  const xpInLevel = pointsIntoLevel(totalXP);
-  const xpHistory = useMemo(() => xp?.history ?? [], [xp]);
-  const pointsBreakdown = useMemo(() => xpBreakdown(xpHistory), [xpHistory]);
-  const pointsEarnedSpent = useMemo(
-    () => xpEarnedSpent(xpHistory),
-    [xpHistory],
+  const totalXP = points?.currentTotal ?? 0;
+  const level = points?.level ?? 1;
+  const xpInLevel = points?.pointsIntoLevel ?? 0;
+  const pointsNeeded = points?.pointsNeededForNextLevel ?? 100;
+  const pointsToNext = pointsNeeded - xpInLevel;
+  const pointEvents = useMemo(() => points?.events ?? [], [points]);
+  const pointsBreakdownEntries = useMemo(
+    () => pointsBreakdown(pointEvents),
+    [pointEvents],
   );
-  const recentXp = xpHistory.slice(0, 5);
+  const recentPointEvents = useMemo(
+    () => pointEvents.slice(0, 5),
+    [pointEvents],
+  );
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,6 +234,7 @@ export default function DashboardPage() {
     if (!overdueTask) return;
     try {
       await extendTask(overdueTask.id, iso);
+      void refreshPoints();
       toast({
         type: "success",
         title: "Deadline extended",
@@ -226,6 +255,7 @@ export default function DashboardPage() {
     if (!overdueTask) return;
     try {
       await markNotCompleted(overdueTask.id);
+      void refreshPoints();
       toast({
         type: "info",
         title: "Marked as not completed",
@@ -350,7 +380,11 @@ export default function DashboardPage() {
           totalXP={totalXP}
           level={level}
           xpInLevel={xpInLevel}
-          onOpenPoints={() => setPointsOpen(true)}
+          pointsNeeded={pointsNeeded}
+          onOpenPoints={() => {
+            setPointsOpen(true);
+            void refreshPoints();
+          }}
         />
       </header>
 
@@ -362,6 +396,7 @@ export default function DashboardPage() {
             fetchHabits(),
             fetchGoals(),
             fetchAnalytics(),
+            refreshPoints(),
           ])
         }
       />
@@ -857,17 +892,16 @@ export default function DashboardPage() {
         isOpen={pointsOpen}
         onClose={() => setPointsOpen(false)}
         title="Points breakdown"
-        description={`Level ${level} · ${totalXP} total points · ${pointsToNextLevel(totalXP)} to level ${level + 1}`}
+        description={`Level ${level} · ${totalXP} total points · ${pointsToNext} to level ${level + 1}`}
         size="md"
       >
         <div className="points-modal">
           <div className="points-summary">
             <span className="points-summary-item earned">
-              <TrendingUp size={15} /> {pointsEarnedSpent.earned} earned
+              <TrendingUp size={15} /> {points?.totalEarned ?? 0} earned
             </span>
             <span className="points-summary-item spent">
-              <TrendingDown size={15} /> {Math.abs(pointsEarnedSpent.spent)}{" "}
-              lost
+              <TrendingDown size={15} /> {points?.totalLost ?? 0} lost
             </span>
             <span className="points-summary-item net">
               <strong>{totalXP}</strong> net
@@ -875,11 +909,11 @@ export default function DashboardPage() {
           </div>
           <Progress
             value={xpInLevel}
-            max={100}
+            max={pointsNeeded}
             showLabel
-            label={`${xpInLevel} / 100 to level ${level + 1}`}
+            label={`${xpInLevel} / ${pointsNeeded} to level ${level + 1}`}
           />
-          {pointsBreakdown.length === 0 ? (
+          {pointsBreakdownEntries.length === 0 ? (
             <div className="empty-state">
               <TrendingUp size={32} />
               <strong>No points yet</strong>
@@ -887,7 +921,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <ul className="xp-list">
-              {pointsBreakdown.map((entry) => (
+              {pointsBreakdownEntries.map((entry) => (
                 <li key={entry.label} className="xp-item">
                   <Badge variant={entry.amount > 0 ? "success" : "danger"}>
                     {entry.amount > 0 ? "+" : ""}
@@ -901,19 +935,21 @@ export default function DashboardPage() {
               ))}
             </ul>
           )}
-          {recentXp.length > 0 && (
+          {recentPointEvents.length > 0 && (
             <>
               <h3 className="points-modal-heading">Recent activity</h3>
               <ul className="xp-list">
-                {recentXp.map((item) => (
+                {recentPointEvents.map((item) => (
                   <li key={item.id} className="xp-item">
                     <Badge variant={item.amount > 0 ? "success" : "danger"}>
                       {item.amount > 0 ? "+" : ""}
                       {item.amount}
                     </Badge>
-                    <span className="xp-reason">{item.reason}</span>
+                    <span className="xp-reason">
+                      {reasonLabel(item.reason)}
+                    </span>
                     <span className="xp-date">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      {formatShortDate(item.dayKey)}
                     </span>
                   </li>
                 ))}

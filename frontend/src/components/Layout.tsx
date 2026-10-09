@@ -123,7 +123,8 @@ export function Layout() {
       <GreetingPopup username={profileName || user?.name || "there"} />
       <style>{`
         .app-layout {
-          min-height: 100vh;
+          min-height: 100dvh;
+          min-height: 100svh;
           display: flex;
           flex-direction: column;
         }
@@ -172,6 +173,12 @@ export function Layout() {
           list-style: none;
           margin: 0;
           padding: 0;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .app-nav ul::-webkit-scrollbar {
+          display: none;
         }
         .nav-link {
           display: flex;
@@ -225,6 +232,7 @@ export function Layout() {
           padding: 16px 20px;
           width: min(1200px, 100%);
           margin: 0 auto;
+          overflow-x: hidden;
         }
         @media (max-width: 900px) {
           .mobile-menu-btn {

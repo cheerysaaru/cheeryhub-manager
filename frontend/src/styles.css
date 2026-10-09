@@ -195,6 +195,7 @@ body {
   font-family: Manrope, sans-serif;
   font-size: 16px;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 h1,
@@ -656,7 +657,8 @@ button:active {
 }
 
 .app-loading-screen {
-  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: 100svh;
   display: grid;
   place-items: center;
   gap: 16px;
@@ -669,7 +671,8 @@ button:active {
 
 /* Auth */
 .auth-page {
-  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: 100svh;
   display: grid;
   place-items: center;
   padding: 32px 20px;
@@ -1383,6 +1386,7 @@ textarea {
   background: var(--bg-card);
   color: var(--text);
   padding: 0 14px;
+  font-size: 16px;
 }
 textarea {
   padding: 10px 14px;
@@ -1709,6 +1713,24 @@ textarea::placeholder {
   display: grid;
   grid-template-columns: repeat(7, minmax(36px, 1fr));
   gap: 5px;
+}
+@media (max-width: 640px) {
+  .day-buttons {
+    display: flex;
+    overflow-x: auto;
+    gap: 4px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .day-buttons::-webkit-scrollbar {
+    display: none;
+  }
+  .day-check {
+    flex: 0 0 auto;
+    min-width: 44px;
+  }
 }
 .dashboard-page .day-check {
   min-height: 54px;
@@ -2582,8 +2604,9 @@ textarea::placeholder {
   background: rgba(32, 37, 31, 0.5);
 }
 .modal-content {
-  width: 100%;
-  max-height: 90vh;
+  width: min(100%, 420px);
+  max-height: 90dvh;
+  max-height: 90svh;
   overflow-y: auto;
   background: var(--bg-card);
   border-radius: var(--radius-lg);
@@ -2926,12 +2949,6 @@ textarea::placeholder {
   .focus-controls > * {
     flex: 1;
   }
-  .day-buttons {
-    gap: 3px;
-  }
-  .day-check {
-    min-height: 54px;
-  }
   .session-item {
     flex-direction: column;
     align-items: flex-start;
@@ -2939,6 +2956,82 @@ textarea::placeholder {
   }
   .xp-item {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .task-form-row,
+  .dashboard-page .task-form-row,
+  .commitment-form,
+  .dashboard-page .commitment-form,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .task-form-row .btn,
+  .dashboard-page .task-form-row .btn,
+  .commitment-form .btn,
+  .dashboard-page .commitment-form .btn {
+    width: 100%;
+  }
+  .task-form-row input,
+  .dashboard-page .task-form-row input {
+    width: 100%;
+  }
+  .date-input {
+    width: 100%;
+    min-width: 0;
+  }
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  .modal-actions .btn {
+    width: 100%;
+  }
+  .skills-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-fields {
+    grid-template-columns: 1fr;
+  }
+  .settings-username-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .settings-username-row .btn {
+    width: 100%;
+  }
+  .finance-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .month-nav,
+  .filter-tabs {
+    width: 100%;
+    justify-content: center;
+  }
+  .filter-tab {
+    flex: 1;
+  }
+  .type-toggle {
+    grid-template-columns: 1fr;
+  }
+.category-bar {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-page input,
+  .dashboard-page select,
+  .dashboard-page textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .dashboard-page .task-form-row input {
+    font-size: 16px;
+  }
+  .dashboard-page .date-input {
+    font-size: 16px;
+  }
+  .report-summary {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -3908,16 +4001,14 @@ textarea::placeholder {
     gap: var(--space-3);
   }
   .notification-panel {
-    max-height: calc(100vh - 88px);
+    max-height: calc(100dvh - 88px);
+    max-height: calc(100svh - 88px);
     overflow-y: auto;
   }
 }
 @media (max-width: 480px) {
   .page-header .header-stats {
     width: 100%;
-  }
-  .day-buttons {
-    grid-template-columns: repeat(7, minmax(30px, 1fr));
   }
   .empty-state {
     padding: 24px 14px;
@@ -4018,14 +4109,28 @@ textarea::placeholder {
 @media (max-width: 480px) {
   .commitment-week-strip .day-buttons,
   .week-panel-skeleton .day-buttons {
-    position: relative;
-    left: 50%;
-    width: min(100vw, 336px);
-    min-width: min(320px, 100vw);
-    max-width: 100vw;
-    transform: translateX(-50%);
-    grid-template-columns: repeat(7, minmax(44px, 1fr));
-    gap: 2px;
+    display: flex;
+    overflow-x: auto;
+    gap: 4px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: static;
+    left: auto;
+    width: auto;
+    min-width: auto;
+    max-width: none;
+    transform: none;
+  }
+  .commitment-week-strip .day-buttons::-webkit-scrollbar,
+  .week-panel-skeleton .day-buttons::-webkit-scrollbar {
+    display: none;
+  }
+  .commitment-week-strip .day-check,
+  .week-panel-skeleton .week-day-skeleton {
+    flex: 0 0 auto;
+    min-width: 44px;
   }
 }
 

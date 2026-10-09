@@ -93,6 +93,7 @@ model User {
   journalEntries JournalEntry[]
   reminders Reminder[]
   xpTransactions XPTransaction[]
+  pointEvents PointEvent[]
   dailyStats DailyStats[]
   brandProjects BrandProject[]
   taskCheckIns TaskCheckIn[]
@@ -345,6 +346,39 @@ model XPTransaction {
   habit Habit? @relation(fields: [habitId], references: [id], onDelete: SetNull)
   @@unique([userId, dedupeKey])
   @@index([userId, createdAt])
+}
+
+enum PointEventType {
+  EARN
+  PENALTY
+}
+
+enum PointEventReason {
+  TASK_COMPLETED
+  COMMITMENT_CHECKIN
+  TASK_MISSED
+  COMMITMENT_MISSED
+}
+
+/**
+ * Append-only points ledger. One row per (user, reason, source, day); the
+ * unique constraint is what makes every award/penalty idempotent. `amount`
+ * is signed: +10 for EARN, -5 for PENALTY. `dayKey` is YYYY-MM-DD in
+ * Asia/Colombo.
+ */
+model PointEvent {
+  id        String          @id @default(cuid())
+  userId    String
+  type      PointEventType
+  amount    Int
+  reason    PointEventReason
+  sourceId  String
+  dayKey    String
+  createdAt DateTime        @default(now())
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reason, sourceId, dayKey])
+  @@index([userId, dayKey])
 }
 
 model DailyStats {

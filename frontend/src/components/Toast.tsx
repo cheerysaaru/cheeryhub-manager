@@ -129,15 +129,20 @@ function ToastContainer({
         </div>
       ))}
       <style>{`
-        .toast-container {
+.toast-container {
           position: fixed;
           bottom: 24px;
           right: 24px;
+          left: 24px;
           display: flex;
           flex-direction: column;
           gap: 12px;
           z-index: 1000;
           max-width: 400px;
+          margin: 0 auto;
+        }
+        @media (max-width: 480px) {
+          .toast-container { left: 12px; right: 12px; bottom: 12px; max-width: none; margin: 0; }
         }
         .toast {
           display: flex;

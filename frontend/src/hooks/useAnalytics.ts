@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, asArray } from "../services/api";
 import { dedupe } from "../services/inflight";
 import { useSocket } from "./useSocket";
-import type { DailyStats, XPTransaction } from "../types";
+import type { DailyStats } from "../types";
 
 export interface StreakInfo {
   current: number;
@@ -12,10 +12,6 @@ export interface StreakInfo {
 
 export function useAnalytics(userId: string | null) {
   const [stats, setStats] = useState<DailyStats[]>([]);
-  const [xp, setXp] = useState<{
-    total: number;
-    history: XPTransaction[];
-  } | null>(null);
   const [streak, setStreak] = useState<StreakInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,32 +51,6 @@ export function useAnalytics(userId: string | null) {
     );
   }, []);
 
-  const fetchXp = useCallback(() => {
-    return dedupe("analytics:xp", () => api<unknown>("/xp")).then(
-      (data: unknown) => {
-        const payload =
-          data && typeof data === "object"
-            ? (data as Record<string, unknown>)
-            : {};
-        if (mountedRef.current) {
-          setXp({
-            total: typeof payload.total === "number" ? payload.total : 0,
-            history: asArray<XPTransaction>(payload.history).filter(
-              (item): item is XPTransaction =>
-                Boolean(
-                  item &&
-                  typeof item === "object" &&
-                  typeof item.id === "string" &&
-                  typeof item.amount === "number" &&
-                  typeof item.reason === "string",
-                ),
-            ),
-          });
-        }
-      },
-    );
-  }, []);
-
   const fetchStreaks = useCallback((forceRefresh = false) => {
     const requestId = ++streakRequestRef.current;
     const load = () => api<unknown>("/streaks");
@@ -114,12 +84,12 @@ export function useAnalytics(userId: string | null) {
   }, []);
 
   const loadAnalytics = useCallback(() => {
-    return Promise.all([fetchStats(), fetchXp(), fetchStreaks()])
+    return Promise.all([fetchStats(), fetchStreaks()])
       .catch(reportError)
       .finally(() => {
         if (mountedRef.current) setLoading(false);
       });
-  }, [fetchStats, fetchXp, fetchStreaks, reportError]);
+  }, [fetchStats, fetchStreaks, reportError]);
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
@@ -135,9 +105,6 @@ export function useAnalytics(userId: string | null) {
   // re-fetching all three endpoints (the old pattern fired 3 GETs per event).
   useEffect(() => {
     const cleanups = [
-      on("xp:updated", () => {
-        void fetchXp().catch(reportError);
-      }),
       on("habit:updated", () => {
         void fetchStreaks().catch(reportError);
       }),
@@ -151,7 +118,7 @@ export function useAnalytics(userId: string | null) {
     return () => {
       cleanups.forEach((cleanup) => cleanup());
     };
-  }, [fetchXp, fetchStreaks, on, reportError]);
+  }, [fetchStreaks, on, reportError]);
 
   const exportBackup = useCallback(async () => {
     const data = await api<Blob>("/backup/export");
@@ -168,7 +135,6 @@ export function useAnalytics(userId: string | null) {
 
   return {
     stats,
-    xp,
     streak,
     loading,
     error,

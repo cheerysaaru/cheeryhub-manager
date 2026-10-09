@@ -11,27 +11,32 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useAnalytics } from "../hooks/useAnalytics";
+import { usePoints } from "../hooks/usePoints";
 import { useTasks } from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
 import { useFocus } from "../hooks/useFocus";
 import { Card } from "../components/Card";
 import { Progress } from "../components/Progress";
 import { Badge } from "../components/Badge";
-import { parseLocalDate } from "../utils/date";
-import { levelFor, pointsIntoLevel, pointsToNextLevel } from "../utils/points";
-import { xpBreakdown, xpEarnedSpent } from "../utils/xpBreakdown";
+import { parseLocalDate, formatShortDate } from "../utils/date";
+import { pointsBreakdown } from "../utils/points";
+import { reasonLabel } from "../../../shared/points";
 import { ApiLoadError } from "../components/ApiLoadError";
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
   const {
     stats,
-    xp,
     streak,
     loading,
     error: analyticsError,
     fetchAnalytics,
   } = useAnalytics(user?.id ?? null);
+  const {
+    points,
+    error: pointsError,
+    refresh: refreshPoints,
+  } = usePoints(user?.id ?? null);
   const { tasks, error: tasksError, fetchTasks } = useTasks(user?.id ?? null);
   const {
     habits,
@@ -43,30 +48,32 @@ export default function AnalyticsPage() {
     error: focusError,
     fetchSessions,
   } = useFocus(user?.id ?? null);
-  const error = analyticsError ?? tasksError ?? habitsError ?? focusError;
+  const error =
+    analyticsError ?? pointsError ?? tasksError ?? habitsError ?? focusError;
   const retry = () =>
     void Promise.all([
       fetchAnalytics(),
+      refreshPoints(),
       fetchTasks(),
       fetchHabits(),
       fetchSessions(),
     ]);
 
-  const totalXP = xp?.total ?? 0;
-  const level = levelFor(totalXP);
-  const xpInLevel = pointsIntoLevel(totalXP);
+  const totalXP = points?.currentTotal ?? 0;
+  const level = points?.level ?? 1;
+  const xpInLevel = points?.pointsIntoLevel ?? 0;
+  const pointsNeeded = points?.pointsNeededForNextLevel ?? 100;
+  const toNextLevel = pointsNeeded - xpInLevel;
   const totalTasks = tasks.filter((t) => t.status === "COMPLETED").length;
   const totalHabits = habits.reduce((s, h) => s + h.completedDays, 0);
   const totalFocus = sessions
     .filter((s) => s.status === "COMPLETED")
     .reduce((s, x) => s + x.durationMinutes, 0);
-  const recentXp = (xp?.history ?? []).slice(0, 10);
-
-  const breakdown = useMemo(() => xpBreakdown(xp?.history ?? []), [xp]);
-  const { earned, spent } = useMemo(
-    () => xpEarnedSpent(xp?.history ?? []),
-    [xp],
-  );
+  const pointEvents = useMemo(() => points?.events ?? [], [points]);
+  const recentPoints = useMemo(() => pointEvents.slice(0, 10), [pointEvents]);
+  const breakdown = useMemo(() => pointsBreakdown(pointEvents), [pointEvents]);
+  const earned = points?.totalEarned ?? 0;
+  const lost = points?.totalLost ?? 0;
 
   const last14 = stats.slice(-14);
 
@@ -91,9 +98,9 @@ export default function AnalyticsPage() {
             </div>
             <Progress
               value={xpInLevel}
-              max={100}
+              max={pointsNeeded}
               showLabel
-              label={`${xpInLevel} / 100 to level ${level + 1}`}
+              label={`${xpInLevel} / ${pointsNeeded} to level ${level + 1}`}
             />
           </div>
         </Card>
@@ -105,9 +112,7 @@ export default function AnalyticsPage() {
             <div className="stat-value-row">
               <strong>{totalXP}</strong>
             </div>
-            <p className="stat-desc">
-              {pointsToNextLevel(totalXP)} to next level
-            </p>
+            <p className="stat-desc">{toNextLevel} to next level</p>
           </div>
         </Card>
         <Card padding="md">
@@ -211,7 +216,7 @@ export default function AnalyticsPage() {
                 <TrendingUp size={15} /> {earned} earned
               </span>
               <span className="points-summary-item spent">
-                <TrendingDown size={15} /> {Math.abs(spent)} lost
+                <TrendingDown size={15} /> {lost} lost
               </span>
               <span className="points-summary-item net">
                 <strong>{totalXP}</strong> net
@@ -238,28 +243,26 @@ export default function AnalyticsPage() {
       <section className="panel" aria-labelledby="xp-heading">
         <div className="panel-header">
           <div>
-            <h2 id="xp-heading">Recent XP</h2>
-            <p className="panel-subtitle">Your latest rewards</p>
+            <h2 id="xp-heading">Recent activity</h2>
+            <p className="panel-subtitle">Your latest point events</p>
           </div>
         </div>
-        {recentXp.length === 0 ? (
+        {recentPoints.length === 0 ? (
           <div className="empty-state">
             <Flame size={32} />
-            <strong>No XP yet</strong>
-            <p>Complete tasks and habits to earn XP.</p>
+            <strong>No points yet</strong>
+            <p>Complete tasks and commitments to earn points.</p>
           </div>
         ) : (
           <ul className="xp-list">
-            {recentXp.map((item) => (
+            {recentPoints.map((item) => (
               <li key={item.id} className="xp-item">
                 <Badge variant={item.amount > 0 ? "success" : "danger"}>
                   {item.amount > 0 ? "+" : ""}
                   {item.amount}
                 </Badge>
-                <span className="xp-reason">{item.reason}</span>
-                <span className="xp-date">
-                  {new Date(item.createdAt).toLocaleDateString()}
-                </span>
+                <span className="xp-reason">{reasonLabel(item.reason)}</span>
+                <span className="xp-date">{formatShortDate(item.dayKey)}</span>
               </li>
             ))}
           </ul>
