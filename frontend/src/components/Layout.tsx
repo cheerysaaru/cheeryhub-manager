@@ -133,12 +133,13 @@ export function Layout() {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          padding: 6px 16px;
-          background: #1a1a1a;
-          border-bottom: none;
+          padding: clamp(6px, 1.5vh, 10px) clamp(12px, 3vw, 24px);
+          background: var(--bg-card);
+          border-bottom: 1px solid var(--border);
           position: sticky;
           top: 0;
           z-index: 100;
+          padding-top: max(clamp(6px, 1.5vh, 10px), env(safe-area-inset-top));
         }
         .header-left {
           display: flex;
@@ -151,7 +152,7 @@ export function Layout() {
           height: 44px;
           border: none;
           background: transparent;
-          color: #ffffff;
+          color: var(--text);
           border-radius: 8px;
         }
         .logo {
@@ -159,7 +160,7 @@ export function Layout() {
           align-items: center;
           gap: 8px;
           text-decoration: none;
-          color: #ffffff;
+          color: var(--text);
           font-weight: 600;
           font-size: 0.95rem;
         }
@@ -187,7 +188,7 @@ export function Layout() {
           padding: 6px 12px;
           border: none;
           background: transparent;
-          color: #b5b5b5;
+          color: var(--text-muted);
           border-radius: 999px;
           font-weight: 500;
           font-size: 13px;
@@ -200,22 +201,22 @@ export function Layout() {
           height: 16px;
         }
         .nav-link:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: #ffffff;
+          background: var(--bg-hover);
+          color: var(--text);
         }
         .nav-link.active {
-          background: #2D5A1B;
-          color: #ffffff;
+          background: var(--primary);
+          color: var(--primary-fg);
         }
         .nav-link.active svg {
-          stroke: #ffffff;
+          stroke: var(--primary-fg);
         }
         .logout-btn {
-          color: #e8604c;
+          color: var(--danger);
         }
         .logout-btn:hover {
-          background: rgba(232, 96, 76, 0.15);
-          color: #ff7a66;
+          background: var(--danger-bg);
+          color: var(--danger);
         }
         .header-right {
           display: flex;
@@ -225,14 +226,20 @@ export function Layout() {
         .user-name {
           font-weight: 600;
           font-size: 13px;
-          color: #ffffff;
+          color: var(--text);
         }
         .app-main {
           flex: 1;
-          padding: 16px 20px;
-          width: min(1200px, 100%);
+          padding: clamp(12px, 2.5vh, 24px) clamp(16px, 4vw, 32px);
+          width: 100%;
+          max-width: 1280px;
           margin: 0 auto;
           overflow-x: hidden;
+        }
+        @media (max-width: 1024px) {
+          .app-main {
+            padding: clamp(10px, 2vh, 16px) clamp(12px, 3vw, 20px);
+          }
         }
         @media (max-width: 900px) {
           .mobile-menu-btn {
@@ -247,9 +254,10 @@ export function Layout() {
             bottom: 0;
             width: 300px;
             max-width: 85vw;
-            background: #1a1a1a;
-            border-right: 1px solid #2a2a2a;
+            background: var(--bg);
+            border-right: 1px solid var(--border);
             padding: 12px 16px 20px;
+            padding-top: max(12px, env(safe-area-inset-top));
             transform: translateX(-100%);
             transition: transform 0.3s ease;
             z-index: 200;
@@ -263,11 +271,11 @@ export function Layout() {
             align-items: center;
             justify-content: space-between;
             padding: 4px 4px 12px;
-            border-bottom: 1px solid #2a2a2a;
+            border-bottom: 1px solid var(--border);
             margin-bottom: 10px;
           }
           .nav-drawer-title {
-            color: #ffffff;
+            color: var(--text);
             font-weight: 600;
             font-size: 14px;
           }
@@ -280,14 +288,14 @@ export function Layout() {
             border: none;
             border-radius: 8px;
             background: transparent;
-            color: #b5b5b5;
+            color: var(--text-muted);
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
           }
           .nav-drawer-close:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #ffffff;
+            background: var(--bg-hover);
+            color: var(--text);
           }
           .app-nav ul {
             flex-direction: column;
@@ -306,7 +314,7 @@ export function Layout() {
             height: 18px;
           }
           .app-main {
-            padding: 12px;
+            padding: clamp(10px, 2vh, 16px) clamp(12px, 3vw, 20px);
           }
         }
       `}</style>

@@ -41,7 +41,6 @@ export function useDayActions(api: DayApi, toast: ToastFn) {
           type: "info",
           title: ACTION_TITLES[action],
           message: formatShortFullDate(date),
-          duration: 5000,
           action: {
             label: "Undo",
             onClick: () => {
