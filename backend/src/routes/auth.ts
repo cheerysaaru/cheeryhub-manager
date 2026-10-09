@@ -26,6 +26,13 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/** Build cookie attributes string; omits Secure on non-HTTPS origins. */
+function cookieAttrs(req: AppRequest, maxAge: number): string {
+  const proto = req.headers.get("x-forwarded-proto") || "http";
+  const isSecure = proto === "https";
+  return `Path=/; HttpOnly; ${isSecure ? "Secure; " : ""}SameSite=Lax; Max-Age=${maxAge}`;
+}
+
 /**
  * True only when the submitted id + password match the ADMIN_USERNAME and
  * ADMIN_PASSWORD worker secrets (constant-time). If either secret is missing,
@@ -166,7 +173,7 @@ export async function register(req: AppRequest): Promise<Response> {
         status: 201,
         headers: {
           "Content-Type": "application/json",
-          "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+          "Set-Cookie": `auth_token=${token}; ${cookieAttrs(req, 604800)}`,
         },
       },
     );
@@ -225,7 +232,7 @@ export async function login(req: AppRequest): Promise<Response> {
           status: 200,
           headers: {
             "Content-Type": "application/json",
-            "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+            "Set-Cookie": `auth_token=${token}; ${cookieAttrs(req, 604800)}`,
           },
         },
       );
@@ -310,7 +317,7 @@ export async function login(req: AppRequest): Promise<Response> {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+          "Set-Cookie": `auth_token=${token}; ${cookieAttrs(req, 604800)}`,
         },
       },
     );
@@ -329,7 +336,7 @@ export async function login(req: AppRequest): Promise<Response> {
   }
 }
 
-export async function logout(_req: AppRequest): Promise<Response> {
+export async function logout(req: AppRequest): Promise<Response> {
   return new Response(
     JSON.stringify({
       data: { message: "Logged out successfully" },
@@ -338,8 +345,7 @@ export async function logout(_req: AppRequest): Promise<Response> {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Set-Cookie":
-          "auth=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0",
+        "Set-Cookie": `auth_token=; ${cookieAttrs(req, 0)}`,
       },
     },
   );
@@ -440,7 +446,7 @@ export async function refresh(req: AppRequest): Promise<Response> {
     if (authHeader.startsWith("Bearer ")) {
       token = authHeader.slice(7);
     } else {
-      const match = cookieHeader.match(/auth=([^;]+)/);
+      const match = cookieHeader.match(/auth_token=([^;]+)/);
       if (match) token = match[1];
     }
 
@@ -508,7 +514,7 @@ export async function refresh(req: AppRequest): Promise<Response> {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Set-Cookie": `auth_token=${newToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`,
+          "Set-Cookie": `auth_token=${newToken}; ${cookieAttrs(req, 604800)}`,
         },
       },
     );

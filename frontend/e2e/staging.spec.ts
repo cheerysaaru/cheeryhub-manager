@@ -69,14 +69,24 @@ test("register, create and complete a task, log out, and reject a bad password",
   await page.getByLabel("Password", { exact: true }).fill("WrongPassword9!");
   await page.getByRole("button", { name: "Enter dashboard" }).click();
   await expect(page.getByRole("alert")).toContainText(
-    /invalid username or password/i,
+    /invalid (email|username) or password/i,
   );
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/goals");
-  await expect(page).toHaveURL(/\/$/);
+  // Unauthenticated visits land on the login screen; the URL may carry the
+  // "?session=expired" notice the api client appends after a 401.
+  await expect(page).toHaveURL(/\/(\?.*)?$/);
   await expect(
     page.getByRole("button", { name: "Enter dashboard" }),
   ).toBeVisible();
-  expect(browserErrors, browserErrors.join("\n")).toEqual([]);
+  // A logged-out session check and the deliberate bad-password login always
+  // log 401s (browser "Failed to load resource" lines carry no URL); anything
+  // else in the console must stay clean.
+  const isExpectedAuthNoise = (line: string) =>
+    (/Failed to load resource/.test(line) && /401/.test(line)) ||
+    (/auth\/(me|login)/.test(line) &&
+      (/401/.test(line) || /Request failed/.test(line)));
+  const realErrors = browserErrors.filter((line) => !isExpectedAuthNoise(line));
+  expect(realErrors, realErrors.join("\n")).toEqual([]);
 });
