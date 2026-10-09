@@ -1,6 +1,6 @@
 // Verifies admin login/enforcement, finance CRUD+reports, commitment check-in
 // idempotency + streak, and the unified error shape, against the running worker.
-const API = process.env.API ?? "http://127.0.0.1:4000/api";
+const API = process.env.API ?? "http://127.0.0.1:8787/api";
 
 async function req(method, path, token, body) {
   const res = await fetch(`${API}${path}`, {

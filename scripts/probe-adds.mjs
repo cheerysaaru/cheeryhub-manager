@@ -1,6 +1,6 @@
 // Tests each tab's create (POST) with the fields the frontend sends, to find
 // failing adds. Uses the running local worker.
-const API = process.env.API ?? "http://127.0.0.1:4000/api";
+const API = process.env.API ?? "http://127.0.0.1:8787/api";
 const email = `add_${Date.now()}@example.com`;
 async function req(method, path, token, body) {
   const res = await fetch(`${API}${path}`, {

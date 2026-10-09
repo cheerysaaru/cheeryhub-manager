@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
@@ -25,6 +25,7 @@ function strengthOf(password: string): { score: number; label: string } {
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { login, adminLogin, register, forgotPassword } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [username, setUsername] = useState("");
@@ -96,6 +97,7 @@ export default function AuthPage() {
     setLoading(true);
     try {
       await adminLogin(username.trim(), password);
+      navigate("/admin", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in");
     } finally {

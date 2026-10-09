@@ -1,5 +1,6 @@
 import type { AppRequest, AppEnv } from "./types/index";
 import { verifyAuth } from "./middleware/auth";
+import { friendlyDbError } from "./middleware/session";
 import * as authRoutes from "./routes/auth";
 import * as authPasswordRoutes from "./routes/auth-password";
 import * as adminAuthRoutes from "./routes/admin-auth";
@@ -184,11 +185,18 @@ async function handleRequest(
         response = await tasksRoutes.deleteTask(appReq);
       } else if (
         pathname.match(/^\/api\/tasks\/[^/]+\/complete$/) &&
-        request.method === "POST"
+        (request.method === "POST" || request.method === "PATCH")
       ) {
         const id = pathname.split("/")[3];
         appReq.params.id = id;
         response = await tasksRoutes.completeTask(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/mark-not-completed$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.markNotCompletedTask(appReq);
       } else if (
         pathname.match(/^\/api\/tasks\/[^/]+\/checkin$/) &&
         request.method === "POST"
@@ -203,6 +211,20 @@ async function handleRequest(
         const id = pathname.split("/")[3];
         appReq.params.id = id;
         response = await tasksRoutes.extendTask(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/timer\/start$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.startTaskTimer(appReq);
+      } else if (
+        pathname.match(/^\/api\/tasks\/[^/]+\/timer\/stop$/) &&
+        request.method === "POST"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await tasksRoutes.stopTaskTimer(appReq);
       } else if (
         pathname.match(/^\/api\/tasks\/[^/]+\/timer$/) &&
         request.method === "POST"
@@ -259,6 +281,24 @@ async function handleRequest(
         const id = pathname.split("/")[3];
         appReq.params.id = id;
         response = await habitsRoutes.completeHabit(appReq);
+      } else if (
+        pathname.match(/^\/api\/habits\/[^/]+\/today$/) &&
+        request.method === "DELETE"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await habitsRoutes.clearHabitToday(appReq);
+      } else if (
+        pathname.match(/^\/api\/habits\/[^/]+\/fail$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await habitsRoutes.failHabit(appReq);
+      } else if (
+        pathname.match(/^\/api\/habits\/[^/]+\/skip$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await habitsRoutes.skipHabit(appReq);
       }
 
       // Goals routes
@@ -478,6 +518,8 @@ async function handleRequest(
         response = await focusRoutes.completeFocusSession(appReq);
       } else if (pathname === "/api/analytics/xp" && request.method === "GET") {
         response = await xpRoutes.getXpHistory(appReq);
+      } else if (pathname === "/api/xp" && request.method === "GET") {
+        response = await xpRoutes.getXpHistory(appReq);
       } else if (
         pathname === "/api/analytics/charts" &&
         request.method === "GET"
@@ -562,13 +604,15 @@ async function handleRequest(
     });
   } catch (error) {
     console.error("[handleRequest]", error);
+    // Never leak raw D1/constraint text to the client.
+    const friendly = friendlyDbError(error);
     return new Response(
       JSON.stringify({
-        error: (error as Error).message || "Internal Server Error",
-        code: "INTERNAL_ERROR",
+        error: { code: friendly.code, message: friendly.message },
+        code: friendly.code,
       }),
       {
-        status: 500,
+        status: friendly.status,
         headers: corsHeaders,
       },
     );

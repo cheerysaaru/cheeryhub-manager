@@ -1,5 +1,6 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
+import { resolveSessionUser } from "../middleware/session";
 
 interface Task {
   id: string;
@@ -128,6 +129,8 @@ export async function createTask(req: AppRequest): Promise<Response> {
       { status: 401, headers: { "Content-Type": "application/json" } },
     );
   }
+  const session = await resolveSessionUser(req);
+  if (!session.ok) return session.response;
 
   const {
     title,
@@ -152,7 +155,44 @@ export async function createTask(req: AppRequest): Promise<Response> {
     );
   }
 
-  const db = new Database(req.env.DB!);
+  const db = new Database(req.env.DB);
+  // Referenced goal/skill must belong to the same user (FK safety, clear 400).
+  if (goalId) {
+    const goal = await db.first<{ id: string }>(
+      'SELECT id FROM "Goal" WHERE id = ?1 AND userId = ?2',
+      [goalId, session.userId],
+    );
+    if (!goal) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "That goal does not belong to you.",
+          },
+          code: "VALIDATION_ERROR",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }
+  if (skillId) {
+    const skill = await db.first<{ id: string }>(
+      'SELECT id FROM "Skill" WHERE id = ?1 AND userId = ?2',
+      [skillId, session.userId],
+    );
+    if (!skill) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "That skill does not belong to you.",
+          },
+          code: "VALIDATION_ERROR",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }
   const taskId = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -161,7 +201,7 @@ export async function createTask(req: AppRequest): Promise<Response> {
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
     [
       taskId,
-      req.user.id,
+      session.userId,
       title,
       description || null,
       category || null,
@@ -372,7 +412,10 @@ export async function extendTask(req: AppRequest): Promise<Response> {
   }
 
   const { id } = req.params;
-  const { extendedAt } = req.body as { extendedAt?: string };
+  const { extendedAt, dueAt } = req.body as {
+    extendedAt?: string;
+    dueAt?: string;
+  };
 
   const db = new Database(req.env.DB);
   const task = await db.first<Task>(
@@ -387,10 +430,10 @@ export async function extendTask(req: AppRequest): Promise<Response> {
     );
   }
 
-  const newExtendedAt = extendedAt || new Date().toISOString();
+  const newExtendedAt = extendedAt || dueAt || new Date().toISOString();
   await db.run(
-    'UPDATE "Task" SET extendedAt = ?1, updatedAt = ?2 WHERE id = ?3',
-    [newExtendedAt, new Date().toISOString(), id],
+    'UPDATE "Task" SET extendedAt = ?1, dueAt = ?2, updatedAt = ?3 WHERE id = ?4',
+    [newExtendedAt, newExtendedAt, new Date().toISOString(), id],
   );
 
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
@@ -510,4 +553,68 @@ export async function permanentDeleteTask(req: AppRequest): Promise<Response> {
       headers: { "Content-Type": "application/json" },
     },
   );
+}
+
+function taskUnauthorized(): Response {
+  return new Response(
+    JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+    { status: 401, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+/** Marks a task as "not completed": it leaves the active list and lands in trash. */
+export async function markNotCompletedTask(req: AppRequest): Promise<Response> {
+  if (!req.user) return taskUnauthorized();
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  const now = new Date().toISOString();
+  await db.run(
+    'UPDATE "Task" SET status = "NOT_COMPLETED", completedAt = NULL, deletedAt = ?1, updatedAt = ?2 WHERE id = ?3',
+    [now, now, id],
+  );
+  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
+    id,
+  ]);
+  return new Response(JSON.stringify({ data: updated }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export async function stopTaskTimer(req: AppRequest): Promise<Response> {
+  if (!req.user) return taskUnauthorized();
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+  const task = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1 AND userId = ?2',
+    [id, req.user.id],
+  );
+  if (!task) {
+    return new Response(
+      JSON.stringify({ error: "Task not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  const now = new Date().toISOString();
+  await db.run(
+    'UPDATE "Task" SET timerStartedAt = NULL, updatedAt = ?1 WHERE id = ?2',
+    [now, id],
+  );
+  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
+    id,
+  ]);
+  return new Response(JSON.stringify({ data: updated }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }

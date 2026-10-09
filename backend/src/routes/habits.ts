@@ -1,5 +1,6 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
+import { resolveSessionUser } from "../middleware/session";
 
 // The Habit contract is defined by the Prisma model + the frontend `Habit`
 // type: the canonical field is `name`. The `title` column (added in migration
@@ -82,8 +83,10 @@ export async function getHabit(req: AppRequest): Promise<Response> {
 
 export async function createHabit(req: AppRequest): Promise<Response> {
   if (!req.user) return unauthorized();
-  const { name, title, description, frequency, targetDays } =
-    req.body as HabitPayload;
+  const session = await resolveSessionUser(req);
+  if (!session.ok) return session.response;
+  const { name, title, description, frequency, targetDays, goalId, taskId } =
+    req.body as HabitPayload & { goalId?: string; taskId?: string };
   const habitName = (name ?? title ?? "").toString().trim();
   if (!habitName || !frequency) {
     return new Response(
@@ -95,6 +98,43 @@ export async function createHabit(req: AppRequest): Promise<Response> {
     );
   }
   const db = new Database(req.env.DB);
+  // Any referenced goal/task must belong to the same user (FK safety, clear 400).
+  if (goalId) {
+    const goal = await db.first<{ id: string }>(
+      'SELECT id FROM "Goal" WHERE id = ?1 AND userId = ?2',
+      [goalId, session.userId],
+    );
+    if (!goal) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "That goal does not belong to you.",
+          },
+          code: "VALIDATION_ERROR",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }
+  if (taskId) {
+    const task = await db.first<{ id: string }>(
+      'SELECT id FROM "Task" WHERE id = ?1 AND userId = ?2',
+      [taskId, session.userId],
+    );
+    if (!task) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "That task does not belong to you.",
+          },
+          code: "VALIDATION_ERROR",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }
   const habitId = crypto.randomUUID();
   const now = new Date().toISOString();
   await db.run(
@@ -102,7 +142,7 @@ export async function createHabit(req: AppRequest): Promise<Response> {
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
     [
       habitId,
-      req.user.id,
+      session.userId,
       habitName,
       habitName,
       description ?? null,
@@ -320,4 +360,85 @@ export async function updateHabit(req: AppRequest): Promise<Response> {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function habitUnauthorized(): Response {
+  return new Response(
+    JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+    { status: 401, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+async function setDayStatus(
+  req: AppRequest,
+  status: "completed" | "failed" | "skipped" | null,
+): Promise<Response> {
+  if (!req.user) return habitUnauthorized();
+  const { id } = req.params;
+  const { date } = (req.body ?? {}) as { date?: string };
+  const db = new Database(req.env.DB);
+  const habit = await db.first<Habit>(
+    `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE id = ?1 AND userId = ?2`,
+    [id, req.user.id],
+  );
+  if (!habit) {
+    return new Response(
+      JSON.stringify({ error: "Habit not found", code: "NOT_FOUND" }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  const day = date || new Date().toISOString().split("T")[0];
+  const now = new Date().toISOString();
+  if (status === null) {
+    await db.run(
+      'DELETE FROM "HabitCompletion" WHERE habitId = ?1 AND date = ?2',
+      [id, day],
+    );
+  } else {
+    // One row per habit per day (unique habitId+date) => idempotent.
+    await db.run(
+      `INSERT OR REPLACE INTO "HabitCompletion" (id, habitId, userId, date, status, completedAt)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+      [crypto.randomUUID(), id, req.user.id, day, status, now],
+    );
+  }
+  const completions = await db.all<HabitCompletion>(
+    'SELECT id, habitId, date, status, completedAt FROM "HabitCompletion" WHERE habitId = ?1 ORDER BY date DESC LIMIT 365',
+    [id],
+  );
+  const completedDates = new Set(
+    completions.filter((c) => c.status === "completed").map((c) => c.date),
+  );
+  let currentStreak = 0;
+  const cursor = new Date(`${day}T00:00:00Z`);
+  for (let i = 0; i < 365; i++) {
+    const key = cursor.toISOString().split("T")[0];
+    if (!completedDates.has(key)) break;
+    currentStreak += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  return new Response(
+    JSON.stringify({
+      data: {
+        habitId: id,
+        date: day,
+        status,
+        currentStreak,
+        totalCompletions: completions.length,
+      },
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+export async function clearHabitToday(req: AppRequest): Promise<Response> {
+  return setDayStatus(req, null);
+}
+
+export async function failHabit(req: AppRequest): Promise<Response> {
+  return setDayStatus(req, "failed");
+}
+
+export async function skipHabit(req: AppRequest): Promise<Response> {
+  return setDayStatus(req, "skipped");
 }

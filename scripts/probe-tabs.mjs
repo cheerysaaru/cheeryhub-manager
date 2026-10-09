@@ -1,5 +1,5 @@
 // Probe every tab's backend endpoints with a fresh user and report status.
-const API = process.env.API ?? "http://127.0.0.1:4000/api";
+const API = process.env.API ?? "http://127.0.0.1:8787/api";
 const email = `probe_${Date.now()}@example.com`;
 
 async function j(method, path, token, body) {

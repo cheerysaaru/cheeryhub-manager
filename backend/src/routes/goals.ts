@@ -1,5 +1,6 @@
 import type { AppRequest } from "../types/index";
 import { Database } from "../db/client";
+import { resolveSessionUser } from "../middleware/session";
 
 interface Goal {
   id: string;
@@ -67,6 +68,8 @@ export async function createGoal(req: AppRequest): Promise<Response> {
   }
 
   const due = targetDate ?? deadline ?? null;
+  const session = await resolveSessionUser(req);
+  if (!session.ok) return session.response;
   const db = new Database(req.env.DB);
   const goalId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -76,7 +79,7 @@ export async function createGoal(req: AppRequest): Promise<Response> {
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
     [
       goalId,
-      req.user.id,
+      session.userId,
       title,
       description ?? null,
       due,

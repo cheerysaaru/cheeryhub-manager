@@ -89,12 +89,15 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: {
+        // Point this at the wrangler dev server (default 8787). Override with
+        // VITE_API_PROXY_TARGET=http://localhost:4000 if you run wrangler on a
+        // different port (e.g. `wrangler dev --port 4000`).
         "/api": {
-          target: "http://localhost:4000",
+          target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8787",
           changeOrigin: true,
         },
         "/socket.io": {
-          target: "http://localhost:4000",
+          target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8787",
           ws: true,
           changeOrigin: true,
         },

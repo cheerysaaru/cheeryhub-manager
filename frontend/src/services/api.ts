@@ -221,7 +221,11 @@ function messageFor(
   status: number,
   body: Record<string, unknown> | null,
 ): string {
+  // Always prefer the real server message; only fall back to a friendly
+  // default when the server sent nothing useful. The status is included so the
+  // user can report it.
   const serverError = serverMessageOf(body);
+  if (serverError && status < 500) return serverError;
   if (status === 429)
     return (
       serverError ?? "Too many requests. Please wait a moment and try again."
@@ -231,12 +235,9 @@ function messageFor(
   if (status === 403)
     return serverError ?? "You do not have access to this resource.";
   if (status === 404) return serverError ?? "Not found.";
-  if (status >= 500) return "Something went wrong. Please try again.";
-  if (status >= 400)
-    return (
-      serverError ?? "Invalid request. Please check your input and try again."
-    );
-  return serverError ?? `Request failed (${status})`;
+  if (status >= 500)
+    return serverError ?? "Something went wrong. Please try again.";
+  return serverError ?? `Invalid request (status ${status}).`;
 }
 
 /** Unified server error shape is `{ error: { code, message } }`; legacy
