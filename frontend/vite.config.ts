@@ -26,7 +26,7 @@ function spaFallback404(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  if (mode === "production") {
+  if (mode === "production" && process.env.BUILD_MODE !== "local") {
     const apiUrl =
       process.env.VITE_API_URL ?? loadEnv(mode, process.cwd(), "").VITE_API_URL;
     let parsedApiUrl: URL;

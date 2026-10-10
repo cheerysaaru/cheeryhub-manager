@@ -16,11 +16,12 @@
     "test": "npm run test:unit && npm run typecheck --workspace backend && npm run typecheck --workspace frontend",
     "test:unit": "vitest run",
     "test:staging-api": "vitest run backend/src/staging-api.test.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/e2e-preflight.mjs && playwright test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format:check": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:local": "npm run build --workspace frontend -- --mode local"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260923.1",

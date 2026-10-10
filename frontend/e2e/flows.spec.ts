@@ -15,7 +15,7 @@ import { test, expect, request as apiRequest } from "@playwright/test";
  */
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:5173";
-const API = process.env.E2E_API_URL ?? "http://localhost:4000/api";
+const API = process.env.E2E_API_URL ?? "http://localhost:8787/api";
 
 const TABS = [
   { path: "/", name: "Dashboard" },

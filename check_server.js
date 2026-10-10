@@ -1,0 +1,1 @@
+const http = require("http"); http.get("http://localhost:4173", (res) => { console.log("STATUS: " + res.statusCode); res.on("data", (d) => process.stdout.write(d)); }).on("error", (e) => console.error("ERROR: " + e.message));

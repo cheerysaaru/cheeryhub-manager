@@ -75,8 +75,6 @@ jobs:
           # VITE_BASE=/cheeryhub-manager/ only for username.github.io/repo-name.
           VITE_BASE: ${{ vars.VITE_BASE || '/' }}
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.cheeryhub.space/api' }}
-          # Empty/undefined keeps realtime off (safe default).
-          VITE_SOCKET_URL: ${{ vars.VITE_SOCKET_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

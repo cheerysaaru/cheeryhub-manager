@@ -18,25 +18,8 @@ export function useSocket(userId: string | null) {
       return;
     }
 
-    const socket = connectSocket(userId);
-    if (!socket) {
-      void Promise.resolve().then(() => setConnected(false));
-      return;
-    }
-
-    const onConnect = () => setConnected(true);
-    const onDisconnect = () => setConnected(false);
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    if (socket.connected) void Promise.resolve().then(() => setConnected(true));
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      handlersRef.current.forEach((cleanup) => cleanup());
-      handlersRef.current = [];
-    };
+    connectSocket(userId);
+    // No actual socket returned in stub, so connected stays false
   }, [userId]);
 
   const on = useCallback(

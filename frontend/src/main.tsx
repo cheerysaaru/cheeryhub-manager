@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./styles.css";
 import { useAuth, AuthProvider } from "./hooks/useAuth";
-import { useSocket } from "./hooks/useSocket";
 import { syncPendingWrites } from "./services/api";
 import { Layout } from "./components/Layout";
 import {
@@ -13,9 +12,9 @@ import {
 import { Button } from "./components/Button";
 import { ToastProvider } from "./components/Toast";
 import { getTheme, applyTheme } from "./utils/theme";
-import AuthPage from "./pages/AuthPage";
-import ResetPage from "./pages/ResetPage";
-import DashboardPage from "./pages/DashboardPage";
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const ResetPage = lazy(() => import("./pages/ResetPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 
 const TasksPage = lazy(() => import("./pages/TasksPage"));
 const CommitmentsPage = lazy(() => import("./pages/CommitmentsPage"));
@@ -59,8 +58,7 @@ if ("serviceWorker" in navigator) {
 
 function App() {
   const { user, loading, authError, refreshUser } = useAuth();
-  useSocket(user?.id ?? null);
-
+  
   useEffect(() => {
     const syncWrites = () => {
       void syncPendingWrites().catch((error: unknown) => {
@@ -106,11 +104,13 @@ function App() {
       );
     }
     return (
-      <Routes>
-        <Route path="/" element={<AuthPage />} />
-        <Route path="/reset" element={<ResetPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/" element={<AuthPage />} />
+          <Route path="/reset" element={<ResetPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
