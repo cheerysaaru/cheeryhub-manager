@@ -41,9 +41,10 @@ export async function getStreaks(req: AppRequest): Promise<Response> {
 
   try {
     const db = new Database(req.env.DB!);
+    // Include both TASK_COMPLETED and COMMITMENT_CHECKIN for streak calculation
     const rows = await db.all<{ dayKey: string }>(
       `SELECT DISTINCT dayKey FROM "PointEvent"
-        WHERE userId = ?1 AND reason = 'TASK_COMPLETED'`,
+        WHERE userId = ?1 AND reason IN ('TASK_COMPLETED', 'COMMITMENT_CHECKIN')`,
       [req.user.id],
     );
 

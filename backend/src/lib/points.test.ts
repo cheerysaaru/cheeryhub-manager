@@ -690,7 +690,7 @@ describe("streak from the ledger (spec 9)", () => {
     );
   }
 
-  it("counts a day only when a task was completed", async () => {
+  it("counts a day when a task or habit was completed", async () => {
     const today = todayInCheckinZone();
     const habitId = await seedHabit(
       harness,
@@ -705,8 +705,9 @@ describe("streak from the ledger (spec 9)", () => {
     );
 
     const afterCheckin = await streak();
-    expect(afterCheckin.current).toBe(0);
-    expect(afterCheckin.todayActive).toBe(false);
+    // Habit completion now counts towards the streak
+    expect(afterCheckin.current).toBe(1);
+    expect(afterCheckin.todayActive).toBe(true);
 
     const taskId = await seedTask(harness, { scheduledDate: today });
     await completeTask(
@@ -717,6 +718,7 @@ describe("streak from the ledger (spec 9)", () => {
     );
 
     const afterTask = await streak();
+    // Same day, streak remains 1
     expect(afterTask.current).toBe(1);
     expect(afterTask.best).toBe(1);
     expect(afterTask.todayActive).toBe(true);

@@ -32,6 +32,29 @@ interface HabitCompletion {
   completedAt: string;
 }
 
+/** Enriched habit with computed completion fields matching frontend Habit type. */
+interface EnrichedHabit {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  frequency: string;
+  targetDays: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  completedToday: boolean;
+  failedToday: boolean;
+  skippedToday: boolean;
+  completedDays: number;
+  weekCompletedDays: number;
+  weekStart: string;
+  weekDates: string[];
+  completedDates: string[];
+  failedDates: string[];
+  skippedDates: string[];
+}
+
 interface HabitPayload {
   name?: string;
   title?: string; // tolerated alias for `name`
@@ -47,6 +70,93 @@ interface CompleteHabitPayload {
 const HABIT_COLUMNS =
   "id, userId, name, description, frequency, targetDays, active, createdAt, updatedAt";
 
+/**
+ * Build week date keys (Mon-Sun) for a given today date in Asia/Colombo.
+ * Returns 7 dates starting from Monday.
+ */
+function buildWeekDateKeys(today: string): string[] {
+  const weekday = new Date(`${today}T00:00:00Z`).getDay();
+  const mondayOffset = (weekday + 6) % 7; // Monday = 0
+  const monday = new Date(`${today}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate() - mondayOffset);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setUTCDate(monday.getUTCDate() + index);
+    return date.toISOString().split("T")[0];
+  });
+}
+
+/**
+ * Enrich habits with computed completion fields from HabitCompletion table.
+ */
+async function enrichHabits(
+  db: Database,
+  habits: { id: string; createdAt: string }[],
+  timeZone: string,
+): Promise<EnrichedHabit[]> {
+  if (habits.length === 0) return [];
+
+  const habitIds = habits.map((h) => h.id);
+  const placeholders = habitIds.map(() => "?").join(",");
+
+  // Fetch all completions for these habits
+  const completions = await db.all<{ habitId: string; date: string; status: string }>(
+    `SELECT habitId, date, status FROM "HabitCompletion" WHERE habitId IN (${placeholders})`,
+    habitIds,
+  );
+
+  // Group completions by habitId
+  const completionsByHabit = new Map<string, { date: string; status: string }[]>();
+  for (const c of completions) {
+    if (!completionsByHabit.has(c.habitId)) {
+      completionsByHabit.set(c.habitId, []);
+    }
+    completionsByHabit.get(c.habitId)!.push({ date: c.date, status: c.status });
+  }
+
+  const today = todayInCheckinZone();
+  const weekDates = buildWeekDateKeys(today);
+  const weekStart = weekDates[0];
+
+  return habits.map((habit) => {
+    const habitCompletions = completionsByHabit.get(habit.id) || [];
+    const completedDates: string[] = [];
+    const failedDates: string[] = [];
+    const skippedDates: string[] = [];
+
+    for (const c of habitCompletions) {
+      if (c.status === "completed") completedDates.push(c.date);
+      else if (c.status === "failed") failedDates.push(c.date);
+      else if (c.status === "skipped") skippedDates.push(c.date);
+    }
+
+    const completedSet = new Set(completedDates);
+    const failedSet = new Set(failedDates);
+    const skippedSet = new Set(skippedDates);
+
+    const completedToday = completedSet.has(today);
+    const failedToday = failedSet.has(today);
+    const skippedToday = skippedSet.has(today);
+
+    const completedDays = completedDates.length;
+    const weekCompletedDays = completedDates.filter((d) => weekDates.includes(d)).length;
+
+    return {
+      ...habit,
+      completedToday,
+      failedToday,
+      skippedToday,
+      completedDays,
+      weekCompletedDays,
+      weekStart,
+      weekDates,
+      completedDates,
+      failedDates,
+      skippedDates,
+    } as EnrichedHabit;
+  });
+}
+
 function unauthorized(): Response {
   return new Response(
     JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
@@ -61,7 +171,8 @@ export async function listHabits(req: AppRequest): Promise<Response> {
     `SELECT ${HABIT_COLUMNS} FROM "Habit" WHERE userId = ?1 AND deletedAt IS NULL ORDER BY createdAt DESC`,
     [req.user.id],
   );
-  return new Response(JSON.stringify({ data: habits }), {
+  const enriched = await enrichHabits(db, habits, "UTC");
+  return new Response(JSON.stringify({ data: enriched }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -81,7 +192,8 @@ export async function getHabit(req: AppRequest): Promise<Response> {
       { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
-  return new Response(JSON.stringify({ data: habit }), {
+  const enriched = await enrichHabits(db, [habit], "UTC");
+  return new Response(JSON.stringify({ data: enriched[0] }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
