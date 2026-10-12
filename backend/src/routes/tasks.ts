@@ -47,6 +47,68 @@ interface CreateTaskPayload {
   estimatedMinutes?: number;
 }
 
+interface TaskCheckinStats {
+  checkedToday: boolean;
+  checkedDays: number;
+  missedDays: number;
+}
+
+/**
+ * Per-task daily-tick stats, batched for a set of tasks: whether today
+ * (Asia/Colombo) carries a TaskCheckIn row, how many days were ever checked,
+ * and how many TASK_MISSED penalties the ledger holds for the task.
+ */
+async function taskCheckinStats(
+  db: Database,
+  userId: string,
+  taskIds: string[],
+): Promise<Map<string, TaskCheckinStats>> {
+  const stats = new Map<string, TaskCheckinStats>();
+  for (const id of taskIds) {
+    stats.set(id, { checkedToday: false, checkedDays: 0, missedDays: 0 });
+  }
+  if (taskIds.length === 0) return stats;
+
+  const today = todayInCheckinZone();
+  // ?1 = userId; ?2 = date here, so the IN list starts at ?3.
+  const inFrom3 = taskIds.map((_, i) => `?${i + 3}`).join(", ");
+  // Queries without the date param start their IN list at ?2.
+  const inFrom2 = taskIds.map((_, i) => `?${i + 2}`).join(", ");
+
+  const todays = await db.all<{ taskId: string }>(
+    `SELECT taskId FROM "TaskCheckIn"
+      WHERE userId = ?1 AND date = ?2 AND taskId IN (${inFrom3})`,
+    [userId, today, ...taskIds],
+  );
+  for (const row of todays) {
+    const entry = stats.get(row.taskId);
+    if (entry) entry.checkedToday = true;
+  }
+
+  const counts = await db.all<{ taskId: string; count: number }>(
+    `SELECT taskId, COUNT(*) as count FROM "TaskCheckIn"
+      WHERE userId = ?1 AND taskId IN (${inFrom2})
+      GROUP BY taskId`,
+    [userId, ...taskIds],
+  );
+  for (const row of counts) {
+    const entry = stats.get(row.taskId);
+    if (entry) entry.checkedDays = Number(row.count) || 0;
+  }
+
+  const missed = await db.all<{ sourceId: string; count: number }>(
+    `SELECT sourceId, COUNT(*) as count FROM "PointEvent"
+      WHERE userId = ?1 AND reason = ?2 AND sourceId IN (${inFrom3})
+      GROUP BY sourceId`,
+    [userId, "TASK_MISSED", ...taskIds],
+  );
+  for (const row of missed) {
+    const entry = stats.get(row.sourceId);
+    if (entry) entry.missedDays = Number(row.count) || 0;
+  }
+  return stats;
+}
+
 export async function listTasks(req: AppRequest): Promise<Response> {
   if (!req.user) {
     return new Response(
@@ -63,11 +125,21 @@ export async function listTasks(req: AppRequest): Promise<Response> {
     'SELECT * FROM "Task" WHERE userId = ?1 AND deletedAt IS NULL ORDER BY createdAt DESC',
     [req.user.id],
   );
+  const stats = await taskCheckinStats(
+    db,
+    req.user.id,
+    tasks.map((task) => task.id),
+  );
 
-  return new Response(JSON.stringify({ data: tasks }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({
+      data: tasks.map((task) => ({ ...task, ...stats.get(task.id) })),
+    }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
 
 export async function getTask(req: AppRequest): Promise<Response> {
@@ -99,10 +171,14 @@ export async function getTask(req: AppRequest): Promise<Response> {
     );
   }
 
-  return new Response(JSON.stringify({ data: task }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  const stats = await taskCheckinStats(db, req.user.id, [task.id]);
+  return new Response(
+    JSON.stringify({ data: { ...task, ...stats.get(task.id) } }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
 
 export async function listTrashTasks(req: AppRequest): Promise<Response> {
@@ -404,22 +480,39 @@ export async function completeTask(req: AppRequest): Promise<Response> {
     `UPDATE "Task" SET status = 'COMPLETED', completedAt = ?1, updatedAt = ?2 WHERE id = ?3`,
     [now, now, id],
   );
+  // Completing also ticks today, so the circle stays filled after a refresh.
+  const today = todayInCheckinZone();
+  const checkedToday = await db.first<{ id: string }>(
+    'SELECT id FROM "TaskCheckIn" WHERE taskId = ?1 AND date = ?2',
+    [id, today],
+  );
+  if (!checkedToday) {
+    await db.run(
+      `INSERT INTO "TaskCheckIn" (id, taskId, userId, date, checked, checkedAt, createdAt)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+      [crypto.randomUUID(), id, req.user.id, today, 1, now, now],
+    );
+  }
 
   // Points: +10 on the completion day first, then recalculate both the
   // completion day and the due day (a completed task is never penalised).
   await recordTaskCompleted(db, req.user.id, id, new Date(now));
   const points = await refreshPoints(db, req.user.id, [
-    todayInCheckinZone(),
+    today,
     taskDueDay(task),
   ]);
 
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
   ]);
-  return new Response(JSON.stringify({ data: updated, points }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  const stats = await taskCheckinStats(db, req.user.id, [id]);
+  return new Response(
+    JSON.stringify({ data: { ...(updated ?? task), ...stats.get(id) }, points }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
 
 export async function checkInTask(req: AppRequest): Promise<Response> {
@@ -431,6 +524,7 @@ export async function checkInTask(req: AppRequest): Promise<Response> {
   }
 
   const { id } = req.params;
+  const { checked = true } = (req.body ?? {}) as { checked?: boolean };
   const db = new Database(req.env.DB);
 
   const task = await db.first<Task>(
@@ -446,31 +540,41 @@ export async function checkInTask(req: AppRequest): Promise<Response> {
   }
 
   const now = new Date().toISOString();
-  const wasCompleted = task.status === "COMPLETED";
-  await db.run(
-    `UPDATE "Task" SET status = 'IN_PROGRESS', updatedAt = ?1 WHERE id = ?2`,
-    [now, id],
+  const date = todayInCheckinZone();
+  const existing = await db.first<{ id: string }>(
+    'SELECT id FROM "TaskCheckIn" WHERE taskId = ?1 AND date = ?2',
+    [id, date],
   );
 
-  const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
-    id,
-  ]);
-  if (wasCompleted) {
-    // Re-opened: its +10 is withdrawn and its due day recalculated.
-    await removeTaskCompletedEvents(db, req.user.id, id);
-    const points = await refreshPoints(db, req.user.id, [
-      todayInCheckinZone(),
-      taskDueDay(task),
-    ]);
-    return new Response(JSON.stringify({ data: updated, points }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+  if (checked && !existing) {
+    // Exactly one check-in per task per day (unique on taskId+date).
+    await db.run(
+      `INSERT INTO "TaskCheckIn" (id, taskId, userId, date, checked, checkedAt, createdAt)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+      [crypto.randomUUID(), id, req.user.id, date, 1, now, now],
+    );
+    if (task.status === "TODO") {
+      await db.run(
+        `UPDATE "Task" SET status = 'IN_PROGRESS', updatedAt = ?1 WHERE id = ?2`,
+        [now, id],
+      );
+    }
+  } else if (!checked && existing) {
+    await db.run(
+      'DELETE FROM "TaskCheckIn" WHERE taskId = ?1 AND date = ?2',
+      [id, date],
+    );
   }
-  return new Response(JSON.stringify({ data: updated }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+
+  const updated = await db.first<Task>(
+    'SELECT * FROM "Task" WHERE id = ?1',
+    [id],
+  );
+  const stats = await taskCheckinStats(db, req.user.id, [id]);
+  return new Response(
+    JSON.stringify({ data: { ...(updated ?? task), ...stats.get(id) } }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
 }
 
 export async function extendTask(req: AppRequest): Promise<Response> {
