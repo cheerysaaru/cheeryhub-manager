@@ -4,7 +4,6 @@ import {
   Flame,
   CheckCircle2,
   Target,
-  Brain,
   Trophy,
   TrendingUp,
   TrendingDown,
@@ -14,7 +13,6 @@ import { useAnalytics } from "../hooks/useAnalytics";
 import { usePoints } from "../hooks/usePoints";
 import { useTasks } from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
-import { useFocus } from "../hooks/useFocus";
 import { Card } from "../components/Card";
 import { Progress } from "../components/Progress";
 import { Badge } from "../components/Badge";
@@ -43,21 +41,9 @@ export default function AnalyticsPage() {
     error: habitsError,
     fetchHabits,
   } = useHabits(user?.id ?? null, user?.timezone);
-  const {
-    sessions,
-    error: focusError,
-    fetchSessions,
-  } = useFocus(user?.id ?? null);
-  const error =
-    analyticsError ?? pointsError ?? tasksError ?? habitsError ?? focusError;
+  const error = analyticsError ?? pointsError ?? tasksError ?? habitsError;
   const retry = () =>
-    void Promise.all([
-      fetchAnalytics(),
-      refreshPoints(),
-      fetchTasks(),
-      fetchHabits(),
-      fetchSessions(),
-    ]);
+    void Promise.all([fetchAnalytics(), refreshPoints(), fetchTasks(), fetchHabits()]);
 
   const totalXP = points?.currentTotal ?? 0;
   const level = points?.level ?? 1;
@@ -66,9 +52,6 @@ export default function AnalyticsPage() {
   const toNextLevel = pointsNeeded - xpInLevel;
   const totalTasks = tasks.filter((t) => t.status === "COMPLETED").length;
   const totalHabits = habits.reduce((s, h) => s + h.completedDays, 0);
-  const totalFocus = sessions
-    .filter((s) => s.status === "COMPLETED")
-    .reduce((s, x) => s + x.durationMinutes, 0);
   const pointEvents = useMemo(() => points?.events ?? [], [points]);
   const recentPoints = useMemo(() => pointEvents.slice(0, 10), [pointEvents]);
   const breakdown = useMemo(() => pointsBreakdown(pointEvents), [pointEvents]);
@@ -137,17 +120,6 @@ export default function AnalyticsPage() {
               <strong>{totalTasks}</strong>
             </div>
             <p className="stat-desc">All time · {totalHabits} habit days</p>
-          </div>
-        </Card>
-        <Card padding="md">
-          <div className="stat-card">
-            <span className="stat-label">
-              <Brain size={16} /> Focus Minutes
-            </span>
-            <div className="stat-value-row">
-              <strong>{totalFocus}</strong>
-            </div>
-            <p className="stat-desc">Deep work total</p>
           </div>
         </Card>
       </div>
