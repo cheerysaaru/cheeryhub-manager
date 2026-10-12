@@ -229,6 +229,8 @@ export async function createTask(req: AppRequest): Promise<Response> {
     skillId,
     estimatedMinutes,
   } = req.body as CreateTaskPayload;
+  // The frontend sends a picked deadline as `dueAt`; older clients use `deadlineTime`.
+  const { dueAt: pickedDueAt } = req.body as { dueAt?: string };
 
   if (!title) {
     return new Response(
@@ -280,11 +282,11 @@ export async function createTask(req: AppRequest): Promise<Response> {
   }
   const taskId = crypto.randomUUID();
   const now = new Date().toISOString();
-  // Default 24-hour deadline if not specified
-  const defaultDueAt = scheduledDate
-    ? new Date(`${scheduledDate}T23:59:59.999Z`).toISOString()
-    : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  const dueAt = deadlineTime || defaultDueAt;
+  // Default deadline: exactly 24h from creation (add Mon 12:00 → due Tue 12:00).
+  const dueAt =
+    pickedDueAt ||
+    deadlineTime ||
+    new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await db.run(
     `INSERT INTO "Task" (id, userId, title, description, category, status, priority, scheduledDate, scheduledTime, deadlineTime, dueAt, recurrence, isMandatory, reminderEnabled, estimatedMinutes, goalId, skillId, createdAt, updatedAt)
