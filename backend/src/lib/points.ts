@@ -338,6 +338,16 @@ export async function evaluateGoals(
  * ended ("not completed by the end of that day"); commitment penalties apply
  * for past days and today.
  */
+/**
+ * Calculate escalating penalty for an overdue task.
+ * Penalty increases by 5 points per day overdue: -5, -10, -15, -20, ...
+ * Max penalty capped at -50 per day.
+ */
+function calculateOverduePenalty(daysOverdue: number): number {
+  const penalty = -5 * daysOverdue;
+  return Math.max(penalty, -50); // Cap at -50
+}
+
 export async function evaluateDay(
   db: Database,
   userId: string,
@@ -369,11 +379,14 @@ export async function evaluateDay(
         dayKey,
       });
     } else if (dayKey < today) {
+      // Calculate days overdue: how many days since the due day (excluding today)
+      const daysOverdue = Math.max(1, Math.floor((new Date(today).getTime() - new Date(dayKey).getTime()) / (1000 * 60 * 60 * 24)));
+      const penalty = calculateOverduePenalty(daysOverdue);
       await insertEvent(
         db,
         userId,
         "PENALTY",
-        POINTS_TASK_MISSED,
+        penalty,
         "TASK_MISSED",
         task.id,
         dayKey,

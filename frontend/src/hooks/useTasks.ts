@@ -3,6 +3,7 @@ import { api, asArray } from "../services/api";
 import { dedupe } from "../services/inflight";
 import type { Task } from "../types";
 import { useSocket } from "./useSocket";
+import { emit } from "../services/eventBus";
 
 function normalizeTask(input: Partial<Task> & { id: string }): Task {
   const task = (input ?? {}) as Partial<Task> & { id: string };
@@ -225,6 +226,8 @@ export function useTasks(userId: string | null) {
         setTasks((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...task } : t)),
         );
+        // Trigger streak refresh after successful completion
+        emit("task:completed", { taskId: id });
         return task;
       } catch (error) {
         setTasks((prev) => prev.map((t) => (t.id === id ? before : t)));

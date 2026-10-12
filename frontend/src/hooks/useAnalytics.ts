@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, asArray } from "../services/api";
 import { dedupe } from "../services/inflight";
 import { useSocket } from "./useSocket";
+import { on } from "../services/eventBus";
 import type { DailyStats } from "../types";
 
 export interface StreakInfo {
@@ -113,6 +114,9 @@ export function useAnalytics(userId: string | null) {
       }),
       on("task:updated", () => {
         void fetchStreaks().catch(reportError);
+      }),
+      on("task:completed", () => {
+        void fetchStreaks(true).catch(reportError);
       }),
     ];
     return () => {

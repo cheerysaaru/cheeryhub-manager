@@ -204,10 +204,15 @@ export async function createTask(req: AppRequest): Promise<Response> {
   }
   const taskId = crypto.randomUUID();
   const now = new Date().toISOString();
+  // Default 24-hour deadline if not specified
+  const defaultDueAt = scheduledDate
+    ? new Date(`${scheduledDate}T23:59:59.999Z`).toISOString()
+    : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const dueAt = deadlineTime || defaultDueAt;
 
   await db.run(
-    `INSERT INTO "Task" (id, userId, title, description, category, status, priority, scheduledDate, scheduledTime, deadlineTime, recurrence, isMandatory, reminderEnabled, estimatedMinutes, goalId, skillId, createdAt, updatedAt)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
+    `INSERT INTO "Task" (id, userId, title, description, category, status, priority, scheduledDate, scheduledTime, deadlineTime, dueAt, recurrence, isMandatory, reminderEnabled, estimatedMinutes, goalId, skillId, createdAt, updatedAt)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
     [
       taskId,
       session.userId,
@@ -219,6 +224,7 @@ export async function createTask(req: AppRequest): Promise<Response> {
       scheduledDate || null,
       scheduledTime || null,
       deadlineTime || null,
+      dueAt,
       "NONE",
       false,
       false,
