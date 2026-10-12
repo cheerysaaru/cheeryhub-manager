@@ -1,0 +1,39 @@
+{
+  "name": "cheeryhub-desktop",
+  "version": "1.0.1",
+  "description": "Cheeryhub Personal Productivity Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^32.0.1",
+    "electron-builder": "25.0.5"
+  },
+  "build": {
+    "appId": "com.cheeryhub.desktop",
+    "productName": "Cheeryhub",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "sign": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cheeryhub",
+      "include": "build/installer.nsh"
+    },
+    "electronDownload": {
+      "mirror": "https://github.com/electron/electron/releases/download"
+    }
+  },
+  "allowScripts": {
+    "electron": true
+  }
+}

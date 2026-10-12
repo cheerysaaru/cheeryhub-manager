@@ -680,6 +680,10 @@ async function handleRequest(
     Object.entries(corsHeaders).forEach(([key, value]) => {
       responseHeaders.set(key, value);
     });
+    // Prevent browser caching of API responses
+    responseHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    responseHeaders.set("Pragma", "no-cache");
+    responseHeaders.set("Expires", "0");
 
     return new Response(response.body, {
       status: response.status,
@@ -697,7 +701,12 @@ async function handleRequest(
       }),
       {
         status: friendly.status,
-        headers: corsHeaders,
+        headers: {
+          ...corsHeaders,
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0",
+        },
       },
     );
   }
@@ -709,7 +718,17 @@ async function handleRequest(
  * Legacy bodies (`{ error: "msg", code }`) are upgraded in place.
  */
 async function normalizeErrorResponse(response: Response): Promise<Response> {
-  if (response.status < 400) return response;
+  if (response.status < 400) {
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    newHeaders.set("Pragma", "no-cache");
+    newHeaders.set("Expires", "0");
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
+  }
   const headers = new Headers(response.headers);
   if (!headers.get("Content-Type")?.includes("application/json")) {
     return response;
@@ -734,7 +753,15 @@ async function normalizeErrorResponse(response: Response): Promise<Response> {
   try {
     parsed = JSON.parse(text);
   } catch {
-    return new Response(text, { status: response.status, headers });
+    return new Response(text, {
+      status: response.status,
+      headers: {
+        ...Object.fromEntries(response.headers.entries()),
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      },
+    });
   }
   if (
     parsed &&

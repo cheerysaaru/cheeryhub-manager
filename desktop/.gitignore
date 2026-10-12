@@ -1,0 +1,14 @@
+# Desktop app build artifacts
+node_modules/
+dist/
+out/
+*.log
+
+# Root .gitignore ignores build/; keep electron-builder installer assets
+!build/
+build/*
+!build/installer.nsh
+
+# IDE
+.vscode/
+.idea/
