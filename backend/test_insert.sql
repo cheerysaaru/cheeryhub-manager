@@ -1,0 +1,1 @@
+INSERT INTO User (id, name, email, passwordHash, timezone, createdAt, updatedAt) VALUES ('test-reg-1', 'Test User', 'test_reg@example.com', 'pbkdf2$100000$salt$hash', 'UTC', '2026-10-12T05:00:00.000Z', '2026-10-12T05:00:00.000Z');
