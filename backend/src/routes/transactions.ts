@@ -210,6 +210,18 @@ interface ReportRow {
   count: number;
 }
 
+interface CategoryRow {
+  category: string;
+  type: string;
+  total: number;
+}
+
+interface DailyRow {
+  date: string;
+  income: number | null;
+  expense: number | null;
+}
+
 export async function weeklyReport(req: AppRequest): Promise<Response> {
   if (!req.user) return unauthorized();
   try {
@@ -222,22 +234,76 @@ export async function weeklyReport(req: AppRequest): Promise<Response> {
     );
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
-    const row = await db.first<ReportRow>(
-      `SELECT
-         SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) as totalIncome,
-         SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) as totalExpense,
-         COUNT(*) as count
-       FROM "Transaction"
-       WHERE userId = ?1 AND date >= ?2 AND date < ?3`,
-      [req.user.id, weekStart.toISOString(), weekEnd.toISOString()],
-    );
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const [weekRow, weekTransactions, monthRow, monthByCategory] = await Promise.all([
+      db.first<ReportRow>(
+        `SELECT
+           SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) as totalIncome,
+           SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) as totalExpense,
+           COUNT(*) as count
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3`,
+        [req.user.id, weekStart.toISOString(), weekEnd.toISOString()],
+      ),
+      db.all<Transaction>(
+        `SELECT id, userId, type, category, amount, description, source, date, isRecurring, recurrencePattern, createdAt, updatedAt
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3
+         ORDER BY date DESC, createdAt DESC`,
+        [req.user.id, weekStart.toISOString(), weekEnd.toISOString()],
+      ),
+      db.first<ReportRow>(
+        `SELECT
+           SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) as totalIncome,
+           SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) as totalExpense,
+           COUNT(*) as count
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3`,
+        [req.user.id, monthStart.toISOString(), monthEnd.toISOString()],
+      ),
+      db.all<CategoryRow>(
+        `SELECT category, type, SUM(amount) as total
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3
+         GROUP BY category, type
+         ORDER BY total DESC`,
+        [req.user.id, monthStart.toISOString(), monthEnd.toISOString()],
+      ),
+    ]);
+
+    const monthIncomeByCategory: Record<string, number> = {};
+    const monthExpenseByCategory: Record<string, number> = {};
+    for (const cat of monthByCategory) {
+      if (cat.type === "INCOME") monthIncomeByCategory[cat.category] = cat.total;
+      else monthExpenseByCategory[cat.category] = cat.total;
+    }
+
     return ok({
-      totalIncome: row?.totalIncome ?? 0,
-      totalExpense: row?.totalExpense ?? 0,
-      net: (row?.totalIncome ?? 0) - (row?.totalExpense ?? 0),
-      count: row?.count ?? 0,
-      start: weekStart.toISOString().split("T")[0],
-      end: weekEnd.toISOString().split("T")[0],
+      period: {
+        weekStart: weekStart.toISOString().split("T")[0],
+        weekEnd: weekEnd.toISOString().split("T")[0],
+        monthStart: monthStart.toISOString().split("T")[0],
+        monthEnd: monthEnd.toISOString().split("T")[0],
+      },
+      weekly: {
+        income: weekRow?.totalIncome ?? 0,
+        expense: weekRow?.totalExpense ?? 0,
+        net: (weekRow?.totalIncome ?? 0) - (weekRow?.totalExpense ?? 0),
+        count: weekRow?.count ?? 0,
+        transactions: weekTransactions ?? [],
+      },
+      monthly: {
+        income: monthRow?.totalIncome ?? 0,
+        expense: monthRow?.totalExpense ?? 0,
+        net: (monthRow?.totalIncome ?? 0) - (monthRow?.totalExpense ?? 0),
+        count: monthRow?.count ?? 0,
+        byCategory: {
+          income: monthIncomeByCategory,
+          expense: monthExpenseByCategory,
+        },
+      },
     });
   } catch (error) {
     console.error("Error generating weekly report:", error);
@@ -260,35 +326,77 @@ export async function monthlyReport(req: AppRequest): Promise<Response> {
     );
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 1);
-    const row = await db.first<ReportRow>(
-      `SELECT
-         SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) as totalIncome,
-         SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) as totalExpense,
-         COUNT(*) as count
-       FROM "Transaction"
-       WHERE userId = ?1 AND date >= ?2 AND date < ?3`,
-      [req.user.id, start.toISOString(), end.toISOString()],
-    );
-    const byCategory = await db.all<{
-      category: string;
-      type: string;
-      total: number;
-    }>(
-      `SELECT category, type, SUM(amount) as total
-       FROM "Transaction"
-       WHERE userId = ?1 AND date >= ?2 AND date < ?3
-       GROUP BY category, type
-       ORDER BY total DESC`,
-      [req.user.id, start.toISOString(), end.toISOString()],
-    );
+
+    const [summaryRow, byCategory, byDay, transactions] = await Promise.all([
+      db.first<ReportRow>(
+        `SELECT
+           SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) as totalIncome,
+           SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) as totalExpense,
+           COUNT(*) as count
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3`,
+        [req.user.id, start.toISOString(), end.toISOString()],
+      ),
+      db.all<CategoryRow>(
+        `SELECT category, type, SUM(amount) as total
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3
+         GROUP BY category, type
+         ORDER BY total DESC`,
+        [req.user.id, start.toISOString(), end.toISOString()],
+      ),
+      db.all<DailyRow>(
+        `SELECT
+           date,
+           SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) as income,
+           SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) as expense
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3
+         GROUP BY date
+         ORDER BY date ASC`,
+        [req.user.id, start.toISOString(), end.toISOString()],
+      ),
+      db.all<Transaction>(
+        `SELECT id, userId, type, category, amount, description, source, date, isRecurring, recurrencePattern, createdAt, updatedAt
+         FROM "Transaction"
+         WHERE userId = ?1 AND date >= ?2 AND date < ?3
+         ORDER BY date DESC, createdAt DESC`,
+        [req.user.id, start.toISOString(), end.toISOString()],
+      ),
+    ]);
+
+    const incomeByCategory: Record<string, number> = {};
+    const expenseByCategory: Record<string, number> = {};
+    for (const cat of byCategory) {
+      if (cat.type === "INCOME") incomeByCategory[cat.category] = cat.total;
+      else expenseByCategory[cat.category] = cat.total;
+    }
+
+    const byDayFormatted = byDay.map((d) => ({
+      date: d.date,
+      income: d.income ?? 0,
+      expense: d.expense ?? 0,
+    }));
+
     return ok({
-      year,
-      month,
-      totalIncome: row?.totalIncome ?? 0,
-      totalExpense: row?.totalExpense ?? 0,
-      net: (row?.totalIncome ?? 0) - (row?.totalExpense ?? 0),
-      count: row?.count ?? 0,
-      byCategory,
+      period: {
+        year,
+        month,
+        monthStart: start.toISOString().split("T")[0],
+        monthEnd: end.toISOString().split("T")[0],
+      },
+      summary: {
+        income: summaryRow?.totalIncome ?? 0,
+        expense: summaryRow?.totalExpense ?? 0,
+        net: (summaryRow?.totalIncome ?? 0) - (summaryRow?.totalExpense ?? 0),
+        count: summaryRow?.count ?? 0,
+      },
+      byCategory: {
+        income: incomeByCategory,
+        expense: expenseByCategory,
+      },
+      byDay: byDayFormatted,
+      transactions: transactions ?? [],
     });
   } catch (error) {
     console.error("Error generating monthly report:", error);
