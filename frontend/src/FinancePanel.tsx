@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Plus,
   Trash2,
-  DollarSign,
   ArrowUpRight,
   ArrowDownRight,
   ChevronLeft,
@@ -372,15 +371,15 @@ function ReportCard({
       </div>
       <div className="report-summary">
         <div className="report-value income">
-          <DollarSign size={20} /> <span>{formatCurrency(income)}</span>
+          <span>{formatCurrency(income)}</span>
         </div>
         <div className="report-value expense">
-          <DollarSign size={20} /> <span>{formatCurrency(expense)}</span>
+          <span>{formatCurrency(expense)}</span>
         </div>
         <div
           className={`report-value net ${net >= 0 ? "positive" : "negative"}`}
         >
-          <DollarSign size={20} /> <span>{formatCurrency(net)}</span>
+          <span>{formatCurrency(net)}</span>
         </div>
       </div>
       {children}

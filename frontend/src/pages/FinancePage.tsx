@@ -4,7 +4,6 @@ import {
   Trash2,
   Pencil,
   Download,
-  DollarSign,
   ArrowUpRight,
   ArrowDownRight,
   ChevronLeft,
@@ -281,15 +280,15 @@ function ReportCard({
       </div>
       <div className="report-summary">
         <div className="report-value income">
-          <DollarSign size={18} /> {formatCurrency(income)}
+          {formatCurrency(income)}
         </div>
         <div className="report-value expense">
-          <DollarSign size={18} /> {formatCurrency(expense)}
+          {formatCurrency(expense)}
         </div>
         <div
           className={`report-value net ${net >= 0 ? "positive" : "negative"}`}
         >
-          <DollarSign size={18} /> {formatCurrency(net)}
+          {formatCurrency(net)}
         </div>
       </div>
       {children}
@@ -522,7 +521,6 @@ export default function FinancePage() {
           <div className="page-loading">Loading transactions…</div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
-            <DollarSign size={32} />
             <strong>No transactions yet</strong>
             <p>Add your first transaction above.</p>
           </div>
