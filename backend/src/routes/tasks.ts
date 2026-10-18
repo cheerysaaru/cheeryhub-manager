@@ -504,6 +504,89 @@ export async function completeTask(req: AppRequest): Promise<Response> {
     taskDueDay(task),
   ]);
 
+  // --- NEW: Update linked goal progress & skill level ---
+  if (task.goalId) {
+    // Recalculate goal progress from milestones
+    const milestones = await db.all<{
+      id: string;
+      completed: boolean;
+    }>(
+      `SELECT id, completed FROM "GoalMilestone" WHERE goalId = ?1`,
+      [task.goalId],
+    );
+    const completedCount = milestones.filter((m) => m.completed).length;
+    const total = milestones.length;
+    const newProgress =
+      total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+    await db.run(
+      `UPDATE "Goal" SET progress = ?1, updatedAt = ?2 WHERE id = ?3`,
+      [newProgress, now, task.goalId],
+    );
+
+    // If goal just reached 100%, auto-complete & award achievements/skills
+    if (newProgress === 100) {
+      // Fetch goal details
+      const goal = await db.first<{
+        id: string;
+        title: string;
+        description: string | null;
+        deadline: string | null;
+        status: string;
+      }>(
+        `SELECT id, title, description, deadline, status FROM "Goal" WHERE id = ?1`,
+        [task.goalId],
+      );
+
+      // Award goal completion points (on-time if deadline not passed)
+      const onTime =
+        !goal?.deadline ||
+        goal.deadline.slice(0, 10) >= now.slice(0, 10);
+      if (onTime) {
+        await recordTaskCompleted(db, req.user.id, id, new Date(now)); // reuse
+      }
+
+      // --- Skill leveling: if goal has a skillId, level up that skill ---
+      if (task.skillId) {
+        const skill = await db.first<{
+          id: string;
+          name: string;
+          currentLevel: number;
+          targetLevel: number;
+          progress: number;
+        }>(
+          `SELECT id, name, currentLevel, targetLevel, progress FROM "Skill" WHERE id = ?1 AND userId = ?2`,
+          [task.skillId, req.user.id],
+        );
+        if (skill) {
+          const newLevel = skill.currentLevel + 1;
+          const newProgress = skill.progress; // reset carries over conceptually
+          await db.run(
+            `UPDATE "Skill" SET currentLevel = ?1, progress = ?2, updatedAt = ?3 WHERE id = ?4`,
+            [newLevel, 0, now, task.skillId],
+          );
+          // Award XP for leveling up
+          await db.run(
+            `INSERT INTO "PointEvent" (id, userId, type, amount, reason, sourceId, dayKey, createdAt)
+             VALUES (?1, ?2, 'skill_level_up', ?3, ?4, ?5, ?6, ?7)`,
+            [crypto.randomUUID(), req.user.id, 50, "Skill level up", task.skillId, now.slice(0, 10), now],
+          );
+        }
+      }
+
+      // --- Achievement: Goal completed ---
+      const achievementKey = `goals_1`; // could be dynamic based on goal count
+      await db.run(
+        `INSERT INTO "Achievement" (id, userId, key, name, description, icon, unlockedAt, createdAt)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+        [crypto.randomUUID(), req.user.id, achievementKey, "Goal Completed",
+          `Completed goal: ${goal?.title || ""}`, "/icons/star.svg", now, now],
+      ).catch(() => {
+        // Idempotent: may already exist; ignore unique-constraint error.
+      });
+    }
+  }
+
   const updated = await db.first<Task>('SELECT * FROM "Task" WHERE id = ?1', [
     id,
   ]);

@@ -7,9 +7,13 @@ import {
   RotateCcw,
   Trash2,
   X,
+  Server,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useGoals } from "../hooks/useGoals";
+import { useSkills } from "../hooks/useSkills";
 import { useTasks } from "../hooks/useTasks";
 import { useToast } from "../components/Toast";
 import { Button } from "../components/Button";
@@ -21,7 +25,7 @@ import { DeadlinePicker } from "../components/DeadlinePicker";
 import { ContextMenu, useContextMenu } from "../components/ContextMenu";
 import { formatShortDate, todayISO } from "../utils/date";
 import { formatDeadline } from "../utils/deadline";
-import type { Task } from "../types";
+import type { Goal, Skill, Task } from "../types";
 
 type Tab = "active" | "trash";
 
@@ -48,6 +52,8 @@ export default function TasksPage() {
     markNotCompleted,
     extend: extendTask,
   } = useTasks(user?.id ?? null);
+  const { goals, error: goalsError, fetchGoals } = useGoals(user?.id ?? null);
+  const { skills, error: skillsError, fetchSkills } = useSkills(user?.id ?? null);
 
   const [tab, setTab] = useState<Tab>("active");
   const [title, setTitle] = useState("");
@@ -59,6 +65,14 @@ export default function TasksPage() {
   const [purgeTarget, setPurgeTarget] = useState<Task | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const taskMenu = useContextMenu();
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+
+  // Fetch goals and skills for task creation dropdowns
+  useEffect(() => {
+    void fetchGoals();
+    void fetchSkills();
+  }, [fetchGoals, fetchSkills]);
 
   const activeTasks = useMemo(
     () => tasks.filter((t) => t.status !== "ARCHIVED" && !t.deletedAt),
@@ -98,9 +112,13 @@ export default function TasksPage() {
         scheduledDate: todayISO(),
         priority: "MEDIUM",
         dueAt: dueAt ?? undefined,
+        goalId: selectedGoal?.id || undefined,
+        skillId: selectedSkill?.id || undefined,
       });
       setTitle("");
       setDueAt(null);
+      setSelectedGoal(null);
+      setSelectedSkill(null);
       toast({
         type: "success",
         title: "Task added",
@@ -279,6 +297,34 @@ export default function TasksPage() {
                 >
                   <CalendarClock size={18} />
                 </button>
+              </div>
+              <div className="task-select-wrap">
+                <select
+                  value={selectedGoal?.id ?? ""}
+                  onChange={(e) => setSelectedGoal(goals.find((g) => g.id === e.target.value) ?? null)}
+                  className="select"
+                  disabled={fetchGoals.isPending}
+                >
+                  <option value="">Select a goal (optional)</option>
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedSkill?.id ?? ""}
+                  onChange={(e) => setSelectedSkill(skills.find((s) => s.id === e.target.value) ?? null)}
+                  className="select"
+                  disabled={fetchSkills.isPending}
+                >
+                  <option value="">Select a skill (optional)</option>
+                  {skills.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <Button type="submit" size="md" loading={creating}>
                 <Plus size={18} /> Add Task
