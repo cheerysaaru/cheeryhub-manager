@@ -8,6 +8,7 @@ import {
   BarChart2,
   Briefcase,
   Shield,
+  Map,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ROUTES } from "../routes";
@@ -27,6 +28,7 @@ export const navItems: NavItem[] = [
   { path: ROUTES.dashboard, label: "Dashboard", icon: Home },
   { path: ROUTES.goals, label: "Goals", icon: Target },
   { path: ROUTES.skills, label: "Skills", icon: Trophy },
+  { path: ROUTES.roadmaps, label: "Roadmaps", icon: Map },
   { path: ROUTES.achievements, label: "Achievements", icon: Award },
   { path: ROUTES.analytics, label: "Analytics", icon: BarChart2 },
   { path: ROUTES.brand, label: "Brand", icon: Briefcase },

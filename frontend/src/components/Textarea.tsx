@@ -20,23 +20,19 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           ref={ref}
           id={textareaId}
-          className={`textarea ${error ? "input-error" : ""} ${className}`}
+          className={`textarea ${error ? "textarea-error" : ""} ${className}`}
           aria-invalid={error ? "true" : "false"}
           aria-describedby={
             error
               ? `${textareaId}-error`
               : helperText
-                ? `${textareaId}-helper`
-                : undefined
+              ? `${textareaId}-helper`
+              : undefined
           }
           {...props}
         />
         {error && (
-          <p
-            id={`${textareaId}-error`}
-            className="input-error-text"
-            role="alert"
-          >
+          <p id={`${textareaId}-error`} className="input-error-text" role="alert">
             {error}
           </p>
         )}

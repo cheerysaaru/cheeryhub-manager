@@ -20,6 +20,7 @@ const TasksPage = lazy(() => import("./pages/TasksPage"));
 const CommitmentsPage = lazy(() => import("./pages/CommitmentsPage"));
 const GoalsPage = lazy(() => import("./pages/GoalsPage"));
 const SkillsPage = lazy(() => import("./pages/SkillsPage"));
+const RoadmapsPage = lazy(() => import("./pages/RoadmapsPage"));
 const ArchivedmentsPage = lazy(() => import("./pages/ArchivedmentsPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const BrandPage = lazy(() => import("./pages/BrandPage"));
@@ -157,14 +158,22 @@ function App() {
               </TabErrorBoundary>
             }
           />
-          <Route
-            path="/skills"
-            element={
-              <TabErrorBoundary name="Skills">
-                <SkillsPage />
-              </TabErrorBoundary>
-            }
-          />
+           <Route
+             path="/skills"
+             element={
+               <TabErrorBoundary name="Skills">
+                 <SkillsPage />
+               </TabErrorBoundary>
+             }
+           />
+           <Route
+             path="/roadmaps"
+             element={
+               <TabErrorBoundary name="Roadmaps">
+                 <RoadmapsPage />
+               </TabErrorBoundary>
+             }
+           />
           <Route
             path="/achievements"
             element={

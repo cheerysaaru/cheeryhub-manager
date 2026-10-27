@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 
-// AUTO-GENERATED from backend/migrations/*.sql (0001-0007) + 0006 additions.
+// AUTO-GENERATED from backend/migrations/*.sql (0001-0007) + additions.
 // Idempotent schema bootstrap: run once per isolate on cold start so the
 // deployed worker is correct even when the D1 migration step could not run.
 export const CREATE_TABLES = [
@@ -8,7 +8,7 @@ export const CREATE_TABLES = [
   'CREATE TABLE IF NOT EXISTS "UserSettings" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "wakeUpTime" TEXT NOT NULL DEFAULT \'07:00\',     "sleepTime" TEXT NOT NULL DEFAULT \'22:30\',     "breakfastTime" TEXT NOT NULL DEFAULT \'08:00\',     "lunchTime" TEXT NOT NULL DEFAULT \'12:30\',     "dinnerTime" TEXT NOT NULL DEFAULT \'18:30\',     "defaultFocusDuration" INTEGER NOT NULL DEFAULT 25,     "defaultBreakDuration" INTEGER NOT NULL DEFAULT 5,     "notificationsEnabled" BOOLEAN NOT NULL DEFAULT true,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "UserSettings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Task" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "title" TEXT NOT NULL,     "description" TEXT,     "category" TEXT,     "priority" TEXT NOT NULL DEFAULT \'MEDIUM\',     "status" TEXT NOT NULL DEFAULT \'TODO\',     "scheduledDate" DATETIME,     "scheduledTime" TEXT,     "deadlineTime" TEXT,     "timerStartedAt" DATETIME,     "recurrence" TEXT NOT NULL DEFAULT \'NONE\',     "isMandatory" BOOLEAN NOT NULL DEFAULT false,     "reminderEnabled" BOOLEAN NOT NULL DEFAULT false,     "estimatedMinutes" INTEGER,     "completedAt" DATETIME,     "deletedAt" DATETIME,     "goalId" TEXT,     "skillId" TEXT,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Task_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,     CONSTRAINT "Task_goalId_fkey" FOREIGN KEY ("goalId") REFERENCES "Goal" ("id") ON DELETE SET NULL ON UPDATE CASCADE,     CONSTRAINT "Task_skillId_fkey" FOREIGN KEY ("skillId") REFERENCES "Skill" ("id") ON DELETE SET NULL ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Habit" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "description" TEXT,     "frequency" TEXT NOT NULL,     "active" BOOLEAN NOT NULL DEFAULT true,     "deletedAt" DATETIME,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Habit_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
-  'CREATE TABLE IF NOT EXISTS "HabitCompletion" (     "id" TEXT NOT NULL PRIMARY KEY,     "habitId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "date" DATETIME NOT NULL,     "status" TEXT NOT NULL DEFAULT \'COMPLETED\',     "completedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "HabitCompletion_habitId_fkey" FOREIGN KEY ("habitId") REFERENCES "Habit" ("id") ON DELETE CASCADE ON UPDATE CASCADE,     CONSTRAINT "HabitCompletion_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE TABLE IF NOT EXISTS "HabitCompletion" (     "id" TEXT NOT NULL PRIMARY KEY,     "habitId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "date" DATETIME NOT NULL,     "status" TEXT NOT NULL DEFAULT \'COMPLETED\',     "completedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "HabitCompletion_habitId_fkey" FOREIGN KEY ("habitId") REFERENCES "Habit" ("id") ON DELETE CASCADE ON UPDATE CASCADE,     CONSTRAINT "HabitCompletion_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Goal" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "title" TEXT NOT NULL,     "description" TEXT,     "progress" INTEGER NOT NULL DEFAULT 0,     "deadline" DATETIME,     "status" TEXT NOT NULL DEFAULT \'ACTIVE\',     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Goal_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "GoalMilestone" (     "id" TEXT NOT NULL PRIMARY KEY,     "goalId" TEXT NOT NULL,     "title" TEXT NOT NULL,     "description" TEXT,     "completed" BOOLEAN NOT NULL DEFAULT false,     "completedAt" DATETIME,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "GoalMilestone_goalId_fkey" FOREIGN KEY ("goalId") REFERENCES "Goal" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Skill" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "currentLevel" INTEGER NOT NULL DEFAULT 1,     "targetLevel" INTEGER NOT NULL DEFAULT 5,     "progress" INTEGER NOT NULL DEFAULT 0,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Skill_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
@@ -25,120 +25,88 @@ export const CREATE_TABLES = [
   'CREATE TABLE IF NOT EXISTS "HabitDayEvent" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "habitId" TEXT NOT NULL,     "date" DATETIME NOT NULL,     "fromStatus" TEXT,     "toStatus" TEXT NOT NULL,     "pointsDelta" INTEGER NOT NULL DEFAULT 0,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "HabitDayEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,     CONSTRAINT "HabitDayEvent_habitId_fkey" FOREIGN KEY ("habitId") REFERENCES "Habit" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Notification" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "type" TEXT NOT NULL,     "title" TEXT NOT NULL,     "body" TEXT,     "link" TEXT,     "readAt" DATETIME,     "dedupeKey" TEXT NOT NULL,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "Achievement" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL, "key" TEXT NOT NULL, "name" TEXT NOT NULL, "description" TEXT, "icon" TEXT, "unlockedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "Achievement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE)',
-  // Migration 0007_achievement_unique_key: one row per (user, key) so an
-  // unlock (and its XP) can only ever be recorded once.
   'CREATE UNIQUE INDEX IF NOT EXISTS "Achievement_userId_key_key" ON "Achievement"("userId", "key")',
   'CREATE INDEX IF NOT EXISTS "Achievement_userId_idx" ON "Achievement"("userId")',
-  // Points ledger (migration 0006_point_events). The unique index is the
-  // idempotency guarantee: the same event can never be counted twice.
   'CREATE TABLE IF NOT EXISTS "PointEvent" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "type" TEXT NOT NULL,     "amount" INTEGER NOT NULL,     "reason" TEXT NOT NULL,     "sourceId" TEXT NOT NULL,     "dayKey" TEXT NOT NULL,     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,     CONSTRAINT "PointEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE UNIQUE INDEX IF NOT EXISTS "PointEvent_userId_reason_sourceId_dayKey_key" ON "PointEvent"("userId", "reason", "sourceId", "dayKey")',
   'CREATE INDEX IF NOT EXISTS "PointEvent_userId_dayKey_idx" ON "PointEvent"("userId", "dayKey")',
+// Roadmap tables (migration 0008)
+  'CREATE TABLE IF NOT EXISTS "Roadmap" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "title" TEXT NOT NULL,     "description" TEXT,     "totalDays" INTEGER NOT NULL,     "skillId" TEXT,     "goalId" TEXT,     "completed" BOOLEAN NOT NULL DEFAULT false,     "completedAt" DATETIME,     "createdAt" DATETIME NOT NULL,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Roadmap_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE TABLE IF NOT EXISTS "RoadmapDay" (     "id" TEXT NOT NULL PRIMARY KEY,     "roadmapId" TEXT NOT NULL,     "dayNumber" INTEGER NOT NULL,     "learnTopic" TEXT NOT NULL,     "buildTask" TEXT NOT NULL,     "whatILearned" TEXT,     "completed" BOOLEAN NOT NULL DEFAULT false,     "completedAt" DATETIME,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "RoadmapDay_roadmapId_fkey" FOREIGN KEY ("roadmapId") REFERENCES "Roadmap" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE INDEX IF NOT EXISTS "Roadmap_userId_idx" ON "Roadmap"("userId")',
+  'CREATE INDEX IF NOT EXISTS "RoadmapDay_roadmapId_idx" ON "RoadmapDay"("roadmapId")',
 ];
 
 export const ADD_COLUMNS = [
-  {
-    table: "User",
-    column: "passwordChangedAt",
-    ddl: 'ALTER TABLE "User" ADD COLUMN "passwordChangedAt" DATETIME',
-  },
-  {
-    table: "Task",
-    column: "dueAt",
-    ddl: 'ALTER TABLE "Task" ADD COLUMN "dueAt" DATETIME',
-  },
-  {
-    table: "Task",
-    column: "extendedAt",
-    ddl: 'ALTER TABLE "Task" ADD COLUMN "extendedAt" DATETIME',
-  },
-  {
-    table: "Task",
-    column: "startAt",
-    ddl: 'ALTER TABLE "Task" ADD COLUMN "startAt" DATETIME',
-  },
-  {
-    table: "XPTransaction",
-    column: "dedupeKey",
-    ddl: 'ALTER TABLE "XPTransaction" ADD COLUMN "dedupeKey" TEXT',
-  },
-  {
-    table: "Habit",
-    column: "title",
-    ddl: 'ALTER TABLE "Habit" ADD COLUMN "title" TEXT',
-  },
-  {
-    table: "Habit",
-    column: "targetDays",
-    ddl: 'ALTER TABLE "Habit" ADD COLUMN "targetDays" INTEGER NOT NULL DEFAULT 7',
-  },
-  {
-    table: "Goal",
-    column: "targetDate",
-    ddl: 'ALTER TABLE "Goal" ADD COLUMN "targetDate" DATETIME',
-  },
-  {
-    table: "Goal",
-    column: "deadline",
-    ddl: 'ALTER TABLE "Goal" ADD COLUMN "deadline" DATETIME',
-  },
-  {
-    table: "Skill",
-    column: "level",
-    ddl: 'ALTER TABLE "Skill" ADD COLUMN "level" INTEGER NOT NULL DEFAULT 1',
-  },
-  {
-    table: "Skill",
-    column: "description",
-    ddl: 'ALTER TABLE "Skill" ADD COLUMN "description" TEXT',
-  },
+  { table: "User", column: "passwordChangedAt", ddl: 'ALTER TABLE "User" ADD COLUMN "passwordChangedAt" DATETIME' },
+  { table: "Task", column: "dueAt", ddl: 'ALTER TABLE "Task" ADD COLUMN "dueAt" DATETIME' },
+  { table: "Task", column: "extendedAt", ddl: 'ALTER TABLE "Task" ADD COLUMN "extendedAt" DATETIME' },
+  { table: "Task", column: "startAt", ddl: 'ALTER TABLE "Task" ADD COLUMN "startAt" DATETIME' },
+  { table: "XPTransaction", column: "dedupeKey", ddl: 'ALTER TABLE "XPTransaction" ADD COLUMN "dedupeKey" TEXT' },
+  { table: "Habit", column: "title", ddl: 'ALTER TABLE "Habit" ADD COLUMN "title" TEXT' },
+  { table: "Habit", column: "targetDays", ddl: 'ALTER TABLE "Habit" ADD COLUMN "targetDays" INTEGER NOT NULL DEFAULT 7' },
+  { table: "Goal", column: "targetDate", ddl: 'ALTER TABLE "Goal" ADD COLUMN "targetDate" DATETIME' },
+  { table: "Goal", column: "deadline", ddl: 'ALTER TABLE "Goal" ADD COLUMN "deadline" DATETIME' },
+  { table: "Skill", column: "level", ddl: 'ALTER TABLE "Skill" ADD COLUMN "level" INTEGER NOT NULL DEFAULT 1' },
+  { table: "Skill", column: "description", ddl: 'ALTER TABLE "Skill" ADD COLUMN "description" TEXT' },
+  // New columns from recent features
+  { table: "Goal", column: "keywords", ddl: 'ALTER TABLE "Goal" ADD COLUMN "keywords" TEXT' },
+  { table: "HabitCompletion", column: "createdAt", ddl: 'ALTER TABLE "HabitCompletion" ADD COLUMN "createdAt" DATETIME' },
 ];
 
 let bootstrapped: Promise<void> | null = null;
 
-export function ensureSchema(db: D1Database): Promise<void> {
+async function columnExists(db: D1Database, table: string, column: string): Promise<boolean> {
+  const result = await db.prepare(`PRAGMA table_info("${table}")`).all();
+  const rows = (result.results ?? []) as any[];
+  return rows.some((r) => r.name === column);
+}
+
+export async function ensureSchema(db: D1Database): Promise<void> {
   if (!bootstrapped) {
     bootstrapped = (async () => {
-      const allDdl = [
-        "PRAGMA foreign_keys = OFF",
-        ...CREATE_TABLES,
-        ...ADD_COLUMNS.map(({ ddl }) => ddl),
-      ];
       try {
-        // Single atomic batch: FK enforcement off during creation lets child
-        // tables be created before their parents in one pass.
-        await db.batch([
-          ...allDdl.map((ddl) => db.prepare(ddl)),
-          db.prepare(
-            'UPDATE "Habit" SET "title" = "name" WHERE "title" IS NULL',
-          ),
-          db.prepare("PRAGMA foreign_keys = ON"),
-        ]);
-      } catch (batchError) {
-        console.error(
-          "[bootstrap] batch failed; retrying per-statement",
-          batchError,
-        );
-        for (const ddl of allDdl) {
-          try {
+      // Create tables first
+      for (const ddl of CREATE_TABLES) {
+        await db.prepare(ddl).run();
+      }
+
+      // Add missing columns with PRAGMA check
+      for (const { table, column, ddl } of ADD_COLUMNS) {
+        try {
+          const exists = await columnExists(db, table, column);
+          if (!exists) {
             await db.prepare(ddl).run();
-          } catch (error) {
-            console.error(
-              "[bootstrap] statement failed",
-              ddl.slice(0, 48),
-              error,
-            );
+          }
+        } catch (error) {
+          // Treat "duplicate column name" as success
+          const msg = error instanceof Error ? error.message : String(error);
+          if (!/duplicate column|already exists/i.test(msg)) {
+            console.error("[bootstrap] column failed", table, column, msg);
           }
         }
-        try {
-          await db
-            .prepare(
-              'UPDATE "Habit" SET "title" = "name" WHERE "title" IS NULL',
-            )
-            .run();
-        } catch {
-          /* ignore */
-        }
+      }
+
+      // Backfill HabitCompletion.createdAt where null
+      try {
+        await db.prepare(`UPDATE "HabitCompletion" SET "createdAt" = "completedAt" WHERE "createdAt" IS NULL`).run();
+      } catch {
+        /* ignore */
+      }
+
+      // Backfill Habit.title from name where null
+      try {
+        await db.prepare(`UPDATE "Habit" SET "title" = "name" WHERE "title" IS NULL`).run();
+      } catch {
+        /* ignore */
+      }
+
+      await db.prepare("PRAGMA foreign_keys = ON").run();
+
+      console.log("[bootstrap] schema ready");
+      } catch (err) {
+        bootstrapped = null;
+        throw err;
       }
     })();
   }

@@ -13,6 +13,7 @@ import * as tasksRoutes from "./routes/tasks";
 import * as habitsRoutes from "./routes/habits";
 import * as goalsRoutes from "./routes/goals";
 import * as skillsRoutes from "./routes/skills";
+import * as roadmapsRoutes from "./routes/roadmaps";
 import * as notificationsRoutes from "./routes/notifications";
 import * as remindersRoutes from "./routes/reminders";
 import * as transactionsRoutes from "./routes/transactions";
@@ -445,6 +446,40 @@ async function handleRequest(
         response = await skillsRoutes.listSkills(appReq);
       } else if (pathname === "/api/skills" && request.method === "POST") {
         response = await skillsRoutes.createSkill(appReq);
+      } else if (pathname === "/api/roadmaps" && request.method === "GET") {
+        response = await roadmapsRoutes.listRoadmaps(appReq);
+      } else if (pathname === "/api/roadmaps" && request.method === "POST") {
+        response = await roadmapsRoutes.createRoadmap(appReq);
+      } else if (
+        pathname.match(/^\/api\/roadmaps\/[^/]+$/) &&
+        request.method === "GET"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await roadmapsRoutes.getRoadmap(appReq);
+      } else if (
+        pathname.match(/^\/api\/roadmaps\/[^/]+\/days\/[^/]+\/complete$/) &&
+        (request.method === "POST" || request.method === "PATCH")
+      ) {
+        const id = pathname.split("/")[3];
+        const dayId = pathname.split("/")[5];
+        appReq.params.id = id;
+        appReq.params.dayId = dayId;
+        response = await roadmapsRoutes.completeRoadmapDay(appReq);
+      } else if (
+        pathname.match(/^\/api\/roadmaps\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await roadmapsRoutes.deleteRoadmap(appReq);
+      } else if (
+        pathname.match(/^\/api\/roadmaps\/[^/]+$/) &&
+        request.method === "PATCH"
+      ) {
+        const id = pathname.split("/")[3];
+        appReq.params.id = id;
+        response = await roadmapsRoutes.updateRoadmap(appReq);
       } else if (pathname === "/api/settings" && request.method === "GET") {
         response = await settingsRoutes.getSettings(appReq);
       } else if (pathname === "/api/settings" && request.method === "PUT") {

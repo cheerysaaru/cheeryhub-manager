@@ -113,6 +113,13 @@ export class Database {
     await (params ? stmt.bind(...params) : stmt).run();
   }
 
+  async batch(queries: Array<{ sql: string; params: unknown[] }>): Promise<void> {
+    const batch = this.db.batch(
+      queries.map((q) => this.db.prepare(q.sql).bind(...q.params))
+    );
+    await batch;
+  }
+
   async exec(query: string): Promise<void> {
     await this.db.exec(query);
   }

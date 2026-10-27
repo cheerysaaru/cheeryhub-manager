@@ -1,26 +1,21 @@
 import { SelectHTMLAttributes, forwardRef } from "react";
+import { ChevronDown } from "lucide-react";
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
   helperText?: string;
-  options: Array<{ value: string; label: string }>;
+  options: SelectOption[];
+  placeholder?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  (
-    {
-      label,
-      error,
-      helperText,
-      options,
-      className = "",
-      id,
-      children,
-      ...props
-    },
-    ref,
-  ) => {
+  ({ label, error, helperText, options, placeholder, className = "", id, ...props }, ref) => {
     const selectId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
     return (
@@ -30,27 +25,34 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             {label}
           </label>
         )}
-        <select
-          ref={ref}
-          id={selectId}
-          className={`select ${error ? "input-error" : ""} ${className}`}
-          aria-invalid={error ? "true" : "false"}
-          aria-describedby={
-            error
-              ? `${selectId}-error`
-              : helperText
+        <div className={`input-field ${error ? "input-error" : ""}`}>
+          <select
+            ref={ref}
+            id={selectId}
+            className={`select ${error ? "select-error" : ""} ${className}`}
+            aria-invalid={error ? "true" : "false"}
+            aria-describedby={
+              error
+                ? `${selectId}-error`
+                : helperText
                 ? `${selectId}-helper`
                 : undefined
-          }
-          {...props}
-        >
-          {children}
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+            }
+            {...props}
+          >
+            {placeholder && (
+              <option value="" disabled>
+                {placeholder}
+              </option>
+            )}
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={18} className="select-chevron" aria-hidden="true" />
+        </div>
         {error && (
           <p id={`${selectId}-error`} className="input-error-text" role="alert">
             {error}
