@@ -192,10 +192,14 @@ export default function SportsPage() {
     catch (e) { setSetupError(e instanceof Error ? e.message : "Could not read image"); }
   }, []);
 
-  const validateSetup = useCallback((): boolean => {
-    if (!sportName.trim() || sportName.trim().length < 2) { setSetupError("Enter a sport name"); return false; }
-    if (!Number.isInteger(daysPerWeek) || daysPerWeek < 1 || daysPerWeek > 7) { setSetupError("Days must be 1-7"); return false; }
-    if (!untilStopped && (!Number.isInteger(Number(durationValue)) || Number(durationValue) < 1 || Number(durationValue) > 24)) { setSetupError("Duration must be 1-24 months"); return false; }
+  const validateSetup = useCallback((step = setupStep): boolean => {
+    setSetupError(null);
+    if (step === 0) {
+      if (!sportName.trim() || sportName.trim().length < 2) { setSetupError("Enter a sport name"); return false; }
+      if (!Number.isInteger(daysPerWeek) || daysPerWeek < 1 || daysPerWeek > 7) { setSetupError("Days must be 1-7"); return false; }
+      if (!untilStopped && (!Number.isInteger(Number(durationValue)) || Number(durationValue) < 1 || Number(durationValue) > 24)) { setSetupError("Duration must be 1-24 months"); return false; }
+      return true;
+    }
     if (workoutDays.length === 0) { setSetupError("Add at least one training day with exercises"); return false; }
     for (const d of workoutDays) {
       if (!d.title.trim()) { setSetupError(`Day ${DAY_FULL[d.weekday]} needs a title`); return false; }
@@ -208,11 +212,10 @@ export default function SportsPage() {
     }
     if (dailyCommitments && commitmentDays.length === 0) { setSetupError("Pick at least one commitment day"); return false; }
     return true;
-  }, [sportName, daysPerWeek, untilStopped, durationValue, workoutDays, dailyCommitments, commitmentDays]);
+  }, [sportName, daysPerWeek, untilStopped, durationValue, workoutDays, dailyCommitments, commitmentDays, setupStep]);
 
   const goNext = useCallback(() => {
-    setSetupError(null);
-    if (setupStep === 0 && !validateSetup()) return;
+    if (!validateSetup(setupStep)) return;
     setSetupStep((s) => Math.min(3, s + 1));
   }, [setupStep, validateSetup]);
 
