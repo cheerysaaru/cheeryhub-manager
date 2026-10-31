@@ -36,7 +36,7 @@ export const CREATE_TABLES = [
   'CREATE INDEX IF NOT EXISTS "Roadmap_userId_idx" ON "Roadmap"("userId")',
   'CREATE INDEX IF NOT EXISTS "RoadmapDay_roadmapId_idx" ON "RoadmapDay"("roadmapId")',
 // Sports tables
-  'CREATE TABLE IF NOT EXISTS "Sport" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "daysPerWeek" INTEGER NOT NULL DEFAULT 3,     "restSeconds" INTEGER NOT NULL DEFAULT 60,     "durationMonths" INTEGER,     "untilStopped" BOOLEAN NOT NULL DEFAULT false,     "dailyCommitments" BOOLEAN NOT NULL DEFAULT false,     "commitmentDays" TEXT,     "habitId" TEXT,     "active" BOOLEAN NOT NULL DEFAULT true,     "startedAt" DATETIME NOT NULL,     "stoppedAt" DATETIME,     "createdAt" DATETIME NOT NULL,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Sport_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE TABLE IF NOT EXISTS "Sport" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "daysPerWeek" INTEGER NOT NULL DEFAULT 3,     "restSeconds" INTEGER NOT NULL DEFAULT 60,     "durationMonths" INTEGER,     "untilStopped" BOOLEAN NOT NULL DEFAULT false,     "dailyCommitments" BOOLEAN NOT NULL DEFAULT false,     "commitmentDays" TEXT,     "habitId" TEXT,     "active" BOOLEAN NOT NULL DEFAULT true,     "startedAt" DATETIME NOT NULL,     "stoppedAt" DATETIME,     "workoutDays" TEXT,     "createdAt" DATETIME NOT NULL,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Sport_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "SportExercise" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "sets" INTEGER NOT NULL DEFAULT 3,     "reps" TEXT NOT NULL DEFAULT \'10\',     "orderIndex" INTEGER NOT NULL DEFAULT 0,     CONSTRAINT "SportExercise_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "SportPhoto" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "image" TEXT NOT NULL,     "label" TEXT,     "createdAt" DATETIME NOT NULL,     CONSTRAINT "SportPhoto_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "SportSession" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "startedAt" DATETIME NOT NULL,     "endedAt" DATETIME NOT NULL,     "durationSeconds" INTEGER NOT NULL DEFAULT 0,     "completedExercises" TEXT,     "createdAt" DATETIME NOT NULL,     CONSTRAINT "SportSession_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
@@ -69,6 +69,8 @@ export const ADD_COLUMNS = [
   { table: "RoadmapDay", column: "description", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "description" TEXT' },
   { table: "RoadmapDay", column: "status", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "status" TEXT NOT NULL DEFAULT \'PENDING\'' },
   { table: "RoadmapDay", column: "dueAt", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "dueAt" DATETIME' },
+  // Per-day workout plans for Sports (0121)
+  { table: "Sport", column: "workoutDays", ddl: 'ALTER TABLE "Sport" ADD COLUMN "workoutDays" TEXT' },
 ];
 
 let bootstrapped: Promise<void> | null = null;

@@ -7,6 +7,13 @@ export interface SportExercise {
   name: string;
   sets: number;
   reps: string;
+  restSec?: number;
+}
+
+export interface WorkoutDay {
+  weekday: number;
+  title: string;
+  exercises: SportExercise[];
 }
 
 export interface SportPhoto {
@@ -50,6 +57,7 @@ export interface Sport {
   active: boolean | number;
   startedAt: string;
   stoppedAt: string | null;
+  workoutDays: WorkoutDay[];
   exercises: SportExercise[];
   photos: SportPhoto[];
   sessions: SportSession[];
@@ -124,5 +132,14 @@ export function useSports(userId: string | null) {
     await load();
   }, [load]);
 
-  return { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport };
+  const updateWorkoutDays = useCallback(async (sportId: string, workoutDays: WorkoutDay[]) => {
+    const result = await api<Sport>(`/sports/${sportId}/workout-days`, {
+      method: "PUT",
+      body: JSON.stringify({ workoutDays }),
+    });
+    await load();
+    return result;
+  }, [load]);
+
+  return { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, updateWorkoutDays };
 }

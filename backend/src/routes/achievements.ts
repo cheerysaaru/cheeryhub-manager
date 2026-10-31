@@ -158,3 +158,14 @@ export async function unlockAchievement(req: AppRequest): Promise<Response> {
 
   return json({ data: { ...(achievement ?? {}), xpAwarded: xp } }, 201);
 }
+
+export async function deleteAchievement(req: AppRequest): Promise<Response> {
+  if (!req.user) return json({ error: "Unauthorized", code: "AUTH_REQUIRED" }, 401);
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+  const existing = await db.first<Achievement>('SELECT * FROM "Achievement" WHERE id = ?1 AND userId = ?2', [id, req.user.id]);
+  if (!existing) return json({ error: "Not found", code: "NOT_FOUND" }, 404);
+  await db.run('DELETE FROM "Achievement" WHERE id = ?1 AND userId = ?2', [id, req.user.id]);
+  await db.run('DELETE FROM "PointEvent" WHERE userId = ?1 AND sourceId = ?2', [req.user.id, existing.key]);
+  return json({ data: { deleted: true, key: existing.key } }, 200);
+}

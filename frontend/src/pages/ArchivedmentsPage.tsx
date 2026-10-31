@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Award, Archive, Trophy } from "lucide-react";
+import { Plus, Award, Archive, Trophy, Trash2 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useGoals } from "../hooks/useGoals";
 import { useToast } from "../components/Toast";
@@ -52,6 +52,8 @@ export default function ArchivedmentsPage() {
   const [items, setItems] = useState<Archivedment[]>(() => readArchivedments());
   const [serverItems, setServerItems] = useState<Archivedment[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Archivedment | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     emoji: "",
     title: "",
@@ -117,6 +119,25 @@ export default function ArchivedmentsPage() {
     setShowForm(true);
   }
 
+  async function handleDelete(achievement: Archivedment) {
+    if (!achievement.id.startsWith("server-")) {
+      // Local/manual achievement: remove from localStorage
+      const remaining = items.filter((it) => it.id !== achievement.id);
+      localStorage.setItem("archivedments", JSON.stringify(remaining));
+      setItems(remaining);
+      return;
+    }
+    setDeleting(true);
+    try {
+      const key = achievement.id.replace("server-", "");
+      await api(`/achievements/${key}`, { method: "DELETE" });
+      setServerItems((prev) => prev.filter((it) => it.id !== achievement.id));
+      toast({ type: "success", title: "Achievement deleted", message: `"${achievement.title}" removed.` });
+    } catch (e) {
+      toast({ type: "error", title: "Delete failed", message: e instanceof Error ? e.message : "Try again" });
+    } finally { setDeleting(false); }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
@@ -179,7 +200,7 @@ export default function ArchivedmentsPage() {
     toast({
       type: "success",
       title: "Achievement added",
-      message: `${title} Ã‚Â· +${saved.xpAwarded} points`,
+      message: `${title} Ã‚· +${saved.xpAwarded} points`,
     });
   }
 
@@ -230,6 +251,13 @@ export default function ArchivedmentsPage() {
               </div>
               {item.description && (
                 <p className="achievement-desc">{item.description}</p>
+              )}
+              {item.source !== "goal" && (
+                <div className="achievement-delete">
+                  <Button variant="ghost" size="sm" onClick={() => void handleDelete(item)} disabled={deleting}>
+                    <Trash2 size={14} /> Delete
+                  </Button>
+                </div>
               )}
             </Card>
           ))}

@@ -197,7 +197,7 @@ async function addCompletionAchievement(
     [userId, key],
   );
   const finished = daysFinished(roadmap, now);
-  const description = `Finished in ${finished} ${finished === 1 ? "day" : "days"} Â· ${manualSummary(days)}`;
+  const description = `Finished in ${finished} ${finished === 1 ? "day" : "days"} · ${manualSummary(days)}`;
   if (existing) {
     await db.run(
       'UPDATE "Achievement" SET name = ?1, description = ?2, icon = ?3 WHERE id = ?4',

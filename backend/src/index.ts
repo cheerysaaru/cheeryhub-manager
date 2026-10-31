@@ -703,6 +703,12 @@ async function handleRequest(
         appReq.params.id = pathname.split("/")[3];
         response = await sportsRoutes.addSportPhoto(appReq);
       } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/workout-days$/) &&
+        request.method === "PUT"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await sportsRoutes.updateWorkoutDays(appReq);
+      } else if (
         pathname.match(/^\/api\/sports\/[^/]+\/sessions$/) &&
         request.method === "POST"
       ) {
@@ -727,6 +733,12 @@ async function handleRequest(
         request.method === "POST"
       ) {
         response = await achievementsRoutes.unlockAchievement(appReq);
+      } else if (
+        pathname.match(/^\/api\/achievements\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await achievementsRoutes.deleteAchievement(appReq);
       }
     }
 
