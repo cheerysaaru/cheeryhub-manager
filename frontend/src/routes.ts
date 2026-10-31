@@ -14,6 +14,7 @@ export const ROUTES = {
   goals: "/goals",
   skills: "/skills",
   roadmaps: "/roadmaps",
+  sports: "/sports",
   achievements: "/achievements",
   analytics: "/analytics",
   brand: "/brand",

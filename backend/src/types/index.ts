@@ -12,6 +12,8 @@ export interface AppEnv {
   APP_URL?: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
+  /** Cloudflare Workers AI binding (optional; roadmap AI plans fall back to templates). */
+  AI?: any;
 }
 
 // Alias for backward compatibility with routes importing 'Env'

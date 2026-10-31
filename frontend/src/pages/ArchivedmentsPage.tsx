@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Award, Archive, Trophy } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useGoals } from "../hooks/useGoals";
@@ -26,6 +26,17 @@ interface UnlockResult {
   xpAwarded: number;
 }
 
+interface ServerAchievement {
+  id?: string;
+  key?: string;
+  name?: string;
+  description?: string | null;
+  icon?: string | null;
+  unlocked?: boolean;
+  unlockedAt?: string | null;
+  createdAt?: string;
+}
+
 function formatAchievedDate(dateStr: string): string {
   return parseLocalDate(dateStr).toLocaleDateString(undefined, {
     day: "numeric",
@@ -39,6 +50,7 @@ export default function ArchivedmentsPage() {
   const { toast } = useToast();
   const { goals, error, fetchGoals } = useGoals(user?.id ?? null);
   const [items, setItems] = useState<Archivedment[]>(() => readArchivedments());
+  const [serverItems, setServerItems] = useState<Archivedment[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     emoji: "",
@@ -46,6 +58,34 @@ export default function ArchivedmentsPage() {
     description: "",
     date: todayISO(),
   });
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) return;
+    api<ServerAchievement[]>("/achievements")
+      .then((data) => {
+        if (!active) return;
+        const rows = Array.isArray(data) ? data : [];
+        const unlocked = rows
+          .filter((row) => row && row.unlocked && typeof row.name === "string")
+          .filter((row) => !items.some((item) => item.title === row.name))
+          .map((row) => ({
+            id: `server-${row.key ?? row.id ?? row.name}`,
+            emoji: typeof row.icon === "string" && row.icon.length <= 3 ? row.icon : undefined,
+            title: row.name ?? "",
+            description: row.description ?? undefined,
+            date: (row.unlockedAt ?? row.createdAt ?? todayISO()).slice(0, 10),
+            source: "server" as const,
+          }));
+        setServerItems(unlocked);
+      })
+      .catch(() => {
+        if (active) setServerItems([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, items]);
 
   // Completed goals double as achievements even if they were never archived locally.
   const derivedFromGoals = useMemo<Archivedment[]>(
@@ -55,7 +95,7 @@ export default function ArchivedmentsPage() {
         .filter((goal) => !items.some((item) => item.id === goal.id))
         .map((goal) => ({
           id: goal.id,
-          emoji: "🏆",
+          emoji: "Ã°Å¸Ââ€ ",
           title: goal.title,
           description: goal.description ?? undefined,
           date: (goal.updatedAt ?? todayISO()).slice(0, 10),
@@ -66,10 +106,10 @@ export default function ArchivedmentsPage() {
 
   const visible = useMemo(
     () =>
-      [...items, ...derivedFromGoals].sort((a, b) =>
+      [...items, ...derivedFromGoals, ...serverItems].sort((a, b) =>
         a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
       ),
-    [items, derivedFromGoals],
+    [items, derivedFromGoals, serverItems],
   );
 
   function openForm() {
@@ -102,7 +142,7 @@ export default function ArchivedmentsPage() {
     try {
       saved = await unlock(achievementKeyFromTitle(title));
     } catch (caught) {
-      // Same title unlocked before: that key is taken — give it a fresh one.
+      // Same title unlocked before: that key is taken Ã¢â‚¬â€ give it a fresh one.
       if (caught instanceof ApiError && caught.status === 409) {
         try {
           saved = await unlock(
@@ -139,7 +179,7 @@ export default function ArchivedmentsPage() {
     toast({
       type: "success",
       title: "Achievement added",
-      message: `${title} · +${saved.xpAwarded} points`,
+      message: `${title} Ã‚Â· +${saved.xpAwarded} points`,
     });
   }
 
@@ -209,7 +249,7 @@ export default function ArchivedmentsPage() {
               setForm({ ...form, emoji: e.target.value.slice(0, 2) })
             }
             maxLength={2}
-            placeholder="🏆"
+            placeholder="Ã°Å¸Ââ€ "
           />
           <Input
             label="Title"

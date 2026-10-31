@@ -9,6 +9,7 @@ import {
   Briefcase,
   Shield,
   Map,
+  Dumbbell,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ROUTES } from "../routes";
@@ -29,6 +30,7 @@ export const navItems: NavItem[] = [
   { path: ROUTES.goals, label: "Goals", icon: Target },
   { path: ROUTES.skills, label: "Skills", icon: Trophy },
   { path: ROUTES.roadmaps, label: "Roadmaps", icon: Map },
+  { path: ROUTES.sports, label: "Sports", icon: Dumbbell },
   { path: ROUTES.achievements, label: "Achievements", icon: Award },
   { path: ROUTES.analytics, label: "Analytics", icon: BarChart2 },
   { path: ROUTES.brand, label: "Brand", icon: Briefcase },

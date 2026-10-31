@@ -5092,3 +5092,684 @@ textarea::placeholder {
     gap: var(--space-2);
   }
 }
+
+/* ---------------- Roadmaps v2 ---------------- */
+.roadmap-header-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.roadmap-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: visible;
+}
+.roadmap-card.is-open {
+  grid-column: 1 / -1;
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+.roadmap-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(130px, 200px) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+}
+.roadmap-summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.roadmap-summary:hover .roadmap-title-section strong {
+  color: var(--primary);
+}
+.roadmap-summary .roadmap-progress {
+  margin-top: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--space-2);
+  align-items: center;
+}
+.roadmap-summary .roadmap-progress > :first-child {
+  grid-column: 1 / -1;
+}
+.roadmap-summary .roadmap-progress .days-text {
+  grid-column: 1 / -1;
+}
+.roadmap-kebab-wrapper {
+  padding: 0;
+}
+.kebab-icon {
+  background: transparent;
+  border: none;
+}
+.kebab-menu-overlay {
+  background: transparent;
+  backdrop-filter: none;
+}
+.kebab-menu {
+  position: fixed;
+  top: 96px;
+  right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.kebab-menu button {
+  background: transparent;
+  border: none;
+}
+.kebab-menu button:hover {
+  background: var(--bg-hover);
+}
+.roadmap-timeline {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+.roadmap-timeline .timeline-line {
+  background: var(--border);
+}
+.day-node.missed {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 2px solid var(--danger);
+}
+.day-status-badge.missed {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.day-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-subtle);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.compact-day-status.missed {
+  color: var(--danger);
+}
+.day-section-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.day-section-box .section-label {
+  color: var(--text-muted);
+}
+.day-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.day-card.completed {
+  opacity: 0.92;
+}
+.mode-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.mode-option:hover {
+  border-color: var(--primary);
+}
+.mode-option.active {
+  border-color: var(--primary);
+  background: var(--secondary);
+}
+.mode-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mode-option strong {
+  font-size: 0.9rem;
+}
+.mode-option small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+.ai-generate-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.ai-source {
+  font-size: 0.75rem;
+  color: var(--success);
+  font-weight: 700;
+}
+.plan-editor {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.plan-editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.plan-editor-head span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.plan-editor-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.plan-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 1.2fr;
+  gap: var(--space-2);
+  align-items: start;
+}
+.plan-row .input-wrapper {
+  margin: 0;
+}
+.plan-day {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding-top: 10px;
+}
+@media (max-width: 720px) {
+  .roadmap-summary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .roadmap-summary .roadmap-progress {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .mode-picker {
+    grid-template-columns: 1fr;
+  }
+  .plan-row {
+    grid-template-columns: 1fr;
+  }
+  .plan-day {
+    padding-top: 0;
+  }
+  .roadmap-card.is-open {
+    grid-column: auto;
+  }
+}
+
+/* ---------------- Sports ---------------- */
+.sports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-4);
+}
+.sport-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.sport-card.is-stopped {
+  opacity: 0.92;
+}
+.sport-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.sport-heading {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.sport-heading strong {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.sport-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--secondary);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.sport-meta {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.sport-badges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-end;
+}
+.sport-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+.sport-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sport-stat span {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.sport-stat strong {
+  color: var(--text);
+  font-size: 1.1rem;
+}
+.sport-photo-due {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.sport-photo-due span {
+  flex: 1;
+}
+.sport-exercises {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.exercise-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+.exercise-pill small {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.sport-photos {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sport-photo-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+  background: var(--bg);
+}
+.sport-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.sport-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.sport-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.sport-actions .sport-delete {
+  margin-left: auto;
+}
+.sport-stepper {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+.sport-step {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+}
+.sport-step.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+}
+.sport-step.done {
+  background: var(--secondary);
+  color: var(--primary);
+  border-color: var(--secondary);
+}
+.exercise-editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.exercise-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.exercise-row {
+  display: grid;
+  grid-template-columns: 1.4fr 80px 1fr auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+.exercise-row .input-wrapper {
+  margin: 0;
+}
+.setup-photo-block {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+.setup-photo-preview {
+  width: 110px;
+  height: 110px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-strong);
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.setup-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.photo-picker-button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.commitment-day-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.commitment-day {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.commitment-day.active {
+  background: var(--secondary);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.workout-runner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.workout-timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.rest-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--info-bg);
+  color: var(--info);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.rest-timer p {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.rest-timer strong {
+  font-size: 2.4rem;
+  font-variant-numeric: tabular-nums;
+}
+.workout-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.workout-exercises {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.workout-exercise {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  cursor: pointer;
+}
+.workout-exercise.done {
+  background: var(--success-bg);
+  border-color: var(--success);
+}
+.workout-exercise-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+}
+.workout-exercise-plan {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.sport-analysis,
+.sport-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+.analysis-grid > div {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.analysis-grid span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.analysis-grid strong {
+  color: var(--text);
+  font-size: 1.2rem;
+}
+.analysis-photos {
+  display: flex;
+  gap: var(--space-3);
+}
+.analysis-photos figure {
+  flex: 1;
+  margin: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.analysis-photos img {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  display: block;
+}
+.analysis-photos figcaption {
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.details-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--space-2);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.photo-timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: var(--space-2);
+}
+.photo-timeline figure {
+  margin: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.photo-timeline img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+.photo-timeline figcaption {
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.session-list li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-2);
+}
+.session-list li strong {
+  color: var(--text);
+}
+@media (max-width: 720px) {
+  .sports-grid {
+    grid-template-columns: 1fr;
+  }
+  .exercise-row {
+    grid-template-columns: 1fr 70px 1fr auto;
+  }
+  .analysis-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+

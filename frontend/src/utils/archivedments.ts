@@ -6,7 +6,7 @@ export interface Archivedment {
   title: string;
   description?: string;
   date: string;
-  source: "manual" | "goal";
+  source: "manual" | "goal" | "server";
 }
 
 const KEY = "archivedments";

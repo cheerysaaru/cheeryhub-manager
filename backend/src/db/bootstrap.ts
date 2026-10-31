@@ -35,6 +35,15 @@ export const CREATE_TABLES = [
   'CREATE TABLE IF NOT EXISTS "RoadmapDay" (     "id" TEXT NOT NULL PRIMARY KEY,     "roadmapId" TEXT NOT NULL,     "dayNumber" INTEGER NOT NULL,     "learnTopic" TEXT NOT NULL,     "buildTask" TEXT NOT NULL,     "whatILearned" TEXT,     "completed" BOOLEAN NOT NULL DEFAULT false,     "completedAt" DATETIME,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "RoadmapDay_roadmapId_fkey" FOREIGN KEY ("roadmapId") REFERENCES "Roadmap" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE INDEX IF NOT EXISTS "Roadmap_userId_idx" ON "Roadmap"("userId")',
   'CREATE INDEX IF NOT EXISTS "RoadmapDay_roadmapId_idx" ON "RoadmapDay"("roadmapId")',
+// Sports tables
+  'CREATE TABLE IF NOT EXISTS "Sport" (     "id" TEXT NOT NULL PRIMARY KEY,     "userId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "daysPerWeek" INTEGER NOT NULL DEFAULT 3,     "restSeconds" INTEGER NOT NULL DEFAULT 60,     "durationMonths" INTEGER,     "untilStopped" BOOLEAN NOT NULL DEFAULT false,     "dailyCommitments" BOOLEAN NOT NULL DEFAULT false,     "commitmentDays" TEXT,     "habitId" TEXT,     "active" BOOLEAN NOT NULL DEFAULT true,     "startedAt" DATETIME NOT NULL,     "stoppedAt" DATETIME,     "createdAt" DATETIME NOT NULL,     "updatedAt" DATETIME NOT NULL,     CONSTRAINT "Sport_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE TABLE IF NOT EXISTS "SportExercise" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "sets" INTEGER NOT NULL DEFAULT 3,     "reps" TEXT NOT NULL DEFAULT \'10\',     "orderIndex" INTEGER NOT NULL DEFAULT 0,     CONSTRAINT "SportExercise_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE TABLE IF NOT EXISTS "SportPhoto" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "image" TEXT NOT NULL,     "label" TEXT,     "createdAt" DATETIME NOT NULL,     CONSTRAINT "SportPhoto_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE TABLE IF NOT EXISTS "SportSession" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "startedAt" DATETIME NOT NULL,     "endedAt" DATETIME NOT NULL,     "durationSeconds" INTEGER NOT NULL DEFAULT 0,     "completedExercises" TEXT,     "createdAt" DATETIME NOT NULL,     CONSTRAINT "SportSession_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE INDEX IF NOT EXISTS "Sport_userId_idx" ON "Sport"("userId")',
+  'CREATE INDEX IF NOT EXISTS "SportExercise_sportId_idx" ON "SportExercise"("sportId")',
+  'CREATE INDEX IF NOT EXISTS "SportPhoto_sportId_idx" ON "SportPhoto"("sportId")',
+  'CREATE INDEX IF NOT EXISTS "SportSession_sportId_idx" ON "SportSession"("sportId")',
 ];
 
 export const ADD_COLUMNS = [
@@ -52,6 +61,14 @@ export const ADD_COLUMNS = [
   // New columns from recent features
   { table: "Goal", column: "keywords", ddl: 'ALTER TABLE "Goal" ADD COLUMN "keywords" TEXT' },
   { table: "HabitCompletion", column: "createdAt", ddl: 'ALTER TABLE "HabitCompletion" ADD COLUMN "createdAt" DATETIME' },
+  // Roadmap planning mode + daily status (0120)
+  { table: "Roadmap", column: "mode", ddl: 'ALTER TABLE "Roadmap" ADD COLUMN "mode" TEXT NOT NULL DEFAULT \'AI\'' },
+  { table: "Roadmap", column: "startDate", ddl: 'ALTER TABLE "Roadmap" ADD COLUMN "startDate" DATETIME' },
+  { table: "Roadmap", column: "reminderEnabled", ddl: 'ALTER TABLE "Roadmap" ADD COLUMN "reminderEnabled" BOOLEAN NOT NULL DEFAULT 1' },
+  { table: "RoadmapDay", column: "heading", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "heading" TEXT' },
+  { table: "RoadmapDay", column: "description", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "description" TEXT' },
+  { table: "RoadmapDay", column: "status", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "status" TEXT NOT NULL DEFAULT \'PENDING\'' },
+  { table: "RoadmapDay", column: "dueAt", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "dueAt" DATETIME' },
 ];
 
 let bootstrapped: Promise<void> | null = null;

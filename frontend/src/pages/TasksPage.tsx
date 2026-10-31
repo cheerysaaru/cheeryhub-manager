@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CalendarClock,
@@ -52,8 +52,8 @@ export default function TasksPage() {
     markNotCompleted,
     extend: extendTask,
   } = useTasks(user?.id ?? null);
-  const { goals, error: goalsError, fetchGoals } = useGoals(user?.id ?? null);
-  const { skills, error: skillsError, fetchSkills } = useSkills(user?.id ?? null);
+  const { goals, error: goalsError, fetchGoals, loading: goalsLoading } = useGoals(user?.id ?? null);
+  const { skills, error: skillsError, fetchSkills, loading: skillsLoading } = useSkills(user?.id ?? null);
 
   const [tab, setTab] = useState<Tab>("active");
   const [title, setTitle] = useState("");
@@ -303,7 +303,7 @@ export default function TasksPage() {
                   value={selectedGoal?.id ?? ""}
                   onChange={(e) => setSelectedGoal(goals.find((g) => g.id === e.target.value) ?? null)}
                   className="select"
-                  disabled={fetchGoals.isPending}
+                  disabled={goalsLoading}
                 >
                   <option value="">Select a goal (optional)</option>
                   {goals.map((g) => (
@@ -316,7 +316,7 @@ export default function TasksPage() {
                   value={selectedSkill?.id ?? ""}
                   onChange={(e) => setSelectedSkill(skills.find((s) => s.id === e.target.value) ?? null)}
                   className="select"
-                  disabled={fetchSkills.isPending}
+                  disabled={skillsLoading}
                 >
                   <option value="">Select a skill (optional)</option>
                   {skills.map((s) => (

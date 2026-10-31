@@ -28,6 +28,18 @@ export const POINTS_GOAL_COMPLETED = 50;
 /** Goal past its deadline without completion (signed, applied once). */
 export const POINTS_GOAL_MISSED = -25;
 
+/** A roadmap day marked done. */
+export const POINTS_ROADMAP_DAY_COMPLETED = 10;
+
+/** A roadmap day still undone 24h after its due date (signed, applied once). */
+export const POINTS_ROADMAP_DAY_MISSED = -5;
+
+/** All days of a roadmap completed. */
+export const POINTS_ROADMAP_COMPLETED = 50;
+
+/** One saved sports workout session (once per sport per day). */
+export const POINTS_SPORT_SESSION = 15;
+
 /**
  * Achievement XP. Every value is a constant here so the frontend toast and the
  * backend ledger can never disagree: `xp` on a shared achievement definition is
@@ -54,6 +66,11 @@ export type PointEventReason =
   | "COMMITMENT_MISSED"
   | "GOAL_COMPLETED"
   | "GOAL_MISSED"
+  | "ROADMAP_DAY_COMPLETED"
+  | "ROADMAP_DAY_UNCOMPLETED"
+  | "ROADMAP_DAY_MISSED"
+  | "ROADMAP_COMPLETED"
+  | "SPORT_SESSION_COMPLETED"
   | "ACHIEVEMENT";
 
 export interface LevelProgress {
@@ -111,6 +128,16 @@ export function reasonLabel(reason: string): string {
       return "Goal completed";
     case "GOAL_MISSED":
       return "Missed goal";
+    case "ROADMAP_DAY_COMPLETED":
+      return "Roadmap day completed";
+    case "ROADMAP_DAY_UNCOMPLETED":
+      return "Roadmap day undone";
+    case "ROADMAP_DAY_MISSED":
+      return "Missed roadmap day";
+    case "ROADMAP_COMPLETED":
+      return "Roadmap completed";
+    case "SPORT_SESSION_COMPLETED":
+      return "Workout completed";
     case "ACHIEVEMENT":
       return "Achievement unlocked";
     default:

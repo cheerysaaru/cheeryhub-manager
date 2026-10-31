@@ -14,6 +14,7 @@ import * as habitsRoutes from "./routes/habits";
 import * as goalsRoutes from "./routes/goals";
 import * as skillsRoutes from "./routes/skills";
 import * as roadmapsRoutes from "./routes/roadmaps";
+import * as sportsRoutes from "./routes/sports";
 import * as notificationsRoutes from "./routes/notifications";
 import * as remindersRoutes from "./routes/reminders";
 import * as transactionsRoutes from "./routes/transactions";
@@ -450,6 +451,8 @@ async function handleRequest(
         response = await roadmapsRoutes.listRoadmaps(appReq);
       } else if (pathname === "/api/roadmaps" && request.method === "POST") {
         response = await roadmapsRoutes.createRoadmap(appReq);
+      } else if (pathname === "/api/roadmaps/ai-plan" && request.method === "POST") {
+        response = await roadmapsRoutes.generateAiPlan(appReq);
       } else if (
         pathname.match(/^\/api\/roadmaps\/[^/]+$/) &&
         request.method === "GET"
@@ -689,6 +692,34 @@ async function handleRequest(
         response = await adminRoutes.deleteUser(appReq);
       } else if (pathname === "/api/admin/stats" && request.method === "GET") {
         response = await adminRoutes.getSystemStats(appReq);
+      } else if (pathname === "/api/sports" && request.method === "GET") {
+        response = await sportsRoutes.listSports(appReq);
+      } else if (pathname === "/api/sports" && request.method === "POST") {
+        response = await sportsRoutes.createSport(appReq);
+      } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/photos$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await sportsRoutes.addSportPhoto(appReq);
+      } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/sessions$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await sportsRoutes.saveSportSession(appReq);
+      } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/stop$/) &&
+        request.method === "POST"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await sportsRoutes.stopSport(appReq);
+      } else if (
+        pathname.match(/^\/api\/sports\/[^/]+$/) &&
+        request.method === "DELETE"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await sportsRoutes.deleteSport(appReq);
       } else if (pathname === "/api/achievements" && request.method === "GET") {
         response = await achievementsRoutes.listAchievements(appReq);
       } else if (
@@ -836,6 +867,20 @@ export default {
         }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
+    }
+  },
+
+  async scheduled(
+    _controller: ScheduledController,
+    env: AppEnv,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    try {
+      await ensureSchema(env.DB);
+      await roadmapsRoutes.createDailyRoadmapReminders(env);
+      console.log("[cron] daily roadmap reminders created");
+    } catch (error) {
+      console.error("[cron] failed", error);
     }
   },
 };

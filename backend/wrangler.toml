@@ -20,6 +20,15 @@ NODE_ENV = "production"
 EMAIL_FROM = "Productivity <onboarding@resend.dev>"
 APP_URL = "https://cheeryhub.space"
 
+# Daily roadmap reminder (in-app Notification rows). 01:00 UTC = 06:30 Colombo.
+[triggers]
+crons = ["0 1 * * *"]
+
+# Free AI roadmap plans (Cloudflare Workers AI free allocation). Uncomment to
+# enable; without it the API uses a deterministic template plan instead.
+# [ai]
+# binding = "AI"
+
 # Secrets — never put these in [vars] or in this file:
 #   npx wrangler secret put JWT_SECRET      # required, 32+ chars
 #   npx wrangler secret put EMAIL_API_KEY   # optional (Resend), enables email
