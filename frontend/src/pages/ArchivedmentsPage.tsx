@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Award, Archive, Trophy, Trash2 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useGoals } from "../hooks/useGoals";
@@ -59,6 +59,22 @@ export default function ArchivedmentsPage() {
     description: "",
     date: todayISO(),
   });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: Archivedment } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setContextMenu(null);
+    };
+    const close = () => setContextMenu(null);
+    document.addEventListener("click", handler);
+    document.addEventListener("contextmenu", close);
+    return () => {
+      document.removeEventListener("click", handler);
+      document.removeEventListener("contextmenu", close);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     let active = true;
@@ -228,7 +244,12 @@ export default function ArchivedmentsPage() {
       ) : (
         <div className="skills-grid">
           {visible.map((item) => (
-            <Card key={item.id} className="skill-card" padding="md">
+            <Card key={item.id} className="skill-card" padding="md" onContextMenu={(e) => {
+              if (item.source === "goal") return;
+              e.preventDefault();
+              e.stopPropagation();
+              setContextMenu({ x: e.clientX, y: e.clientY, item });
+            }}>
               <div className="skill-header">
                 <div className="skill-info">
                   <strong>
@@ -309,6 +330,25 @@ export default function ArchivedmentsPage() {
           </div>
         </form>
       </Modal>
+      {contextMenu && (
+        <div
+          ref={menuRef}
+          className="kebab-menu"
+          style={{ position: "fixed", left: contextMenu.x, top: contextMenu.y, zIndex: 10000 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              void handleDelete(contextMenu.item);
+              setContextMenu(null);
+            }}
+            className="kebab-danger"
+            disabled={deleting}
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }
