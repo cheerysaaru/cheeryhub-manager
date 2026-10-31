@@ -52,7 +52,6 @@ export default function ArchivedmentsPage() {
   const [items, setItems] = useState<Archivedment[]>(() => readArchivedments());
   const [serverItems, setServerItems] = useState<Archivedment[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Archivedment | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     emoji: "",

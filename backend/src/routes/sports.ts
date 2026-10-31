@@ -14,7 +14,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_PHOTO_CHARS = 900_000;
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_ABBR = ["S", "M", "T", "W", "T", "F", "S"];
 
 /** weekday 0=Sun..6=Sat */
 type WorkoutDay = {
@@ -99,7 +98,7 @@ function parseDays(value: unknown): number[] {
 function parseWorkoutDays(value: unknown): WorkoutDay[] {
   if (Array.isArray(value)) {
     return value.map((d: any) => ({
-      weekday: Number(d?.weekday) ?? 0,
+      weekday: Number(d?.weekday) || 0,
       title: String(d?.title ?? "").trim(),
       exercises: Array.isArray(d?.exercises)
         ? d.exercises.map((e: any) => ({
@@ -306,7 +305,7 @@ export async function createSport(req: AppRequest): Promise<Response> {
       title: "",
       exercises: exercises
         .filter((e: any) => String(e?.name ?? "").trim())
-        .map((e: any, i: number) => ({
+        .map((e: any) => ({
           name: String(e.name ?? "").trim(),
           sets: Math.max(1, Math.min(20, Number(e.sets) || 3)),
           reps: String(e.reps ?? "10").trim(),

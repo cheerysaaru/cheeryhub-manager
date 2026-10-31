@@ -65,7 +65,7 @@ function resizeImageFile(file: File): Promise<string> {
 export default function SportsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, updateWorkoutDays } = useSports(user?.id ?? null);
+  const { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport } = useSports(user?.id ?? null);
   const { points, refresh: refreshPoints } = usePoints(user?.id ?? null);
 
   // Setup state
