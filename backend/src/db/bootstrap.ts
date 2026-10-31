@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { D1Database } from "@cloudflare/workers-types";
 
 // AUTO-GENERATED from backend/migrations/*.sql (0001-0007) + additions.
