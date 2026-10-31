@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
@@ -11,6 +11,7 @@ import {
   getProfilePic,
   PROFILE_EVENT,
   initAvatar,
+  saveProfilePic,
 } from "../utils/profile";
 
 export function Layout() {
@@ -20,7 +21,10 @@ export function Layout() {
   const [profileName, setProfileName] = useState(() =>
     getDisplayName(user?.name ?? ""),
   );
-  const [profilePic, setProfilePic] = useState(() => getProfilePic());
+  const [profilePic, setProfilePic] = useState<string | null>(() =>
+    user?.avatar ?? getProfilePic(),
+  );
+  const avatarSyncedRef = useRef(false);
 
   const [prevUserName, setPrevUserName] = useState(user?.name);
   if (user?.name !== prevUserName) {
@@ -29,6 +33,11 @@ export function Layout() {
   }
 
   useEffect(() => {
+    if (user?.avatar && !avatarSyncedRef.current) {
+      avatarSyncedRef.current = true;
+      setProfilePic(user.avatar);
+      saveProfilePic(user.avatar);
+    }
     initAvatar();
   }, [user]);
 

@@ -34,8 +34,9 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setThemeState] = useState<ThemeMode>(() => getTheme());
   const [profilePic, setProfilePic] = useState<string | null>(() =>
-    getProfilePic(),
+    user?.avatar ?? getProfilePic(),
   );
+  const avatarSyncedRef = useRef(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [username, setUsername] = useState(() =>
     getDisplayName(user?.name ?? ""),
@@ -74,11 +75,15 @@ export default function SettingsPage() {
     saveProfilePic(base64);
     setProfilePic(base64);
     setCropSrc(null);
+    void api("/settings/avatar", { method: "PATCH", body: JSON.stringify({ avatar: base64 }) })
+      .catch(() => {/* server save failed, localStorage already updated */});
   }
 
   function handleRemovePhoto() {
     removeProfilePic();
     setProfilePic(null);
+    void api("/settings/avatar", { method: "PATCH", body: JSON.stringify({ avatar: null }) })
+      .catch(() => {/* server save failed, localStorage already updated */});
   }
 
   function saveUsername() {
@@ -125,6 +130,14 @@ export default function SettingsPage() {
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    if (user?.avatar && !avatarSyncedRef.current) {
+      avatarSyncedRef.current = true;
+      setProfilePic(user.avatar);
+      saveProfilePic(user.avatar);
+    }
+  }, [user?.avatar]);
 
   async function saveSettings() {
     if (!settings) return;

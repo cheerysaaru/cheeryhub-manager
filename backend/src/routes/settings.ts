@@ -156,3 +156,39 @@ export async function updateSettings(req: AppRequest): Promise<Response> {
     );
   }
 }
+
+const MAX_AVATAR_CHARS = 900_000;
+
+export async function updateAvatar(req: AppRequest): Promise<Response> {
+  if (!req.user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  const body = (req.body ?? {}) as { avatar?: string };
+  const avatar = typeof body.avatar === "string" ? body.avatar : null;
+  if (avatar !== null && avatar.length > MAX_AVATAR_CHARS) {
+    return new Response(
+      JSON.stringify({ error: "Avatar image is too large", code: "VALIDATION_ERROR" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  try {
+    const db = new Database(req.env.DB!);
+    await db.run(
+      'UPDATE "User" SET avatar = ?1, updatedAt = ?2 WHERE id = ?3',
+      [avatar, new Date().toISOString(), req.user.id],
+    );
+    return new Response(JSON.stringify({ data: { avatar } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Error updating avatar:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to update avatar", code: "INTERNAL_ERROR" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+}

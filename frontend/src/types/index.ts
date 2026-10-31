@@ -11,6 +11,7 @@ export interface User {
   createdAt: string;
   role: "ADMIN" | "USER";
   status: "ACTIVE" | "DISABLED";
+  avatar?: string | null;
 }
 
 export interface AdminUser {

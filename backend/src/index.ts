@@ -487,6 +487,11 @@ async function handleRequest(
         response = await settingsRoutes.getSettings(appReq);
       } else if (pathname === "/api/settings" && request.method === "PUT") {
         response = await settingsRoutes.updateSettings(appReq);
+      } else if (
+        pathname === "/api/settings/avatar" &&
+        request.method === "PATCH"
+      ) {
+        response = await settingsRoutes.updateAvatar(appReq);
       } else if (pathname === "/api/transactions" && request.method === "GET") {
         response = await transactionsRoutes.listTransactions(appReq);
       } else if (
