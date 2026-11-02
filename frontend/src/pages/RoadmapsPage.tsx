@@ -73,8 +73,8 @@ export default function RoadmapsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { roadmaps, loading, error, fetchRoadmaps, createRoadmap, completeDay, deleteRoadmap, updateRoadmap, generatePlan } = useRoadmaps(user?.id ?? null);
-  const { goals, fetchGoals } = useGoals(user?.id ?? null);
-  const { skills, fetchSkills } = useSkills(user?.id ?? null);
+  const { goals, fetchGoals, create: createGoal } = useGoals(user?.id ?? null);
+  const { skills, fetchSkills, create: createSkill } = useSkills(user?.id ?? null);
   const { points, refresh: refreshPoints } = usePoints(user?.id ?? null);
 
   const [showForm, setShowForm] = useState(false);
@@ -99,6 +99,11 @@ export default function RoadmapsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showMore, setShowMore] = useState(false);
+
+  // Inline skill/goal creation inside the create/edit forms
+  const [newSkillName, setNewSkillName] = useState<string | null>(null);
+  const [newGoalTitle, setNewGoalTitle] = useState<string | null>(null);
+  const [creatingLinked, setCreatingLinked] = useState(false);
 
   // Edit state
   const [editingRoadmapId, setEditingRoadmapId] = useState<string | null>(null);
@@ -173,7 +178,43 @@ export default function RoadmapsPage() {
     setAiError(null);
     setFormError(null);
     setShowMore(false);
+    setNewSkillName(null);
+    setNewGoalTitle(null);
   }, []);
+
+  const handleCreateSkill = useCallback(async (target: "form" | "edit") => {
+    const name = (newSkillName ?? "").trim();
+    if (!name) return;
+    setCreatingLinked(true);
+    try {
+      const skill = await createSkill({ name, currentLevel: 1, targetLevel: 5, progress: 0 });
+      if (target === "form") setFormSkillId(skill.id);
+      else setEditSkillId(skill.id);
+      setNewSkillName(null);
+      toast({ type: "success", title: "Skill created", message: name });
+    } catch (caught) {
+      toast({ type: "error", title: "Could not create skill", message: caught instanceof Error ? caught.message : "Please try again" });
+    } finally {
+      setCreatingLinked(false);
+    }
+  }, [newSkillName, createSkill, toast]);
+
+  const handleCreateGoal = useCallback(async (target: "form" | "edit") => {
+    const title = (newGoalTitle ?? "").trim();
+    if (!title) return;
+    setCreatingLinked(true);
+    try {
+      const goal = await createGoal({ title, status: "ACTIVE", progress: 0 });
+      if (target === "form") setFormGoalId(goal.id);
+      else setEditGoalId(goal.id);
+      setNewGoalTitle(null);
+      toast({ type: "success", title: "Goal created", message: title });
+    } catch (caught) {
+      toast({ type: "error", title: "Could not create goal", message: caught instanceof Error ? caught.message : "Please try again" });
+    } finally {
+      setCreatingLinked(false);
+    }
+  }, [newGoalTitle, createGoal, toast]);
 
   const openForm = useCallback(() => { resetForm(); setShowForm(true); }, [resetForm]);
 
@@ -284,6 +325,8 @@ export default function RoadmapsPage() {
     setEditGoalId(roadmap.goalId ?? null);
     setEditReminder(roadmap.reminderEnabled !== 0 && roadmap.reminderEnabled !== false);
     setEditError(null);
+    setNewSkillName(null);
+    setNewGoalTitle(null);
     setShowKebab(null);
   }, []);
 
@@ -396,25 +439,28 @@ export default function RoadmapsPage() {
                 <div className="roadmap-card-wrapper">
                   <div className="roadmap-summary" role="button" tabIndex={0} aria-expanded={isExpanded}
                     onClick={() => toggleRoadmap(roadmap.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRoadmap(roadmap.id); } }}>
-                    <ChevronDown size={18} className={`roadmap-expand-chevron ${isExpanded ? "open" : ""}`} aria-hidden="true" />
-                    <div className="roadmap-title-section">
-                      <strong>{roadmap.title}</strong>
-                      <p className="roadmap-description">
-                        {roadmap.mode === "MANUAL" ? "Manual plan" : "AI plan"}
-                        {missed > 0 ? ` Â· ${missed} missed` : ""}
-                      </p>
+                    <div className="roadmap-header-row">
+                      <ChevronDown size={18} className={`roadmap-expand-chevron ${isExpanded ? "open" : ""}`} aria-hidden="true" />
+                      <div className="roadmap-title-section">
+                        <strong>{roadmap.title}</strong>
+                        <p className="roadmap-description">
+                          {roadmap.mode === "MANUAL" ? "Manual plan" : "AI plan"}
+                          {missed > 0 ? ` · ${missed} missed` : ""}
+                        </p>
+                      </div>
+                      {pct >= 100 ? <Badge variant="success" size="sm">Completed</Badge>
+                        : missed > 0 ? <Badge variant="danger" size="sm">{missed} missed</Badge> : null}
+                      <div className="roadmap-kebab-wrapper" onClick={(e) => e.stopPropagation()}>
+                        <button className="kebab-icon" onClick={(e) => { e.stopPropagation(); setShowKebab(showKebab === roadmap.id ? null : roadmap.id); }} aria-label="Roadmap options">
+                          <MoreVertical size={16} />
+                        </button>
+                      </div>
                     </div>
                     <div className="roadmap-progress">
-                      <Progress value={pct} /><span className="progress-text">{pct}%</span>
-                      <span className="days-text">{remaining} {remaining === 1 ? "day" : "days"} remaining</span>
+                      <div className="roadmap-progress-bar"><Progress value={pct} /></div>
+                      <span className="progress-text">{pct}%</span>
                     </div>
-                    {pct >= 100 ? <Badge variant="success" size="sm">Completed</Badge>
-                      : missed > 0 ? <Badge variant="danger" size="sm">{missed} missed</Badge> : null}
-                    <div className="roadmap-kebab-wrapper" onClick={(e) => e.stopPropagation()}>
-                      <button className="kebab-icon" onClick={(e) => { e.stopPropagation(); setShowKebab(showKebab === roadmap.id ? null : roadmap.id); }} aria-label="Roadmap options">
-                        <MoreVertical size={16} />
-                      </button>
-                    </div>
+                    <span className="days-text">{remaining} {remaining === 1 ? "day" : "days"} remaining</span>
                   </div>
 
                   {isExpanded && (
@@ -503,11 +549,31 @@ export default function RoadmapsPage() {
       )}
 
       {editingRoadmapId && (
-        <Modal isOpen onClose={() => setEditingRoadmapId(null)} title="Edit Roadmap">
+        <Modal isOpen onClose={() => { setEditingRoadmapId(null); setNewSkillName(null); setNewGoalTitle(null); }} title="Edit Roadmap">
           <form onSubmit={handleUpdate} className="modal-form">
             <Input label="Roadmap title" value={editTitle} onChange={(event) => setEditTitle(event.target.value)} required />
-            <Select label="Skill (optional)" value={editSkillId ?? ""} onChange={(event) => setEditSkillId(event.target.value || null)} options={[{ value: "", label: "None" }, ...((skills ?? []) as Array<{id:string;name:string}>).map((skill) => ({ value: skill.id, label: skill.name }))] } />
-            <Select label="Goal (optional)" value={editGoalId ?? ""} onChange={(event) => setEditGoalId(event.target.value || null)} options={[{ value: "", label: "None" }, ...((goals ?? []) as Array<{id:string;title:string}>).map((goal) => ({ value: goal.id, label: goal.title }))] } />
+            <Select label="Skill (optional)" value={newSkillName !== null ? "__new__" : (editSkillId ?? "")} onChange={(event) => {
+              if (event.target.value === "__new__") setNewSkillName("");
+              else { setNewSkillName(null); setEditSkillId(event.target.value || null); }
+            }} options={[{ value: "", label: "None" }, { value: "__new__", label: "＋ New skill…" }, ...((skills ?? []) as Array<{id:string;name:string}>).map((skill) => ({ value: skill.id, label: skill.name }))] } />
+            {newSkillName !== null && (
+              <div className="linked-field-new">
+                <Input autoFocus placeholder="Skill name" value={newSkillName} onChange={(event) => setNewSkillName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleCreateSkill("edit"); } }} />
+                <Button type="button" size="sm" loading={creatingLinked} disabled={!newSkillName.trim()} onClick={() => void handleCreateSkill("edit")}>Add</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setNewSkillName(null)}>Cancel</Button>
+              </div>
+            )}
+            <Select label="Goal (optional)" value={newGoalTitle !== null ? "__new__" : (editGoalId ?? "")} onChange={(event) => {
+              if (event.target.value === "__new__") setNewGoalTitle("");
+              else { setNewGoalTitle(null); setEditGoalId(event.target.value || null); }
+            }} options={[{ value: "", label: "None" }, { value: "__new__", label: "＋ New goal…" }, ...((goals ?? []) as Array<{id:string;title:string}>).map((goal) => ({ value: goal.id, label: goal.title }))] } />
+            {newGoalTitle !== null && (
+              <div className="linked-field-new">
+                <Input autoFocus placeholder="Goal title" value={newGoalTitle} onChange={(event) => setNewGoalTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleCreateGoal("edit"); } }} />
+                <Button type="button" size="sm" loading={creatingLinked} disabled={!newGoalTitle.trim()} onClick={() => void handleCreateGoal("edit")}>Add</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setNewGoalTitle(null)}>Cancel</Button>
+              </div>
+            )}
             <label className="toggle-row">
               <span>
                 <strong>Daily reminder</strong>
@@ -559,8 +625,32 @@ export default function RoadmapsPage() {
             {showMore && (
               <div className="more-options-content">
                 <div className="form-row">
-                  <Select label="Skill (optional)" value={formSkillId ?? ""} onChange={(event) => setFormSkillId(event.target.value || null)} options={[{ value: "", label: "None" }, ...((skills ?? []) as Array<{id:string;name:string}>).map((skill) => ({ value: skill.id, label: skill.name }))] } />
-                  <Select label="Goal (optional)" value={formGoalId ?? ""} onChange={(event) => setFormGoalId(event.target.value || null)} options={[{ value: "", label: "None" }, ...((goals ?? []) as Array<{id:string;title:string}>).map((goal) => ({ value: goal.id, label: goal.title }))] } />
+                  <div className="linked-field">
+                    <Select label="Skill (optional)" value={newSkillName !== null ? "__new__" : (formSkillId ?? "")} onChange={(event) => {
+                      if (event.target.value === "__new__") setNewSkillName("");
+                      else { setNewSkillName(null); setFormSkillId(event.target.value || null); }
+                    }} options={[{ value: "", label: "None" }, { value: "__new__", label: "＋ New skill…" }, ...((skills ?? []) as Array<{id:string;name:string}>).map((skill) => ({ value: skill.id, label: skill.name }))] } />
+                    {newSkillName !== null && (
+                      <div className="linked-field-new">
+                        <Input autoFocus placeholder="Skill name" value={newSkillName} onChange={(event) => setNewSkillName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleCreateSkill("form"); } }} />
+                        <Button type="button" size="sm" loading={creatingLinked} disabled={!newSkillName.trim()} onClick={() => void handleCreateSkill("form")}>Add</Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setNewSkillName(null)}>Cancel</Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="linked-field">
+                    <Select label="Goal (optional)" value={newGoalTitle !== null ? "__new__" : (formGoalId ?? "")} onChange={(event) => {
+                      if (event.target.value === "__new__") setNewGoalTitle("");
+                      else { setNewGoalTitle(null); setFormGoalId(event.target.value || null); }
+                    }} options={[{ value: "", label: "None" }, { value: "__new__", label: "＋ New goal…" }, ...((goals ?? []) as Array<{id:string;title:string}>).map((goal) => ({ value: goal.id, label: goal.title }))] } />
+                    {newGoalTitle !== null && (
+                      <div className="linked-field-new">
+                        <Input autoFocus placeholder="Goal title" value={newGoalTitle} onChange={(event) => setNewGoalTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleCreateGoal("form"); } }} />
+                        <Button type="button" size="sm" loading={creatingLinked} disabled={!newGoalTitle.trim()} onClick={() => void handleCreateGoal("form")}>Add</Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setNewGoalTitle(null)}>Cancel</Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <label className="toggle-row">
                   <span>
