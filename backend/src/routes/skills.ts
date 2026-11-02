@@ -5,7 +5,10 @@ interface Skill {
   id: string;
   userId: string;
   name: string;
-  level: number;
+  currentLevel: number;
+  targetLevel: number;
+  progress: number;
+  level?: number;
   description?: string;
   createdAt: string;
   updatedAt: string;
@@ -13,6 +16,9 @@ interface Skill {
 
 interface SkillPayload {
   name?: string;
+  currentLevel?: number;
+  targetLevel?: number;
+  progress?: number;
   level?: number;
   description?: string;
 }
@@ -51,7 +57,8 @@ export async function createSkill(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { name, level, description } = req.body as SkillPayload;
+  const { name, currentLevel, targetLevel, progress, level, description } =
+    req.body as SkillPayload;
 
   if (!name) {
     return new Response(
@@ -68,9 +75,20 @@ export async function createSkill(req: AppRequest): Promise<Response> {
   const now = new Date().toISOString();
 
   await db.run(
-    `INSERT INTO "Skill" (id, userId, name, level, description, createdAt, updatedAt)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
-    [skillId, req.user.id, name, level || 1, description, now, now],
+    `INSERT INTO "Skill" (id, userId, name, currentLevel, targetLevel, progress, level, description, createdAt, updatedAt)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+    [
+      skillId,
+      req.user.id,
+      name,
+      currentLevel ?? 1,
+      targetLevel ?? 5,
+      progress ?? 0,
+      level ?? currentLevel ?? 1,
+      description,
+      now,
+      now,
+    ],
   );
 
   const skill = await db.first<Skill>(
@@ -133,7 +151,8 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
   }
 
   const { id } = req.params;
-  const { name, level, description } = req.body as SkillPayload;
+  const { name, currentLevel, targetLevel, progress, level, description } =
+    req.body as SkillPayload;
 
   const db = new Database(req.env.DB!);
   const skill = await db.first<Skill>(
@@ -158,6 +177,21 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
   if (name !== undefined) {
     updates.push(`name = ?${updateIdx}`);
     values.push(name);
+    updateIdx++;
+  }
+  if (currentLevel !== undefined) {
+    updates.push(`currentLevel = ?${updateIdx}`);
+    values.push(currentLevel);
+    updateIdx++;
+  }
+  if (targetLevel !== undefined) {
+    updates.push(`targetLevel = ?${updateIdx}`);
+    values.push(targetLevel);
+    updateIdx++;
+  }
+  if (progress !== undefined) {
+    updates.push(`progress = ?${updateIdx}`);
+    values.push(progress);
     updateIdx++;
   }
   if (level !== undefined) {
