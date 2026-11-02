@@ -30,6 +30,22 @@ import * as pointsRoutes from "./routes/points";
 import * as adminRoutes from "./routes/admin";
 import * as achievementsRoutes from "./routes/achievements";
 
+// Cache headers: GET endpoints are cacheable so browsers/CDNs serve cached
+// responses on navigation without hitting the worker. Write operations stay
+// uncacheable to avoid stale reads after mutations.
+const CACHE_HEADERS_GET = "public, max-age=30, stale-while-revalidate=120";
+const CACHE_HEADERS_WRITE = "no-cache, no-store, must-revalidate";
+
+function cacheHeaders(method: string): Record<string, string | undefined> {
+  const isGet =
+    method === "GET" || method === "HEAD" || method === "OPTIONS";
+  return {
+    "Cache-Control": isGet ? CACHE_HEADERS_GET : CACHE_HEADERS_WRITE,
+    Pragma: isGet ? undefined : "no-cache",
+    Expires: isGet ? undefined : "0",
+  };
+}
+
 const getCorsHeaders = (origin: string): Record<string, string> => {
   const allowedOrigins = [
     "https://cheeryhub.space",
@@ -763,10 +779,9 @@ async function handleRequest(
     Object.entries(corsHeaders).forEach(([key, value]) => {
       responseHeaders.set(key, value);
     });
-    // Prevent browser caching of API responses
-    responseHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate");
-    responseHeaders.set("Pragma", "no-cache");
-    responseHeaders.set("Expires", "0");
+    Object.entries(cacheHeaders(request.method)).forEach(([key, value]) => {
+      if (value !== undefined) responseHeaders.set(key, value);
+    });
 
     return new Response(response.body, {
       status: response.status,
@@ -802,10 +817,9 @@ async function handleRequest(
  */
 async function normalizeErrorResponse(response: Response): Promise<Response> {
   if (response.status < 400) {
+    // Successful response — cache headers were already set by handleRequest;
+    // only normalize the body shape here.
     const newHeaders = new Headers(response.headers);
-    newHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate");
-    newHeaders.set("Pragma", "no-cache");
-    newHeaders.set("Expires", "0");
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,

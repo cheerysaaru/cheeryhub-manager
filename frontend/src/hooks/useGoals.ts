@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, asArray } from "../services/api";
 import { dedupe } from "../services/inflight";
+import { getFromCache, setCache, purgeCache } from "../services/cache";
 import type { Goal, GoalMilestone } from "../types";
 import { useSocket } from "./useSocket";
 
@@ -18,20 +19,24 @@ export function useGoals(userId: string | null) {
   const { on } = useSocket(userId);
 
   const loadGoals = useCallback(() => {
+    setError(null);
+    const cached = getFromCache<Goal[]>("goals:list");
+    if (cached) setGoals(asArray<Goal>(cached).filter((goal): goal is Goal => Boolean(goal && typeof goal === "object" && typeof goal.id === "string" && typeof goal.title === "string")).map(normalizeGoal));
     return dedupe("goals:list", () => api<Goal[]>("/goals"))
       .then((data) => {
-        setGoals(
-          asArray<Goal>(data)
-            .filter((goal): goal is Goal =>
-              Boolean(
-                goal &&
-                typeof goal === "object" &&
-                typeof goal.id === "string" &&
-                typeof goal.title === "string",
-              ),
-            )
-            .map(normalizeGoal),
-        );
+        const normalized = asArray<Goal>(data)
+          .filter((goal): goal is Goal =>
+            Boolean(
+              goal &&
+              typeof goal === "object" &&
+              typeof goal.id === "string" &&
+              typeof goal.title === "string",
+            ),
+          )
+          .map(normalizeGoal);
+        setGoals(normalized);
+        setCache("goals:list", normalized);
+        setError(null);
       })
       .catch((caught: unknown) => {
         setError(
@@ -80,6 +85,7 @@ export function useGoals(userId: string | null) {
     setGoals((prev) =>
       prev.some((g) => g.id === goal.id) ? prev : [goal, ...prev],
     );
+    purgeCache("goals:list");
     return goal;
   }, []);
 
@@ -91,6 +97,7 @@ export function useGoals(userId: string | null) {
       }),
     );
     setGoals((prev) => prev.map((g) => (g.id === id ? goal : g)));
+    purgeCache("goals:list");
     return goal;
   }, []);
 
