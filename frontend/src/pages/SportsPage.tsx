@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus, Dumbbell, Camera, Play, Square, Trash2, Check, Timer,
-  TrendingUp, X, Image as ImageIcon, MoreVertical, Copy,
+  TrendingUp, X, Image as ImageIcon, MoreVertical, Copy, Calendar,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useSports, type Sport, type PhotoAnalysis } from "../hooks/useSports";
@@ -95,6 +95,9 @@ export default function SportsPage() {
   const [workoutError, setWorkoutError] = useState<string | null>(null);
   const restEndRef = useRef<number | null>(null);
 
+  // Monday photo reminder
+  const [showMondayReminder, setShowMondayReminder] = useState<Sport | null>(null);
+
   // Modals
   const [stopTarget, setStopTarget] = useState<Sport | null>(null);
   const [stoppedSummary, setStoppedSummary] = useState<Sport | null>(null);
@@ -138,6 +141,30 @@ export default function SportsPage() {
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [kebabOpen]);
+
+  // Check for Monday photo reminder
+  useEffect(() => {
+    const today = new Date();
+    const isMonday = today.getDay() === 1;
+    if (isMonday && sports.length > 0) {
+      // Check if any active sport needs a photo this week
+      const sportNeedingPhoto = sports.find(s => Boolean(s.active) && Boolean(s.photoDue));
+      if (sportNeedingPhoto && !showMondayReminder) {
+        // Only show if no photo added this week yet
+        const thisWeek = today.toISOString().split('T')[0]; // Just for session tracking
+        const hasPhotoThisWeek = sportNeedingPhoto.photos?.some(p => {
+          const photoDate = new Date(p.createdAt);
+          const diffDays = Math.floor((today.getTime() - photoDate.getTime()) / (1000 * 60 * 60 * 24));
+          return diffDays < 7;
+        });
+        if (!hasPhotoThisWeek) {
+          setShowMondayReminder(sportNeedingPhoto);
+        }
+      }
+    } else if (!isMonday) {
+      setShowMondayReminder(null);
+    }
+  }, [sports, showMondayReminder]);
 
   const resetSetup = useCallback(() => {
     setSetupStep(0); setSetupError(null); setSportName(""); setDaysPerWeek(3);
@@ -810,6 +837,37 @@ export default function SportsPage() {
         })()}
       </Modal>
 
+      {/* MONDAY PHOTO REMINDER */}
+      <Modal isOpen={Boolean(showMondayReminder)} onClose={() => setShowMondayReminder(null)} title="Weekly Progress Photo" size="md">
+        <div className="text-center py-2">
+          <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <Camera size={28} className="text-primary" />
+          </div>
+          <h3 className="text-lg font-bold mb-2">Monday Check-in</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add your weekly progress photo for <strong>{showMondayReminder?.name}</strong> to track your body structure changes.
+          </p>
+          <Button
+            variant="secondary"
+            size="lg"
+            className="w-full bg-primary text-white hover:bg-primary-hover"
+            onClick={() => {
+              const sport = showMondayReminder;
+              setShowMondayReminder(null);
+              openPhotoPicker(sport!);
+            }}
+          >
+            <Camera size={18} className="mr-2" /> Add Photo Now
+          </Button>
+          <button
+            onClick={() => setShowMondayReminder(null)}
+            className="w-full mt-3 py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+          >
+            Remind me later
+          </button>
+        </div>
+      </Modal>
+
       {/* STOP CONFIRM */}
       <Modal isOpen={Boolean(stopTarget)} onClose={() => setStopTarget(null)} title="Stop this sport?">
         <p>Stopping <strong>{stopTarget?.name}</strong> ends tracking and shows final analysis.</p>
@@ -853,9 +911,48 @@ export default function SportsPage() {
             </div>
             {detailSport.photos.length > 0 && (
               <div className="details-section">
-                <h4><TrendingUp size={15} /> Progress photos</h4>
-                <div className="photo-timeline">
-                  {detailSport.photos.map((p) => (<figure key={p.id}><img src={p.image} alt="Progress" /><figcaption>{new Date(p.createdAt).toLocaleDateString()}</figcaption></figure>))}
+                <div className="flex items-center justify-between mb-3">
+                  <h4><TrendingUp size={15} /> Progress photos</h4>
+                  <span className="text-xs text-muted-foreground font-medium">{detailSport.photos.length} photos</span>
+                </div>
+                <div className="photo-timeline-monthly">
+                  {(() => {
+                    // Group photos by month
+                    const months = new Map<string, typeof detailSport.photos>();
+                    detailSport.photos.forEach((p) => {
+                      const date = new Date(p.createdAt);
+                      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      if (!months.has(key)) months.set(key, []);
+                      months.get(key)!.push(p);
+                    });
+                    // Sort months descending (latest first)
+                    const sortedMonths = Array.from(months.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+                    return sortedMonths.map(([monthKey, photos]) => {
+                      const [year, month] = monthKey.split('-').map(Number);
+                      const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                      return (
+                        <div key={monthKey} className="month-group">
+                          <h5 className="flex items-center gap-2 text-sm font-bold text-muted-foreground mb-3 pb-2 border-b border-border">
+                            <Calendar size={14} /> {monthName} <span className="text-xs font-normal opacity-70">({photos.length} photos)</span>
+                          </h5>
+                          <div className="flex flex-col gap-2">
+                            {photos.map((p, i) => {
+                              const date = new Date(p.createdAt);
+                              const weekOfMonth = Math.ceil(date.getDate() / 7);
+                              return (
+                                <figure key={p.id} className="group relative">
+                                  <img src={p.image} alt="Progress" className="w-full aspect-[4/3] object-cover rounded-lg border border-border transition-transform duration-200 group-hover:scale-[1.02]" />
+                                  <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white text-xs font-medium">
+                                    Week {weekOfMonth} · {date.toLocaleDateString()}
+                                  </figcaption>
+                                </figure>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}
