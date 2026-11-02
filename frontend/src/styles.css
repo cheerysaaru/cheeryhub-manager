@@ -5979,6 +5979,52 @@ textarea::placeholder {
   gap: var(--space-4);
 }
 
+.template-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.template-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.template-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  color: var(--primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.template-card:hover {
+  border-color: var(--primary);
+  border-style: solid;
+  background: var(--secondary);
+}
+.template-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text);
+}
+.template-tagline {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .mode-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;

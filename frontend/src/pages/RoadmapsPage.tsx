@@ -14,6 +14,7 @@ import {
   Bell,
   XCircle,
   Clock,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useRoadmaps } from "../hooks/useRoadmaps";
@@ -31,6 +32,7 @@ import { useToast } from "../components/Toast";
 import { Select } from "../components/Select";
 import { Textarea } from "../components/Textarea";
 import { todayISO } from "../utils/date";
+import { ROADMAP_PRESETS, type RoadmapPreset } from "../data/roadmapPresets";
 
 interface RoadmapDay {
   id: string;
@@ -184,6 +186,16 @@ export default function RoadmapsPage() {
     );
     setAiSource(null);
     setAiError(null);
+  }, []);
+
+  const applyPreset = useCallback((preset: RoadmapPreset) => {
+    setFormMode("MANUAL");
+    setFormTitle(preset.title);
+    setFormDays(preset.days.length);
+    setDayPlans(preset.days.map((day) => ({ heading: day.heading, description: day.description })));
+    setAiSource(null);
+    setAiError(null);
+    setFormError(null);
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -528,6 +540,22 @@ export default function RoadmapsPage() {
       {/* CREATE MODAL */}
       <Modal isOpen={showForm} onClose={() => { setShowForm(false); resetForm(); }} title="Create Roadmap" size="md">
         <form onSubmit={handleCreate} className="create-roadmap-form">
+          {/* Templates */}
+          <div className="template-section">
+            <span className="template-label">Start from a template</span>
+            <div className="template-list">
+              {ROADMAP_PRESETS.map((preset) => (
+                <button key={preset.id} type="button" className="template-card" onClick={() => applyPreset(preset)}>
+                  <GraduationCap size={18} />
+                  <span className="template-card-text">
+                    <strong>{preset.title}</strong>
+                    <span className="template-tagline">{preset.days.length} days · {preset.tagline}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Mode switch */}
           <div className="mode-switch" role="radiogroup" aria-label="Plan type">
             <button type="button" role="radio" aria-checked={formMode === "AI"} className={`mode-btn ${formMode === "AI" ? "active" : ""}`} onClick={() => setFormMode("AI")}>
