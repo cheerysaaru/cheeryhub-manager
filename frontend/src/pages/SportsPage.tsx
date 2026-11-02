@@ -707,13 +707,13 @@ export default function SportsPage() {
                   <span>{formatElapsed(elapsed)}</span>
                 </div>
                 {workoutSport.workoutDays!.length > 1 && (
-                  <select 
+                  <select
                     className="flex-1 h-[52px] px-4 rounded-xl border border-border bg-bg-card text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
-                    value={workoutDayIndex} 
-                    onChange={(e) => { 
-                      setWorkoutDayIndex(Number(e.target.value)); 
-                      setCompletedExercises(new Set()); 
-                      setRestLeft(-1); 
+                    value={workoutDayIndex}
+                    onChange={(e) => {
+                      setWorkoutDayIndex(Number(e.target.value));
+                      setCompletedExercises(new Set());
+                      setRestLeft(-1);
                     }}
                   >
                     {workoutSport.workoutDays!.map((d, i) => (
@@ -730,8 +730,8 @@ export default function SportsPage() {
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-300" 
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -757,9 +757,10 @@ export default function SportsPage() {
               <div className="flex flex-col gap-2">
                 {dayPlan.exercises.map((ex, idx) => {
                   const isDone = completedExercises.has(idx);
+                  const reps = ex.reps.replace(/\\u00D7/g, "×");
                   return (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       onClick={() => toggleExercise(idx)}
                       className={`group flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
                         isDone ? "bg-success-bg border-success" : "bg-bg border-transparent hover:border-border"
@@ -775,7 +776,7 @@ export default function SportsPage() {
                           {ex.name}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-muted-foreground">{ex.sets} × {ex.reps}</span>
+                      <span className="text-sm font-bold text-muted-foreground">{ex.sets} × {reps}</span>
                     </div>
                   );
                 })}
@@ -785,16 +786,16 @@ export default function SportsPage() {
 
               {/* 5. Finish Button */}
               <div className="mt-2">
-                <Button 
-                  type="button" 
-                  loading={workoutSaving} 
+                <Button
+                  type="button"
+                  loading={workoutSaving}
                   onClick={() => void finishWorkout()}
                   className="w-full h-14 bg-primary text-white rounded-xl text-lg font-black"
                 >
                   <Check size={20} className="mr-2" /> Finish workout
                 </Button>
-                <button 
-                  onClick={cancelWorkout} 
+                <button
+                  onClick={cancelWorkout}
                   disabled={workoutSaving}
                   className="w-full py-3 text-sm font-bold text-muted-foreground hover:text-danger transition-colors mt-2"
                 >
