@@ -112,7 +112,7 @@ export default function ArchivedmentsPage() {
         .filter((goal) => !items.some((item) => item.id === goal.id))
         .map((goal) => ({
           id: goal.id,
-          emoji: "Ã°Å¸Ââ€ ",
+          emoji: "🏃‍♂️",
           title: goal.title,
           description: goal.description ?? undefined,
           date: (goal.updatedAt ?? todayISO()).slice(0, 10),
@@ -178,7 +178,7 @@ export default function ArchivedmentsPage() {
     try {
       saved = await unlock(achievementKeyFromTitle(title));
     } catch (caught) {
-      // Same title unlocked before: that key is taken Ã¢â‚¬â€ give it a fresh one.
+      // Same title unlocked before: that key is taken — give it a fresh one.
       if (caught instanceof ApiError && caught.status === 409) {
         try {
           saved = await unlock(
@@ -215,7 +215,7 @@ export default function ArchivedmentsPage() {
     toast({
       type: "success",
       title: "Achievement added",
-      message: `${title} Ã‚· +${saved.xpAwarded} points`,
+      message: `${title} · +${saved.xpAwarded} points`,
     });
   }
 
@@ -297,7 +297,7 @@ export default function ArchivedmentsPage() {
               setForm({ ...form, emoji: e.target.value.slice(0, 2) })
             }
             maxLength={2}
-            placeholder="Ã°Å¸Ââ€ "
+            placeholder="🏃‍♂️"
           />
           <Input
             label="Title"

@@ -406,7 +406,7 @@ export default function RoadmapsPage() {
           <h1>Learning roadmaps</h1>
           <p className="header-date">
             {stats.done}/{stats.total} days done
-            {points ? ` Â· ${points.currentTotal} pts Â· Level ${points.level}` : ""}
+            {points ? ` · ${points.currentTotal} pts · Level ${points.level}` : ""}
           </p>
         </div>
         <div className="roadmap-header-actions">
@@ -511,8 +511,8 @@ export default function RoadmapsPage() {
                                   <ChevronRight size={14} />
                                   <span className="compact-day-text">
                                     {draft.description || draft.heading || "Open details"}
-                                    {day.completed && <span className="compact-day-status"> Â· done</span>}
-                                    {day.status === "MISSED" && <span className="compact-day-status missed"> Â· not done</span>}
+                                    {day.completed && <span className="compact-day-status"> · done</span>}
+                                    {day.status === "MISSED" && <span className="compact-day-status missed"> · not done</span>}
                                   </span>
                                 </div>
                               )}
