@@ -724,6 +724,20 @@ async function handleRequest(
         appReq.params.id = pathname.split("/")[3];
         response = await sportsRoutes.addSportPhoto(appReq);
       } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/photos\/[^/]+\/analyze$/) &&
+        request.method === "POST"
+      ) {
+        const parts = pathname.split("/");
+        appReq.params.id = parts[3];
+        appReq.params.photoId = parts[5];
+        response = await sportsRoutes.analyzeSportPhoto(appReq);
+      } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/photo-analysis$/) &&
+        request.method === "GET"
+      ) {
+        appReq.params.id = pathname.split("/")[3];
+        response = await sportsRoutes.getSportAnalysis(appReq);
+      } else if (
         pathname.match(/^\/api\/sports\/[^/]+\/workout-days$/) &&
         request.method === "PUT"
       ) {

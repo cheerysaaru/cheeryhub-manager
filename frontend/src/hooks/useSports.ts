@@ -65,6 +65,16 @@ export interface Sport {
   photoDue: boolean;
 }
 
+export interface PhotoAnalysis {
+  photoId: string;
+  physique: string;
+  focus: string[];
+  notes: string[];
+  analyzedAt: string;
+  source?: string;
+  cached?: boolean;
+}
+
 export function useSports(userId: string | null) {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,14 +142,17 @@ export function useSports(userId: string | null) {
     await load();
   }, [load]);
 
+  const analyzePhoto = useCallback(async (sportId: string, photoId: string) => {
+    return api<PhotoAnalysis>(`/sports/${sportId}/photos/${photoId}/analyze`, { method: "POST" });
+  }, []);
+
   const updateWorkoutDays = useCallback(async (sportId: string, workoutDays: WorkoutDay[]) => {
-    const result = await api<Sport>(`/sports/${sportId}/workout-days`, {
-      method: "PUT",
+    const result = await api<Sport>(`/sports/${sportId}/workout-days`, {      method: "PUT",
       body: JSON.stringify({ workoutDays }),
     });
     await load();
     return result;
   }, [load]);
 
-  return { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, updateWorkoutDays };
+  return { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, updateWorkoutDays, analyzePhoto };
 }

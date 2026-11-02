@@ -4,7 +4,7 @@ import {
   TrendingUp, X, Image as ImageIcon, MoreVertical, Copy,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useSports, type Sport } from "../hooks/useSports";
+import { useSports, type Sport, type PhotoAnalysis } from "../hooks/useSports";
 import { usePoints } from "../hooks/usePoints";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -65,7 +65,7 @@ function resizeImageFile(file: File): Promise<string> {
 export default function SportsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport } = useSports(user?.id ?? null);
+  const { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, analyzePhoto } = useSports(user?.id ?? null);
   const { points, refresh: refreshPoints } = usePoints(user?.id ?? null);
 
   // Setup state
@@ -103,10 +103,15 @@ export default function SportsPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [photoTarget, setPhotoTarget] = useState<Sport | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [analyzingKey, setAnalyzingKey] = useState<string | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<Record<string, PhotoAnalysis>>({});
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [detailSport, setDetailSport] = useState<Sport | null>(null);
   const [kebabOpen, setKebabOpen] = useState<string | null>(null);
   const kebabRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const sportsRef = useRef<Sport[]>([]);
+  useEffect(() => { sportsRef.current = sports; }, [sports]);
 
   useEffect(() => { void refreshPoints(); }, [refreshPoints]);
   useEffect(() => {
@@ -307,14 +312,35 @@ export default function SportsPage() {
   }, [deleteTarget, deleteSport, refreshPoints, toast]);
 
   const openPhotoPicker = useCallback((s: Sport) => { setPhotoTarget(s); photoInputRef.current?.click(); }, []);
+
+  const analyzeSportPhoto = useCallback(async (sport: Sport, photoId: string) => {
+    const key = `${sport.id}:${photoId}`;
+    setAnalyzingKey(key);
+    setAnalysisError(null);
+    try {
+      const result = await analyzePhoto(sport.id, photoId);
+      setAnalysisResults((prev) => ({ ...prev, [sport.id]: result }));
+    } catch (e) {
+      setAnalysisError(e instanceof Error ? e.message : "Could not analyze the photo");
+    } finally {
+      setAnalyzingKey(null);
+    }
+  }, [analyzePhoto]);
+
   const handleProgressPhoto = useCallback(async (file: File | undefined) => {
     if (!file || !photoTarget) return;
     setPhotoBusy(true);
     try { const url = await resizeImageFile(file); await addPhoto(photoTarget.id, url, new Date().toLocaleDateString());
-      toast({ type: "success", title: "Photo saved", message: "Progress photo added." }); setPhotoTarget(null);
+      toast({ type: "success", title: "Photo saved", message: "Progress photo added." });
+      const target = photoTarget;
+      setPhotoTarget(null);
+      void fetchSports().then(() => {
+        const latest = sportsRef.current.find((s) => s.id === target.id)?.photos?.slice(-1)[0];
+        if (latest) void analyzeSportPhoto(target, latest.id);
+      });
     } catch (e) { toast({ type: "error", title: "Photo failed", message: e instanceof Error ? e.message : "Try again" }); }
     finally { setPhotoBusy(false); if (photoInputRef.current) photoInputRef.current.value = ""; }
-  }, [photoTarget, addPhoto, toast]);
+  }, [photoTarget, addPhoto, toast, fetchSports]);
 
   const stats = useMemo(() => ({
     active: sports.filter((s) => Boolean(s.active)).length,
@@ -349,97 +375,191 @@ export default function SportsPage() {
         <div className="sports-grid">
           {sports.map((sport) => {
             const active = Boolean(sport.active);
-            const photoDue = Boolean(sport.photoDue);
-            const todayWd = new Date().getDay();
+            const today = new Date();
+            const isMonday = today.getDay() === 1;
+            const photoDue = Boolean(sport.photoDue) || (isMonday && active);
+            const todayWd = today.getDay();
             const todayDay = sport.workoutDays?.find((d) => d.weekday === todayWd);
             return (
-              <Card key={sport.id} className={`sport-card ${!active ? "is-stopped" : ""}`} padding="md">
+              <Card key={sport.id} className={`sport-card ${!active ? "is-stopped" : ""}`} padding="none" style={{ borderRadius: "16px" }}>
                 {/* 1. Header */}
-                <div className="sport-card-top">
-                  <div className="sport-heading">
-                    <span className="sport-icon"><Dumbbell size={18} /></span>
-                    <div>
-                      <strong>{sport.name}</strong>
-                      <p className="sport-meta">{sport.daysPerWeek}x / week · Rest {sport.restSeconds}s · {sport.untilStopped ? "Until stopped" : `${sport.durationMonths} month${sport.durationMonths === 1 ? "" : "s"}`}</p>
+                <div style={{ padding: "20px 20px 0" }}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+                        <Dumbbell size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold leading-tight">{sport.name === "Gym" ? "go to gym regularly" : sport.name}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {sport.daysPerWeek}x / week · Rest {sport.restSeconds}s · {sport.untilStopped ? "Until stopped" : `${sport.durationMonths} month${sport.durationMonths === 1 ? "" : "s"}`}
+                        </p>
+                      </div>
                     </div>
+                    <Badge variant={active ? "success" : "outline"} className="rounded-full px-3 py-1 font-semibold uppercase tracking-wider text-[10px]">
+                      {active ? "Active" : "Stopped"}
+                    </Badge>
                   </div>
-                  <Badge variant={active ? "success" : "outline"} size="sm">{active ? "Active" : "Stopped"}</Badge>
                 </div>
 
-                {/* 2. Week strip */}
-                <div className="week-strip">
-                  {ORDER.map((wd, i) => {
-                    const isTraining = sport.commitmentDays?.includes(wd) || sport.workoutDays?.some((d) => d.weekday === wd);
-                    const isToday = wd === todayWd;
-                    const hasDone = sport.sessions?.some((s) => new Date(s.startedAt).getDay() === wd && new Date(s.startedAt).toDateString() === new Date().toDateString());
-                    return <span key={i} className={`week-circle ${isTraining ? "training" : ""} ${isToday ? "today" : ""} ${hasDone ? "done" : ""}`} title={DAY_FULL[wd]} />;
-                  })}
+                {/* Monday Photo Prompt */}
+                {photoDue && active && (
+                  <div className="mx-5 mt-4 flex items-center justify-between rounded-xl bg-primary/10 px-4 py-3 text-primary border border-primary/20">
+                    <div className="flex items-center gap-2">
+                      <Camera size={18} />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black uppercase tracking-tight">Monday Analysis</span>
+                        <span className="text-[10px] opacity-80 font-bold">Add photo for body structure check</span>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="bg-primary text-white h-8 text-[10px] font-black px-4 hover:bg-primary-hover"
+                      loading={photoBusy && photoTarget?.id === sport.id} 
+                      onClick={() => openPhotoPicker(sport)}
+                    >
+                      Add photo
+                    </Button>
+                  </div>
+                )}
+
+                {/* 2. Week tracker */}
+                <div className="px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    {ORDER.map((wd, i) => {
+                      const isTraining = sport.commitmentDays?.includes(wd) || sport.workoutDays?.some((d) => d.weekday === wd);
+                      const isToday = wd === todayWd;
+                      const hasDone = sport.sessions?.some((s) => {
+                        const d = new Date(s.startedAt);
+                        return d.getDay() === wd && d.toDateString() === new Date().toDateString();
+                      });
+                      
+                      let bgClass = "border-2 border-border bg-transparent";
+                      if (hasDone) bgClass = "bg-success border-success";
+                      else if (isToday) bgClass = "bg-primary border-primary ring-4 ring-primary/20";
+                      else if (isTraining) bgClass = "bg-secondary border-secondary";
+
+                      return (
+                        <div key={i} className="flex flex-col items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-muted-foreground">{DAY_ABBR[ORDER.indexOf(wd)]}</span>
+                          <div 
+                            className={`h-7 w-7 rounded-full flex items-center justify-center transition-all ${bgClass}`}
+                            title={DAY_FULL[wd]}
+                          >
+                            {hasDone && <Check size={14} className="text-white" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* 3. Stats */}
-                <div className="sport-stats">
-                  <div className="sport-stat"><span>Workouts</span><strong>{sport.analysis?.totalWorkouts ?? 0}</strong></div>
-                  <div className="sport-stat"><span>Consistency</span><strong>{sport.analysis?.consistency ?? 0}%</strong></div>
-                  <div className="sport-stat"><span>Avg time</span><strong>{sport.analysis?.averageMinutes ?? 0}m</strong></div>
+                <div className="px-5 pb-5">
+                  <div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-bg/40 p-3">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Workouts</span>
+                      <strong className="text-lg leading-tight">{sport.analysis?.totalWorkouts ?? 0}</strong>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Consistency</span>
+                      <strong className="text-lg leading-tight">{sport.analysis?.consistency ?? 0}%</strong>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Avg time</span>
+                      <strong className="text-lg leading-tight">{sport.analysis?.averageMinutes ?? 0}m</strong>
+                    </div>
+                  </div>
                 </div>
 
-                {/* 4. Photo due */}
-                {photoDue && active && (
-                  <div className="sport-photo-due">
-                    <Camera size={16} /><span>Time for a new progress photo</span>
-                    <Button variant="secondary" size="sm" loading={photoBusy && photoTarget?.id === sport.id} onClick={() => openPhotoPicker(sport)}>Add photo</Button>
+                {/* 4. Today section */}
+                <div className="border-t border-border px-5 py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold">
+                      Today · {todayDay ? (todayDay.title || DAY_FULL[todayWd]) : "Rest day"}
+                    </h4>
+                    {todayDay && (
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {todayDay.exercises.length} exercises
+                      </span>
+                    )}
                   </div>
-                )}
-
-                {/* 5. Today's plan */}
-                <div className="sport-today">
-                  <span className="sport-today-label">{todayDay ? `Today: ${todayDay.title || DAY_FULL[todayWd]}` : "Rest day"}</span>
-                  <div className="sport-exercises">
-                    {todayDay?.exercises?.map((ex) => (
-                      <span className="exercise-pill" key={ex.name}>{ex.name} <small>{ex.sets}\u00D7{ex.reps}</small></span>
+                  <div className="flex flex-col gap-2">
+                    {todayDay?.exercises?.map((ex, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                        <span className="text-sm font-medium">{ex.name}</span>
+                        <span className="text-xs text-muted-foreground font-bold">{ex.sets} × {ex.reps}</span>
+                      </div>
                     ))}
-                    {!todayDay && <span className="sport-hint">No workout planned</span>}
+                    {!todayDay && <p className="text-sm text-muted-foreground italic">Enjoy your rest day!</p>}
                   </div>
                 </div>
 
-                {/* Photos */}
-                {sport.photos.length > 0 && (
-                  <div className="sport-photos">
+                {/* 5. Progress photos */}
+                <div className="border-t border-border px-5 py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold">Progress photos</h4>
+                    <span className="text-xs text-muted-foreground font-medium">{sport.photos.length} photos</span>
+                  </div>
+                  <div className="flex items-center gap-2">
                     {sport.photos.slice(0, 3).map((p) => (
-                      <button key={p.id} type="button" className="sport-photo-thumb" onClick={() => setDetailSport(sport)}>
-                        <img src={p.image} alt="Progress" />
+                      <button key={p.id} type="button" className="h-12 w-12 overflow-hidden rounded-lg border border-border bg-bg" onClick={() => setDetailSport(sport)}>
+                        <img src={p.image} alt="Progress" className="h-full w-full object-cover" />
                       </button>
                     ))}
-                    <span className="photo-count"><ImageIcon size={12} /> {sport.photos.length}</span>
+                    {sport.photos.length === 0 && <div className="h-12 w-12 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground"><ImageIcon size={16} /></div>}
                   </div>
-                )}
+                </div>
 
                 {/* 6. Actions */}
-                <div className="sport-actions">
-                  {active ? (
-                    <>
-                      <Button onClick={() => startWorkout(sport)} className="sport-btn-primary"><Play size={16} /> Start Workout</Button>
-                      <Button variant="outline" size="sm" onClick={() => openPhotoPicker(sport)}><Camera size={14} /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => setDetailSport(sport)}>Details</Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button variant="secondary" onClick={() => setStoppedSummary(sport)}><TrendingUp size={16} /> Analysis</Button>
-                      <Button variant="ghost" size="sm" onClick={() => setDetailSport(sport)}>Details</Button>
-                    </>
-                  )}
-                  <div className="sport-overflow" ref={kebabRef}>
-                    <button className="kebab-icon" onClick={() => setKebabOpen(kebabOpen === sport.id ? null : sport.id)} aria-label="More options">
-                      <MoreVertical size={16} />
-                    </button>
-                    {kebabOpen === sport.id && (
-                      <div className="kebab-menu">
-                        <button onClick={() => setDetailSport(sport)}><Copy size={14} /> Edit plan</button>
-                        {!active && <button onClick={() => setStoppedSummary(sport)}><TrendingUp size={14} /> View analysis</button>}
-                        <button onClick={() => setStopTarget(sport)} className="kebab-danger"><Square size={14} /> Stop</button>
-                        <button onClick={() => setDeleteTarget(sport)} className="kebab-danger"><Trash2 size={14} /> Delete</button>
-                      </div>
+                <div className="mt-auto border-t border-border px-5 py-5">
+                  <div className="flex items-center gap-2">
+                    {active ? (
+                      <>
+                        <Button onClick={() => startWorkout(sport)} className="flex-1 bg-primary text-white hover:bg-primary-hover">
+                          <Play size={16} fill="currentColor" /> Start workout
+                        </Button>
+                        <Button variant="outline" className="shrink-0 px-3" onClick={() => openPhotoPicker(sport)}>
+                          <Camera size={18} />
+                        </Button>
+                        <Button variant="outline" className="shrink-0 px-3" onClick={() => setDetailSport(sport)}>
+                          Details
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="secondary" onClick={() => setStoppedSummary(sport)} className="flex-1">
+                          <TrendingUp size={16} /> Analysis
+                        </Button>
+                        <Button variant="outline" className="shrink-0 px-3" onClick={() => setDetailSport(sport)}>
+                          Details
+                        </Button>
+                      </>
                     )}
+                    <div className="relative" ref={kebabRef}>
+                      <Button variant="ghost" className="px-2" onClick={() => setKebabOpen(kebabOpen === sport.id ? null : sport.id)}>
+                        <MoreVertical size={18} />
+                      </Button>
+                      {kebabOpen === sport.id && (
+                        <div className="absolute bottom-full right-0 mb-2 w-48 rounded-xl border border-border bg-bg-card p-1 shadow-lg z-10">
+                          <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-bg" onClick={() => { setDetailSport(sport); setKebabOpen(null); }}>
+                            <Copy size={14} /> Edit plan
+                          </button>
+                          {!active && (
+                            <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-bg" onClick={() => { setStoppedSummary(sport); setKebabOpen(null); }}>
+                              <TrendingUp size={14} /> View analysis
+                            </button>
+                          )}
+                          <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger-bg" onClick={() => { setStopTarget(sport); setKebabOpen(null); }}>
+                            <Square size={14} /> Stop sport
+                          </button>
+                          <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger-bg" onClick={() => { setDeleteTarget(sport); setKebabOpen(null); }}>
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -460,7 +580,7 @@ export default function SportsPage() {
 
         {setupStep === 0 && (
           <div className="modal-form">
-            <Input label="Sport name" placeholder="e.g., Gym, Running" value={sportName} onChange={(e) => setSportName(e.target.value)} maxLength={60} required />
+            <Input label="Sport name" placeholder="e.g., go to gym regularly, Running" value={sportName} onChange={(e) => setSportName(e.target.value)} maxLength={60} required />
             <div className="form-row">
               <Input label="Days per week" type="number" min={1} max={7} value={daysPerWeek} onChange={(e) => setDaysPerWeek(Math.max(1, Math.min(7, parseInt(e.target.value) || 1)))} />
               <div className="day-chips">
@@ -556,36 +676,130 @@ export default function SportsPage() {
       </Modal>
 
       {/* WORKOUT */}
-      <Modal isOpen={Boolean(workoutSport)} onClose={cancelWorkout} title={workoutSport ? `Workout: ${workoutSport.name}` : "Workout"} size="md">
+      <Modal 
+        isOpen={Boolean(workoutSport)} 
+        onClose={cancelWorkout} 
+        title={workoutSport ? `Workout: ${workoutSport.name}` : "Workout"} 
+        size="md"
+        hideHeader // We'll render our own header
+      >
         {workoutSport && (() => {
           const dayPlan = workoutSport.workoutDays?.[workoutDayIndex];
           if (!dayPlan) return <p>No workout planned for this day.</p>;
+          const totalEx = dayPlan.exercises.length;
+          const doneEx = completedExercises.size;
+          const progress = totalEx > 0 ? (doneEx / totalEx) * 100 : 0;
+
           return (
-            <div className="workout-runner">
-              <div className="workout-header">
-                <div className="workout-timer"><Timer size={20} /><span>{formatElapsed(elapsed)}</span></div>
+            <div className="flex flex-col gap-5 p-1">
+              {/* 1. Custom Header */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Workout: {workoutSport.name}</h2>
+                <button onClick={cancelWorkout} className="p-2 hover:bg-bg rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* 2. Timer + Day selector */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-xl font-mono text-2xl font-black text-primary">
+                  <Timer size={20} />
+                  <span>{formatElapsed(elapsed)}</span>
+                </div>
                 {workoutSport.workoutDays!.length > 1 && (
-                  <select className="workout-day-select" value={workoutDayIndex} onChange={(e) => { setWorkoutDayIndex(Number(e.target.value)); setCompletedExercises(new Set()); setRestLeft(-1); }}>
-                    {workoutSport.workoutDays!.map((d, i) => <option key={i} value={i}>{DAY_FULL[d.weekday]}: {d.title || DAY_FULL[d.weekday]}</option>)}
+                  <select 
+                    className="flex-1 h-[52px] px-4 rounded-xl border border-border bg-bg-card text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                    value={workoutDayIndex} 
+                    onChange={(e) => { 
+                      setWorkoutDayIndex(Number(e.target.value)); 
+                      setCompletedExercises(new Set()); 
+                      setRestLeft(-1); 
+                    }}
+                  >
+                    {workoutSport.workoutDays!.map((d, i) => (
+                      <option key={i} value={i}>{DAY_FULL[d.weekday]}: {d.title || DAY_FULL[d.weekday]}</option>
+                    ))}
                   </select>
                 )}
               </div>
-              {restLeft > 0 ? (
-                <div className="rest-timer"><p>Rest</p><strong>{formatElapsed(restLeft)}</strong><Button variant="ghost" size="sm" onClick={() => { setRestLeft(-1); restEndRef.current = null; }}>Skip rest</Button></div>
-              ) : <p className="workout-hint">Tick each exercise as you finish it. Rest starts automatically.</p>}
-              <div className="workout-exercises">
-                {dayPlan.exercises.map((ex, idx) => (
-                  <label key={idx} className={`workout-exercise ${completedExercises.has(idx) ? "done" : ""}`}>
-                    <Checkbox checked={completedExercises.has(idx)} onChange={() => toggleExercise(idx)} />
-                    <span className="workout-exercise-name">{ex.name}</span>
-                    <span className="workout-exercise-plan">{ex.sets}\u00D7{ex.reps}</span>
-                  </label>
-                ))}
+
+              {/* 3. Progress Section */}
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground font-medium">
+                  Tick each exercise as you finish. Rest starts automatically.
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-300" 
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-black tabular-nums">{doneEx} / {totalEx}</span>
+                </div>
               </div>
-              {workoutError && <p className="form-error">{workoutError}</p>}
-              <div className="modal-actions">
-                <Button type="button" variant="ghost" onClick={cancelWorkout} disabled={workoutSaving}>Discard</Button>
-                <Button type="button" loading={workoutSaving} onClick={() => void finishWorkout()}><Square size={14} /> End &amp; save</Button>
+
+              {/* Rest Timer Overlay/Alert */}
+              {restLeft > 0 && (
+                <div className="flex items-center justify-between bg-info-bg text-info px-4 py-3 rounded-xl animate-pulse">
+                  <div className="flex items-center gap-2">
+                    <Timer size={18} />
+                    <span className="font-bold uppercase tracking-wider text-xs">Resting</span>
+                    <strong className="text-lg font-black tabular-nums ml-1">{formatElapsed(restLeft)}</strong>
+                  </div>
+                  <button onClick={() => { setRestLeft(-1); restEndRef.current = null; }} className="text-xs font-bold underline">
+                    Skip
+                  </button>
+                </div>
+              )}
+
+              {/* 4. Exercise list */}
+              <div className="flex flex-col gap-2">
+                {dayPlan.exercises.map((ex, idx) => {
+                  const isDone = completedExercises.has(idx);
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={() => toggleExercise(idx)}
+                      className={`group flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
+                        isDone ? "bg-success-bg border-success" : "bg-bg border-transparent hover:border-border"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                          isDone ? "bg-primary border-primary" : "bg-transparent border-muted-foreground/30 group-hover:border-primary/50"
+                        }`}>
+                          {isDone && <Check size={14} className="text-white" />}
+                        </div>
+                        <span className={`font-bold transition-all ${isDone ? "text-muted-foreground line-through" : "text-primary"}`}>
+                          {ex.name}
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-muted-foreground">{ex.sets} × {ex.reps}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {workoutError && <p className="text-sm text-danger font-bold">{workoutError}</p>}
+
+              {/* 5. Finish Button */}
+              <div className="mt-2">
+                <Button 
+                  type="button" 
+                  loading={workoutSaving} 
+                  onClick={() => void finishWorkout()}
+                  className="w-full h-14 bg-primary text-white rounded-xl text-lg font-black"
+                >
+                  <Check size={20} className="mr-2" /> Finish workout
+                </Button>
+                <button 
+                  onClick={cancelWorkout} 
+                  disabled={workoutSaving}
+                  className="w-full py-3 text-sm font-bold text-muted-foreground hover:text-danger transition-colors mt-2"
+                >
+                  Discard workout
+                </button>
               </div>
             </div>
           );
@@ -627,7 +841,7 @@ export default function SportsPage() {
                 <div key={i} className="detail-day">
                   <strong>{DAY_FULL[d.weekday]}: {d.title || "Untitled"}</strong>
                   <div className="sport-exercises">
-                    {d.exercises.map((ex) => (<span className="exercise-pill" key={ex.name}>{ex.name} <small>{ex.sets}\u00D7{ex.reps}</small></span>))}
+                    {d.exercises.map((ex) => (<span className="exercise-pill" key={ex.name}>{ex.name} <small>{ex.sets} × {ex.reps}</small></span>))}
                   </div>
                 </div>
               ))}

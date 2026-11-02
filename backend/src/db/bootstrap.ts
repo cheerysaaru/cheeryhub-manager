@@ -72,6 +72,8 @@ export const ADD_COLUMNS = [
   { table: "RoadmapDay", column: "dueAt", ddl: 'ALTER TABLE "RoadmapDay" ADD COLUMN "dueAt" DATETIME' },
   // Per-day workout plans for Sports (0121)
   { table: "Sport", column: "workoutDays", ddl: 'ALTER TABLE "Sport" ADD COLUMN "workoutDays" TEXT' },
+  // Weekly photo AI analysis for Sports
+  { table: "SportPhoto", column: "analysis", ddl: 'ALTER TABLE "SportPhoto" ADD COLUMN "analysis" TEXT' },
 ];
 
 let bootstrapped: Promise<void> | null = null;

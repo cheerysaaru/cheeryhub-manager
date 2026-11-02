@@ -60,6 +60,7 @@ interface PhotoRow {
   sportId: string;
   image: string;
   label: string | null;
+  analysis: string | null;
   createdAt: string;
 }
 
@@ -171,8 +172,8 @@ function analysisFor(sport: SportRow, sessions: SessionRow[], photos: PhotoRow[]
     consistency,
     plannedSessions,
     finishedInDays,
-    firstPhoto: first ? { id: first.id, image: first.image, createdAt: first.createdAt, label: first.label } : null,
-    latestPhoto: latest ? { id: latest.id, image: latest.image, createdAt: latest.createdAt, label: latest.label } : null,
+    firstPhoto: first ? { id: first.id, image: first.image, createdAt: first.createdAt, label: first.label, analysis: first.analysis } : null,
+    latestPhoto: latest ? { id: latest.id, image: latest.image, createdAt: latest.createdAt, label: latest.label, analysis: latest.analysis } : null,
   };
 }
 
@@ -270,15 +271,16 @@ export async function createSport(req: AppRequest): Promise<Response> {
   const db = new Database(req.env.DB);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+  const isGym = /gym/i.test(name);
   let habitId: string | null = null;
-
   if (dailyCommitments) {
     habitId = crypto.randomUUID();
+    const habitName = isGym ? "Go to gym regularly" : `${name} commitment`;
     await db.run(
       `INSERT INTO "Habit" (id, userId, name, title, description, frequency, targetDays, active, createdAt, updatedAt)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9)`,
       [
-        habitId, session.userId, `${name} commitment`, `${name} commitment`,
+        habitId, session.userId, habitName, habitName,
         `Daily commitment for ${name} on ${daysLabel(commitmentDays)}`,
         `CUSTOM:${commitmentDays.join(",")}`, commitmentDays.length, now, now,
       ],
@@ -387,8 +389,102 @@ export async function addSportPhoto(req: AppRequest): Promise<Response> {
   return json({ data: photos }, 201);
 }
 
-export async function saveSportSession(req: AppRequest): Promise<Response> {
+/**
+ * Analyzes a sport progress photo with Workers AI (LLaVA vision model) when
+ * bound, caching the result on the photo. Without AI it returns an honest
+ * fallback so the frontend can show what to do next.
+ */
+export async function analyzeSportPhoto(req: AppRequest): Promise<Response> {
   if (!req.user) return unauthorized();
+  const { id, photoId } = req.params;
+  const db = new Database(req.env.DB);
+  const sport = await getSport(db, id, req.user.id);
+  if (!sport) return json({ error: "Sport not found", code: "NOT_FOUND" }, 404);
+  const photo = await db.first<PhotoRow>(
+    'SELECT * FROM "SportPhoto" WHERE id = ?1 AND sportId = ?2',
+    [photoId, id],
+  );
+  if (!photo) return json({ error: "Photo not found", code: "NOT_FOUND" }, 404);
+
+  if (photo.analysis) {
+    try {
+      return json({ data: { photoId: photo.id, ...(JSON.parse(photo.analysis) as object), cached: true } });
+    } catch {
+      // fall through and re-analyze
+    }
+  }
+
+  const prompt =
+    "Analyze this fitness progress photo. Estimate the person's build and posture from visible proportions only. " +
+    'Reply with ONLY compact JSON: {"physique":"short body-structure summary","focus":["two or three muscle groups to prioritize"],"notes":["one or two short form/posture or consistency tips"]}. ' +
+    "Do not mention identity, age or exact weight. Keep every string under 140 characters.";
+
+  let result: { physique: string; focus: string[]; notes: string[] } | null = null;
+  const ai = (req.env as any).AI;
+  if (ai?.run && photo.image.startsWith("data:")) {
+    try {
+      const base64 = photo.image.split(",")[1] ?? "";
+      const binary = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      const response = await ai.run("@cf/llava-hf/llava-1.5-7b-hf", {
+        image: [...binary],
+        prompt,
+        max_tokens: 512,
+      });
+      const text: string = response?.description ?? response?.response ?? "";
+      const start = text.indexOf("{");
+      const end = text.lastIndexOf("}");
+      if (start >= 0 && end > start) {
+        const parsed = JSON.parse(text.slice(start, end + 1)) as any;
+        result = {
+          physique: String(parsed?.physique ?? "").slice(0, 200),
+          focus: Array.isArray(parsed?.focus) ? parsed.focus.map(String).slice(0, 4) : [],
+          notes: Array.isArray(parsed?.notes) ? parsed.notes.map(String).slice(0, 4) : [],
+        };
+      }
+    } catch (error) {
+      console.error("[sports] photo analysis failed", error);
+    }
+  }
+
+  if (!result) {
+    result = {
+      physique: "AI analysis isn't available right now — keep logging a photo every week to track your change.",
+      focus: ["Consistency", "Form"],
+      notes: ["Same lighting + pose every week", "Add the photo on your training day"],
+    };
+  }
+
+  const payload = {
+    physique: result.physique,
+    focus: result.focus,
+    notes: result.notes,
+    analyzedAt: new Date().toISOString(),
+    source: ai?.run && photo.image.startsWith("data:") ? "ai" : "template",
+  };
+  await db.run('UPDATE "SportPhoto" SET analysis = ?1 WHERE id = ?2', [JSON.stringify(payload), photo.id]);
+  return json({ data: { photoId: photo.id, ...payload } });
+}
+
+/** Latest cached analysis for the sport's most recent photo. */
+export async function getSportAnalysis(req: AppRequest): Promise<Response> {
+  if (!req.user) return unauthorized();
+  const { id } = req.params;
+  const db = new Database(req.env.DB);
+  const sport = await getSport(db, id, req.user.id);
+  if (!sport) return json({ error: "Sport not found", code: "NOT_FOUND" }, 404);
+  const photo = await db.first<PhotoRow>(
+    'SELECT * FROM "SportPhoto" WHERE sportId = ?1 AND analysis IS NOT NULL ORDER BY createdAt DESC LIMIT 1',
+    [id],
+  );
+  if (!photo) return json({ error: "No analyzed photo", code: "NOT_FOUND" }, 404);
+  try {
+    return json({ data: { photoId: photo.id, ...(JSON.parse(photo.analysis as string) as object), cached: true } });
+  } catch {
+    return json({ error: "No analyzed photo", code: "NOT_FOUND" }, 404);
+  }
+}
+
+export async function saveSportSession(req: AppRequest): Promise<Response> {  if (!req.user) return unauthorized();
   const { id } = req.params;
   const db = new Database(req.env.DB);
   const sport = await getSport(db, id, req.user.id);
