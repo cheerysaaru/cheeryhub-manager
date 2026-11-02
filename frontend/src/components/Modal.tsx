@@ -11,6 +11,7 @@ export interface ModalProps {
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "full";
   showCloseButton?: boolean;
+  hideHeader?: boolean;
 }
 
 export function Modal({
@@ -21,6 +22,7 @@ export function Modal({
   children,
   size = "md",
   showCloseButton = true,
+  hideHeader = false,
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -45,27 +47,29 @@ export function Modal({
         className={`modal-content ${sizes[size]}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
-          {title && (
-            <h2 id="modal-title" className="modal-title">
-              {title}
-            </h2>
-          )}
-          {description && (
-            <p id="modal-description" className="modal-description">
-              {description}
-            </p>
-          )}
-          {showCloseButton && (
-            <button
-              className="modal-close"
-              onClick={onClose}
-              aria-label="Close modal"
-            >
-              <X size={20} />
-            </button>
-          )}
-        </div>
+        {!hideHeader && (
+          <div className="modal-header">
+            {title && (
+              <h2 id="modal-title" className="modal-title">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p id="modal-description" className="modal-description">
+                {description}
+              </p>
+            )}
+            {showCloseButton && (
+              <button
+                className="modal-close"
+                onClick={onClose}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
+        )}
         <div className="modal-body">{children}</div>
       </div>
     </div>
