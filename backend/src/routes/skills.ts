@@ -8,8 +8,6 @@ interface Skill {
   currentLevel: number;
   targetLevel: number;
   progress: number;
-  level?: number;
-  description?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,9 +17,10 @@ interface SkillPayload {
   currentLevel?: number;
   targetLevel?: number;
   progress?: number;
-  level?: number;
-  description?: string;
 }
+
+const SKILL_COLUMNS =
+  'id, userId, name, currentLevel, targetLevel, progress, createdAt, updatedAt';
 
 export async function listSkills(req: AppRequest): Promise<Response> {
   if (!req.user) {
@@ -36,7 +35,7 @@ export async function listSkills(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const skills = await db.all<Skill>(
-    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE userId = ?1 ORDER BY createdAt DESC',
+    `SELECT ${SKILL_COLUMNS} FROM "Skill" WHERE userId = ?1 ORDER BY createdAt DESC`,
     [req.user.id],
   );
 
@@ -57,7 +56,7 @@ export async function createSkill(req: AppRequest): Promise<Response> {
     );
   }
 
-  const { name, currentLevel, targetLevel, progress, level, description } =
+  const { name, currentLevel, targetLevel, progress } =
     req.body as SkillPayload;
 
   if (!name) {
@@ -75,8 +74,8 @@ export async function createSkill(req: AppRequest): Promise<Response> {
   const now = new Date().toISOString();
 
   await db.run(
-    `INSERT INTO "Skill" (id, userId, name, currentLevel, targetLevel, progress, level, description, createdAt, updatedAt)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+    `INSERT INTO "Skill" (id, userId, name, currentLevel, targetLevel, progress, createdAt, updatedAt)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
     [
       skillId,
       req.user.id,
@@ -84,15 +83,13 @@ export async function createSkill(req: AppRequest): Promise<Response> {
       currentLevel ?? 1,
       targetLevel ?? 5,
       progress ?? 0,
-      level ?? currentLevel ?? 1,
-      description,
       now,
       now,
     ],
   );
 
   const skill = await db.first<Skill>(
-    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1',
+    `SELECT ${SKILL_COLUMNS} FROM "Skill" WHERE id = ?1`,
     [skillId],
   );
 
@@ -117,7 +114,7 @@ export async function deleteSkill(req: AppRequest): Promise<Response> {
 
   const db = new Database(req.env.DB!);
   const skill = await db.first<Skill>(
-    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1 AND userId = ?2',
+    `SELECT ${SKILL_COLUMNS} FROM "Skill" WHERE id = ?1 AND userId = ?2`,
     [id, req.user.id],
   );
 
@@ -151,12 +148,12 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
   }
 
   const { id } = req.params;
-  const { name, currentLevel, targetLevel, progress, level, description } =
+  const { name, currentLevel, targetLevel, progress } =
     req.body as SkillPayload;
 
   const db = new Database(req.env.DB!);
   const skill = await db.first<Skill>(
-    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1 AND userId = ?2',
+    `SELECT ${SKILL_COLUMNS} FROM "Skill" WHERE id = ?1 AND userId = ?2`,
     [id, req.user.id],
   );
 
@@ -194,16 +191,6 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
     values.push(progress);
     updateIdx++;
   }
-  if (level !== undefined) {
-    updates.push(`level = ?${updateIdx}`);
-    values.push(level);
-    updateIdx++;
-  }
-  if (description !== undefined) {
-    updates.push(`description = ?${updateIdx}`);
-    values.push(description);
-    updateIdx++;
-  }
 
   if (updates.length === 0) {
     return new Response(
@@ -227,7 +214,7 @@ export async function updateSkill(req: AppRequest): Promise<Response> {
   );
 
   const updated = await db.first<Skill>(
-    'SELECT id, userId, name, currentLevel, targetLevel, level, description, progress, createdAt, updatedAt FROM "Skill" WHERE id = ?1',
+    `SELECT ${SKILL_COLUMNS} FROM "Skill" WHERE id = ?1`,
     [id],
   );
 
