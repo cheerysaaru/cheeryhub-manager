@@ -196,7 +196,14 @@ export default function RoadmapsPage() {
     setAiSource(null);
     setAiError(null);
     setFormError(null);
-  }, []);
+    const match = preset.skillName
+      ? (skills as Array<{ id: string; name: string }> | null)?.find(
+          (skill) => skill.name.toLowerCase() === preset.skillName!.toLowerCase(),
+        )
+      : null;
+    setFormSkillId(match ? match.id : null);
+    if (match) setShowMore(true);
+  }, [skills]);
 
   const handleGenerate = useCallback(async () => {
     setAiError(null);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trophy, Trash2, TrendingUp, Pencil } from "lucide-react";
+import { Plus, Trophy, Trash2, TrendingUp, Pencil, Sparkles } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useSkills } from "../hooks/useSkills";
 import { Button } from "../components/Button";
@@ -10,6 +10,7 @@ import { Modal, ConfirmDialog } from "../components/Modal";
 import { ContextMenu, useContextMenu } from "../components/ContextMenu";
 import { Input } from "../components/Input";
 import { ApiLoadError } from "../components/ApiLoadError";
+import { SKILL_PRESETS } from "../data/skillPresets";
 import type { Skill } from "../types";
 
 export default function SkillsPage() {
@@ -26,6 +27,27 @@ export default function SkillsPage() {
     progress: 0,
   });
   const skillMenu = useContextMenu();
+  const [quickAddBusy, setQuickAddBusy] = useState<string | null>(null);
+  const [quickAddError, setQuickAddError] = useState<string | null>(null);
+
+  const missingPresets = SKILL_PRESETS.filter(
+    (preset) =>
+      !skills.some(
+        (skill) => skill.name.toLowerCase() === preset.name.toLowerCase(),
+      ),
+  );
+
+  async function quickAdd(name: string) {
+    setQuickAddBusy(name);
+    setQuickAddError(null);
+    try {
+      await create({ name, currentLevel: 1, targetLevel: 5, progress: 0 });
+    } catch (caught) {
+      setQuickAddError(caught instanceof Error ? caught.message : "Could not add skill.");
+    } finally {
+      setQuickAddBusy(null);
+    }
+  }
 
   function openForm(skill?: Skill) {
     if (skill) {
@@ -74,6 +96,41 @@ export default function SkillsPage() {
       </header>
 
       <ApiLoadError error={error} onRetry={() => void fetchSkills()} />
+
+      {!loading && missingPresets.length > 0 && (
+        <div className="skill-quick-add">
+          <div className="skill-quick-add-header">
+            <Sparkles size={16} />
+            <strong>Quick add from templates</strong>
+            <span className="skill-quick-add-hint">Click to add a skill — already-added ones are hidden.</span>
+          </div>
+          {(["Java", "Python", "Shared"] as const).map((group) => {
+            const groupPresets = missingPresets.filter((preset) => preset.group === group);
+            if (groupPresets.length === 0) return null;
+            return (
+              <div className="skill-quick-add-group" key={group}>
+                <span className="skill-quick-add-group-label">{group}</span>
+                <div className="skill-quick-add-chips">
+                  {groupPresets.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      className="skill-quick-chip"
+                      disabled={quickAddBusy !== null}
+                      onClick={() => void quickAdd(preset.name)}
+                    >
+                      <Plus size={14} />
+                      {quickAddBusy === preset.name ? "Adding…" : preset.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          {quickAddError && <p className="form-error">{quickAddError}</p>}
+        </div>
+      )}
+
       {loading ? (
         <div className="page-loading">Loading skills…</div>
       ) : skills.length === 0 ? (
