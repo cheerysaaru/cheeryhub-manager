@@ -383,15 +383,15 @@ export default function SportsPage() {
             return (
               <Card key={sport.id} className={`sport-card ${!active ? "is-stopped" : ""}`} padding="none" style={{ borderRadius: "16px" }}>
                 {/* 1. Header */}
-                <div style={{ padding: "20px 20px 0" }}>
-                  <div className="flex items-start justify-between">
+                <div className="px-5 pt-5">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
                         <Dumbbell size={20} />
                       </div>
                       <div>
                         <h3 className="text-lg font-bold leading-tight">{sport.name === "Gym" ? "go to gym regularly" : sport.name}</h3>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {sport.daysPerWeek}x / week · Rest {sport.restSeconds}s · {sport.untilStopped ? "Until stopped" : `${sport.durationMonths} month${sport.durationMonths === 1 ? "" : "s"}`}
                         </p>
                       </div>
@@ -412,11 +412,11 @@ export default function SportsPage() {
                         <span className="text-[10px] opacity-80 font-bold">Add photo for body structure check</span>
                       </div>
                     </div>
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       className="bg-primary text-white h-8 text-[10px] font-black px-4 hover:bg-primary-hover"
-                      loading={photoBusy && photoTarget?.id === sport.id} 
+                      loading={photoBusy && photoTarget?.id === sport.id}
                       onClick={() => openPhotoPicker(sport)}
                     >
                       Add photo
@@ -434,7 +434,7 @@ export default function SportsPage() {
                         const d = new Date(s.startedAt);
                         return d.getDay() === wd && d.toDateString() === new Date().toDateString();
                       });
-                      
+
                       let bgClass = "border-2 border-border bg-transparent";
                       if (hasDone) bgClass = "bg-success border-success";
                       else if (isToday) bgClass = "bg-primary border-primary ring-4 ring-primary/20";
@@ -443,7 +443,7 @@ export default function SportsPage() {
                       return (
                         <div key={i} className="flex flex-col items-center gap-1.5">
                           <span className="text-[10px] font-bold text-muted-foreground">{DAY_ABBR[ORDER.indexOf(wd)]}</span>
-                          <div 
+                          <div
                             className={`h-7 w-7 rounded-full flex items-center justify-center transition-all ${bgClass}`}
                             title={DAY_FULL[wd]}
                           >
@@ -486,12 +486,15 @@ export default function SportsPage() {
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
-                    {todayDay?.exercises?.map((ex, idx) => (
-                      <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-                        <span className="text-sm font-medium">{ex.name}</span>
-                        <span className="text-xs text-muted-foreground font-bold">{ex.sets} × {ex.reps}</span>
-                      </div>
-                    ))}
+                    {todayDay?.exercises?.map((ex, idx) => {
+                      const reps = ex.reps.replace(/\\u00D7/g, "×");
+                      return (
+                        <div key={idx} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                          <span className="text-sm font-medium">{ex.name}</span>
+                          <span className="text-xs text-muted-foreground font-bold">{ex.sets} × {ex.reps}</span>
+                        </div>
+                      );
+                    })}
                     {!todayDay && <p className="text-sm text-muted-foreground italic">Enjoy your rest day!</p>}
                   </div>
                 </div>
