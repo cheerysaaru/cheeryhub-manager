@@ -22,6 +22,7 @@ export function xpCategoryLabel(reason: string): string {
     return "Commitments";
   }
   if (text.includes("goal")) return "Goals";
+  if (text.includes("skill")) return "Skills";
   if (text.includes("achievement")) return "Achievements";
   if (text.includes("focus")) return "Focus";
   return "Other";

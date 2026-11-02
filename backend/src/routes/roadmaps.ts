@@ -11,6 +11,7 @@ import {
   dayKeyInPointsZone,
 } from "../../../shared/points";
 import { refreshPoints } from "../lib/points";
+import { bumpSkillProgress } from "../lib/skills";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -639,6 +640,10 @@ export async function completeRoadmapDay(req: AppRequest): Promise<Response> {
       dayId,
       dayKeyInPointsZone(now),
     );
+    // Finishing a day pushes the linked skill forward (+10% progress).
+    if (roadmap.skillId) {
+      await bumpSkillProgress(db, req.user.id, roadmap.skillId);
+    }
   } else if (!wantsComplete && wasCompleted) {
     const missed = isMissed({ ...day, dueAt, completed: 0 }, now.getTime());
     await db.run(

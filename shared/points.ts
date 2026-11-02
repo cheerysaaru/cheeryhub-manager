@@ -31,6 +31,9 @@ export const POINTS_GOAL_MISSED = -25;
 /** A roadmap day marked done. */
 export const POINTS_ROADMAP_DAY_COMPLETED = 10;
 
+/** A skill levels up from completed linked work (roadmap days, tasks). */
+export const POINTS_SKILL_LEVEL_UP = 50;
+
 /** A roadmap day still undone 24h after its due date (signed, applied once). */
 export const POINTS_ROADMAP_DAY_MISSED = -5;
 
@@ -70,6 +73,7 @@ export type PointEventReason =
   | "ROADMAP_DAY_UNCOMPLETED"
   | "ROADMAP_DAY_MISSED"
   | "ROADMAP_COMPLETED"
+  | "SKILL_LEVEL_UP"
   | "SPORT_SESSION_COMPLETED"
   | "ACHIEVEMENT";
 

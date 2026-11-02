@@ -9,6 +9,7 @@ import {
   removeTaskCompletedEvents,
   taskDueDay,
 } from "../lib/points";
+import { bumpSkillProgress } from "../lib/skills";
 
 interface Task {
   id: string;
@@ -504,6 +505,11 @@ export async function completeTask(req: AppRequest): Promise<Response> {
     taskDueDay(task),
   ]);
 
+  // --- Skill: any completed task linked to a skill pushes it forward ---
+  if (task.skillId) {
+    await bumpSkillProgress(db, req.user.id, task.skillId);
+  }
+
   // --- NEW: Update linked goal progress & skill level ---
   if (task.goalId) {
     // Recalculate goal progress from milestones
@@ -544,34 +550,6 @@ export async function completeTask(req: AppRequest): Promise<Response> {
         goal.deadline.slice(0, 10) >= now.slice(0, 10);
       if (onTime) {
         await recordTaskCompleted(db, req.user.id, id, new Date(now)); // reuse
-      }
-
-      // --- Skill leveling: if goal has a skillId, level up that skill ---
-      if (task.skillId) {
-        const skill = await db.first<{
-          id: string;
-          name: string;
-          currentLevel: number;
-          targetLevel: number;
-          progress: number;
-        }>(
-          `SELECT id, name, currentLevel, targetLevel, progress FROM "Skill" WHERE id = ?1 AND userId = ?2`,
-          [task.skillId, req.user.id],
-        );
-        if (skill) {
-          const newLevel = skill.currentLevel + 1;
-          const newProgress = skill.progress; // reset carries over conceptually
-          await db.run(
-            `UPDATE "Skill" SET currentLevel = ?1, progress = ?2, updatedAt = ?3 WHERE id = ?4`,
-            [newLevel, 0, now, task.skillId],
-          );
-          // Award XP for leveling up
-          await db.run(
-            `INSERT INTO "PointEvent" (id, userId, type, amount, reason, sourceId, dayKey, createdAt)
-             VALUES (?1, ?2, 'skill_level_up', ?3, ?4, ?5, ?6, ?7)`,
-            [crypto.randomUUID(), req.user.id, 50, "Skill level up", task.skillId, now.slice(0, 10), now],
-          );
-        }
       }
 
       // --- Achievement: Goal completed ---
