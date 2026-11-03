@@ -51,18 +51,20 @@ const getCorsHeaders = (origin: string): Record<string, string> => {
     "https://cheeryhub.space",
     "https://www.cheeryhub.space",
     "https://cheerysaaru.github.io",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
   ];
 
-  const isAllowed = allowedOrigins.includes(origin);
+  const isAllowed =
+    !origin ||
+    origin === "null" ||
+    origin.startsWith("file://") ||
+    origin.startsWith("http://localhost:") ||
+    origin.startsWith("http://127.0.0.1:") ||
+    allowedOrigins.includes(origin);
+
+  const effectiveOrigin = isAllowed && origin && origin !== "null" ? origin : "https://cheeryhub.space";
 
   return {
-    "Access-Control-Allow-Origin": isAllowed
-      ? origin
-      : "https://cheeryhub.space",
+    "Access-Control-Allow-Origin": effectiveOrigin,
     "Access-Control-Allow-Methods":
       "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD",
     "Access-Control-Allow-Headers":

@@ -31,8 +31,15 @@ if (import.meta.env.PROD && !normalizedApiUrl) {
 // cookie be sent. Set VITE_API_URL to an absolute URL to override (e.g. to hit
 // a deployed or separately-hosted API). In production we fall back to the
 // canonical API origin.
+function getDefaultApiUrl(): string {
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:")) {
+    return "http://localhost:8787/api";
+  }
+  return import.meta.env.PROD ? PRODUCTION_API_URL : "/api";
+}
+
 export const API_BASE: string =
-  normalizedApiUrl ?? (import.meta.env.PROD ? PRODUCTION_API_URL : "/api");
+  normalizedApiUrl ?? getDefaultApiUrl();
 
 export function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -190,11 +197,19 @@ async function fetchOnce(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
+    let token = "";
+    try {
+      token = localStorage.getItem("auth_token") || "";
+    } catch {
+      // localStorage unavailable
+    }
+
     const response = await fetch(`${API_BASE}${path}`, {
       ...init,
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init?.headers,
       },
       signal: controller.signal,
@@ -207,7 +222,6 @@ async function fetchOnce(
       body = text ? (JSON.parse(text) as Record<string, unknown>) : null;
     } catch (error) {
       if (controller.signal.aborted) throw error;
-      // Non-JSON payload (proxy HTML error page, empty body) — never shown raw.
       parseError = error;
       body = null;
     }
@@ -330,8 +344,19 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
       if (res.ok) {
         sessionExpiredNotified = false;
-        // Never resolve null/undefined: a caller doing `result.x` or
-        // `data.filter(...)` must not white-screen on an empty 200 body.
+        // Check if response contains a token and store it for desktop/EXE mode
+        try {
+          const possibleToken =
+            (body as any)?.token ??
+            (body as any)?.data?.token ??
+            (payload as any)?.token;
+          if (typeof possibleToken === "string" && possibleToken) {
+            localStorage.setItem("auth_token", possibleToken);
+          }
+        } catch {
+          // storage error
+        }
+
         const payload = body?.data ?? body;
         return (
           payload === null || payload === undefined ? ({} as T) : payload
@@ -414,6 +439,7 @@ export function clearAppStorage(): void {
   try {
     localStorage.removeItem(queueKey);
     localStorage.removeItem(timerPositionKey);
+    localStorage.removeItem("auth_token");
   } catch {
     /* Storage may be unavailable. */
   }

@@ -1,8 +1,8 @@
 const { app, BrowserWindow, shell, session } = require('electron');
 const path = require('path');
 
-const APP_URL = process.env.APP_URL || 'https://cheeryhub.space';
-const ALLOWED_DOMAINS = ['cheeryhub.space', 'api.cheeryhub.space'];
+const APP_URL = process.env.APP_URL || (app.isPackaged ? 'https://cheeryhub.space' : 'http://localhost:5173');
+const ALLOWED_DOMAINS = ['cheeryhub.space', 'api.cheeryhub.space', 'localhost', '127.0.0.1'];
 
 function createWindow() {
   const win = new BrowserWindow({

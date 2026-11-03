@@ -2,7 +2,7 @@
 // Stored format: `pbkdf2$<iterations>$<saltHex>$<hashHex>`.
 // Legacy `sha256:<salt>:<hash>` hashes are still accepted so existing users can
 // sign in (and are transparently re-hashed on login — see the auth routes).
-const PBKDF2_ITERATIONS = 100_000;
+const PBKDF2_ITERATIONS = 25_000;
 const KEY_BITS = 256;
 
 function toHex(bytes: Uint8Array): string {
