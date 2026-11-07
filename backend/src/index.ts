@@ -758,6 +758,22 @@ async function handleRequest(
         appReq.params.id = pathname.split("/")[3];
         response = await sportsRoutes.stopSport(appReq);
       } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/exercises\/[^/]+\/progression$/) &&
+        request.method === "GET"
+      ) {
+        const parts = pathname.split("/");
+        appReq.params.id = parts[3];
+        appReq.params.exerciseName = parts[5];
+        response = await sportsRoutes.getExerciseWeightProgression(appReq);
+      } else if (
+        pathname.match(/^\/api\/sports\/[^/]+\/exercises\/[^/]+\/upgrade-suggestion$/) &&
+        request.method === "GET"
+      ) {
+        const parts = pathname.split("/");
+        appReq.params.id = parts[3];
+        appReq.params.exerciseName = parts[5];
+        response = await sportsRoutes.getWeightUpgradeSuggestion(appReq);
+      } else if (
         pathname.match(/^\/api\/sports\/[^/]+$/) &&
         request.method === "DELETE"
       ) {

@@ -41,10 +41,13 @@ export const CREATE_TABLES = [
   'CREATE TABLE IF NOT EXISTS "SportExercise" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "name" TEXT NOT NULL,     "sets" INTEGER NOT NULL DEFAULT 3,     "reps" TEXT NOT NULL DEFAULT \'10\',     "orderIndex" INTEGER NOT NULL DEFAULT 0,     CONSTRAINT "SportExercise_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "SportPhoto" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "image" TEXT NOT NULL,     "label" TEXT,     "createdAt" DATETIME NOT NULL,     CONSTRAINT "SportPhoto_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE TABLE IF NOT EXISTS "SportSession" (     "id" TEXT NOT NULL PRIMARY KEY,     "sportId" TEXT NOT NULL,     "userId" TEXT NOT NULL,     "startedAt" DATETIME NOT NULL,     "endedAt" DATETIME NOT NULL,     "durationSeconds" INTEGER NOT NULL DEFAULT 0,     "completedExercises" TEXT,     "createdAt" DATETIME NOT NULL,     CONSTRAINT "SportSession_sportId_fkey" FOREIGN KEY ("sportId") REFERENCES "Sport" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
+  'CREATE TABLE IF NOT EXISTS "SportSessionSet" (     "id" TEXT NOT NULL PRIMARY KEY,     "sessionId" TEXT NOT NULL,     "exerciseName" TEXT NOT NULL,     "setNumber" INTEGER NOT NULL,     "weight" REAL,     "reps" INTEGER,     "completed" BOOLEAN NOT NULL DEFAULT false,     "completedAt" DATETIME,     "createdAt" DATETIME NOT NULL,     CONSTRAINT "SportSessionSet_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "SportSession" ("id") ON DELETE CASCADE ON UPDATE CASCADE )',
   'CREATE INDEX IF NOT EXISTS "Sport_userId_idx" ON "Sport"("userId")',
   'CREATE INDEX IF NOT EXISTS "SportExercise_sportId_idx" ON "SportExercise"("sportId")',
   'CREATE INDEX IF NOT EXISTS "SportPhoto_sportId_idx" ON "SportPhoto"("sportId")',
   'CREATE INDEX IF NOT EXISTS "SportSession_sportId_idx" ON "SportSession"("sportId")',
+  'CREATE INDEX IF NOT EXISTS "SportSessionSet_sessionId_idx" ON "SportSessionSet"("sessionId")',
+  'CREATE INDEX IF NOT EXISTS "SportSessionSet_exerciseName_idx" ON "SportSessionSet"("exerciseName")',
 ];
 
 export const ADD_COLUMNS = [

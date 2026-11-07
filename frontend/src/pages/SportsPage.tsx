@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus, Dumbbell, Camera, Play, Square, Trash2, Check, Timer,
   TrendingUp, X, Image as ImageIcon, MoreVertical, Copy, Calendar,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useSports, type Sport, type PhotoAnalysis } from "../hooks/useSports";
+import { useSports, type Sport, type PhotoAnalysis, type SportSessionSetInput } from "../hooks/useSports";
 import { usePoints } from "../hooks/usePoints";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -65,7 +66,7 @@ function resizeImageFile(file: File): Promise<string> {
 export default function SportsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, analyzePhoto } = useSports(user?.id ?? null);
+  const { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, analyzePhoto, getWeightProgression, getUpgradeSuggestion } = useSports(user?.id ?? null);
   const { points, refresh: refreshPoints } = usePoints(user?.id ?? null);
 
   // Setup state
@@ -89,7 +90,8 @@ export default function SportsPage() {
   const [workoutStartedAt, setWorkoutStartedAt] = useState<Date | null>(null);
   const [workoutNow, setWorkoutNow] = useState(0);
   const [workoutDayIndex, setWorkoutDayIndex] = useState(0);
-  const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
+  // Per-set tracking: Map<exerciseIndex, Map<setNumber, { completed: boolean; weight: number | null; reps: number | null }>>
+  const [exerciseSets, setExerciseSets] = useState<Map<number, Map<number, { completed: boolean; weight: number | null; reps: number | null }>>>(new Map());
   const [restLeft, setRestLeft] = useState(-1);
   const [workoutSaving, setWorkoutSaving] = useState(false);
   const [workoutError, setWorkoutError] = useState<string | null>(null);
@@ -110,6 +112,9 @@ export default function SportsPage() {
   const [analysisResults, setAnalysisResults] = useState<Record<string, PhotoAnalysis>>({});
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [detailSport, setDetailSport] = useState<Sport | null>(null);
+  const [weightProgression, setWeightProgression] = useState<Record<string, Array<{ date: string; avgWeight: number | null; maxWeight: number | null; avgReps: number | null; totalSets: number }>>>( {});
+  const [upgradeSuggestions, setUpgradeSuggestions] = useState<Record<string, { currentWeight: number; suggestedWeight: number; increment: number; reason: string } | null>>({});
+  const [progressionLoading, setProgressionLoading] = useState<Set<string>>(new Set());
   const [kebabOpen, setKebabOpen] = useState<string | null>(null);
   const kebabRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
@@ -141,6 +146,34 @@ export default function SportsPage() {
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [kebabOpen]);
+
+  // Fetch weight progression and upgrade suggestions when detail sport changes
+  useEffect(() => {
+    if (!detailSport) return;
+    
+    const exercises = detailSport.workoutDays?.flatMap(d => d.exercises) || [];
+    const exerciseNames = [...new Set(exercises.map(e => e.name))];
+    
+    exerciseNames.forEach(async (exName) => {
+      setProgressionLoading(prev => new Set(prev).add(exName));
+      try {
+        const [progRes, upgradeRes] = await Promise.all([
+          getWeightProgression(detailSport.id, exName),
+          getUpgradeSuggestion(detailSport.id, exName),
+        ]);
+        setWeightProgression(prev => ({ ...prev, [exName]: progRes.progression }));
+        setUpgradeSuggestions(prev => ({ ...prev, [exName]: upgradeRes.suggestion }));
+      } catch (e) {
+        console.error(`Failed to fetch progression for ${exName}`, e);
+      } finally {
+        setProgressionLoading(prev => {
+          const next = new Set(prev);
+          next.delete(exName);
+          return next;
+        });
+      }
+    });
+  }, [detailSport, getWeightProgression, getUpgradeSuggestion]);
 
   // Check for Monday photo reminder
   useEffect(() => {
@@ -279,19 +312,24 @@ export default function SportsPage() {
     setWorkoutStartedAt(new Date());
     setWorkoutNow(Date.now());
     setWorkoutDayIndex(dayIdx >= 0 ? dayIdx : 0);
-    setCompletedExercises(new Set());
+    setExerciseSets(new Map());
     setRestLeft(-1); restEndRef.current = null;
     setWorkoutError(null);
   }, []);
 
-  const toggleExercise = useCallback((idx: number) => {
-    setCompletedExercises((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) { next.delete(idx); }
-      else {
-        next.add(idx);
+  const toggleSet = useCallback((exIdx: number, setNum: number) => {
+    setExerciseSets((prev) => {
+      const next = new Map(prev);
+      const exSets = new Map(next.get(exIdx) || []);
+      const current = exSets.get(setNum) || { completed: false, weight: null, reps: null };
+      const updated = { ...current, completed: !current.completed };
+      exSets.set(setNum, updated);
+      next.set(exIdx, exSets);
+      
+      // Start rest timer when a set is completed
+      if (updated.completed) {
         const dayPlan = workoutSport?.workoutDays?.[workoutDayIndex];
-        const ex = dayPlan?.exercises?.[idx];
+        const ex = dayPlan?.exercises?.[exIdx];
         const rs = ex?.restSec ?? workoutSport?.restSeconds ?? 60;
         if (rs > 0) { restEndRef.current = Date.now() + rs * 1000; setRestLeft(rs); }
       }
@@ -299,25 +337,76 @@ export default function SportsPage() {
     });
   }, [workoutSport, workoutDayIndex]);
 
+  const updateSetWeight = useCallback((exIdx: number, setNum: number, weight: number | null) => {
+    setExerciseSets((prev) => {
+      const next = new Map(prev);
+      const exSets = new Map(next.get(exIdx) || []);
+      const current = exSets.get(setNum) || { completed: false, weight: null, reps: null };
+      exSets.set(setNum, { ...current, weight });
+      next.set(exIdx, exSets);
+      return next;
+    });
+  }, []);
+
+  const updateSetReps = useCallback((exIdx: number, setNum: number, reps: number | null) => {
+    setExerciseSets((prev) => {
+      const next = new Map(prev);
+      const exSets = new Map(next.get(exIdx) || []);
+      const current = exSets.get(setNum) || { completed: false, weight: null, reps: null };
+      exSets.set(setNum, { ...current, reps });
+      next.set(exIdx, exSets);
+      return next;
+    });
+  }, []);
+
   const finishWorkout = useCallback(async () => {
     if (!workoutSport || !workoutStartedAt) return;
     setWorkoutSaving(true); setWorkoutError(null);
     const endedAt = new Date();
     try {
       const dayPlan = workoutSport.workoutDays?.[workoutDayIndex];
+      
+      // Build sets data for API
+      const sets: SportSessionSetInput[] = [];
+      const completedExerciseNames: string[] = [];
+      
+      dayPlan?.exercises?.forEach((ex, exIdx) => {
+        const exSets = exerciseSets.get(exIdx);
+        if (exSets) {
+          let allCompleted = true;
+          for (let setNum = 1; setNum <= ex.sets; setNum++) {
+            const setData = exSets.get(setNum);
+            if (setData) {
+              sets.push({
+                exerciseName: ex.name,
+                setNumber: setNum,
+                weight: setData.weight,
+                reps: setData.reps,
+                completed: setData.completed,
+              });
+              if (!setData.completed) allCompleted = false;
+            } else {
+              allCompleted = false;
+            }
+          }
+          if (allCompleted) completedExerciseNames.push(ex.name);
+        }
+      });
+
       await saveSession(workoutSport.id, workoutStartedAt.toISOString(), endedAt.toISOString(),
-        dayPlan?.exercises?.filter((_, i) => completedExercises.has(i)).map((e) => e.name) ?? []);
+        completedExerciseNames, sets);
       await refreshPoints();
       toast({ type: "success", title: "Workout saved", message: "+15 points." });
       setWorkoutSport(null); setWorkoutStartedAt(null); setRestLeft(-1); restEndRef.current = null;
+      setExerciseSets(new Map());
     } catch (e) { setWorkoutError(e instanceof Error ? e.message : "Could not save workout"); }
     finally { setWorkoutSaving(false); }
-  }, [workoutSport, workoutStartedAt, workoutDayIndex, completedExercises, saveSession, refreshPoints, toast]);
+  }, [workoutSport, workoutStartedAt, workoutDayIndex, exerciseSets, saveSession, refreshPoints, toast]);
 
   const cancelWorkout = useCallback(() => {
     if (workoutSaving) return;
     setWorkoutSport(null); setWorkoutStartedAt(null); setRestLeft(-1);
-    setCompletedExercises(new Set()); setWorkoutError(null); restEndRef.current = null;
+    setExerciseSets(new Map()); setWorkoutError(null); restEndRef.current = null;
   }, [workoutSaving]);
 
   const handleStop = useCallback(async () => {
@@ -710,15 +799,28 @@ export default function SportsPage() {
         isOpen={Boolean(workoutSport)} 
         onClose={cancelWorkout} 
         title={workoutSport ? `Workout: ${workoutSport.name}` : "Workout"} 
-        size="md"
+        size="lg"
         hideHeader // We'll render our own header
       >
         {workoutSport && (() => {
           const dayPlan = workoutSport.workoutDays?.[workoutDayIndex];
           if (!dayPlan) return <p>No workout planned for this day.</p>;
-          const totalEx = dayPlan.exercises.length;
-          const doneEx = completedExercises.size;
-          const progress = totalEx > 0 ? (doneEx / totalEx) * 100 : 0;
+          
+          // Calculate progress based on completed sets
+          let totalSets = 0;
+          let completedSets = 0;
+          dayPlan.exercises.forEach((ex, exIdx) => {
+            const exSets = exerciseSets.get(exIdx);
+            if (exSets) {
+              for (let setNum = 1; setNum <= ex.sets; setNum++) {
+                totalSets++;
+                if (exSets.get(setNum)?.completed) completedSets++;
+              }
+            } else {
+              totalSets += ex.sets;
+            }
+          });
+          const progress = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
 
           return (
             <div className="flex flex-col gap-5 p-1">
@@ -742,7 +844,7 @@ export default function SportsPage() {
                     value={workoutDayIndex}
                     onChange={(e) => {
                       setWorkoutDayIndex(Number(e.target.value));
-                      setCompletedExercises(new Set());
+                      setExerciseSets(new Map());
                       setRestLeft(-1);
                     }}
                   >
@@ -756,7 +858,7 @@ export default function SportsPage() {
               {/* 3. Progress Section */}
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-muted-foreground font-medium">
-                  Tick each exercise as you finish. Rest starts automatically.
+                  Tick each set as you finish. Enter weight & reps. Rest timer starts automatically.
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
@@ -765,7 +867,7 @@ export default function SportsPage() {
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <span className="text-sm font-black tabular-nums">{doneEx} / {totalEx}</span>
+                  <span className="text-sm font-black tabular-nums">{completedSets} / {totalSets} sets</span>
                 </div>
               </div>
 
@@ -783,30 +885,94 @@ export default function SportsPage() {
                 </div>
               )}
 
-              {/* 4. Exercise list */}
-              <div className="flex flex-col gap-2">
-                {dayPlan.exercises.map((ex, idx) => {
-                  const isDone = completedExercises.has(idx);
+              {/* 4. Exercise list with per-set tracking */}
+              <div className="flex flex-col gap-4">
+                {dayPlan.exercises.map((ex, exIdx) => {
+                  const exSets = exerciseSets.get(exIdx) || new Map();
                   const reps = ex.reps.replace(/\\u00D7/g, "×");
+                  const exCompletedSets = Array.from({ length: ex.sets }, (_, i) => i + 1)
+                    .filter(setNum => exSets.get(setNum)?.completed).length;
+                  const isExerciseComplete = exCompletedSets === ex.sets && ex.sets > 0;
+
                   return (
                     <div
-                      key={idx}
-                      onClick={() => toggleExercise(idx)}
-                      className={`group flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
-                        isDone ? "bg-success-bg border-success" : "bg-bg border-transparent hover:border-border"
+                      key={exIdx}
+                      className={`group rounded-xl border transition-all ${
+                        isExerciseComplete ? "bg-success-bg border-success" : "bg-bg border-border hover:border-primary/50"
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                          isDone ? "bg-primary border-primary" : "bg-transparent border-muted-foreground/30 group-hover:border-primary/50"
-                        }`}>
-                          {isDone && <Check size={14} className="text-white" />}
+                      {/* Exercise Header */}
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isExerciseComplete ? "bg-primary border-primary" : "bg-transparent border-muted-foreground/30"
+                          }`}>
+                            {isExerciseComplete && <Check size={16} className="text-white" />}
+                          </div>
+                          <div>
+                            <span className={`font-bold transition-all ${isExerciseComplete ? "text-muted-foreground line-through" : "text-primary"}`}>
+                              {ex.name}
+                            </span>
+                            <p className="text-xs text-muted-foreground">{ex.sets} sets × {reps} reps · Rest {ex.restSec ?? workoutSport.restSeconds}s</p>
+                          </div>
                         </div>
-                        <span className={`font-bold transition-all ${isDone ? "text-muted-foreground line-through" : "text-primary"}`}>
-                          {ex.name}
+                        <span className="text-sm font-bold text-muted-foreground tabular-nums">
+                          {exCompletedSets} / {ex.sets}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-muted-foreground">{ex.sets} × {reps}</span>
+
+                      {/* Sets rows */}
+                      <div className="px-4 pb-4 space-y-2">
+                        {Array.from({ length: ex.sets }, (_, i) => i + 1).map((setNum) => {
+                          const setData = exSets.get(setNum) || { completed: false, weight: null, reps: null };
+                          return (
+                            <div key={setNum} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-card border border-border/50">
+                              <button
+                                onClick={() => toggleSet(exIdx, setNum)}
+                                className={`flex-shrink-0 h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                                  setData.completed ? "bg-primary border-primary" : "bg-transparent border-muted-foreground/30 hover:border-primary/50"
+                                }`}
+                                aria-label={`Set ${setNum} ${setData.completed ? 'completed' : 'pending'}`}
+                              >
+                                {setData.completed && <Check size={14} className="text-white" />}
+                                {!setData.completed && <span className="text-xs font-bold text-muted-foreground">{setNum}</span>}
+                              </button>
+                              
+                              <div className="flex-1 flex items-center gap-2 min-w-0">
+                                <label className="text-xs text-muted-foreground font-medium w-12 text-right">Weight</label>
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  max="500"
+                                  value={setData.weight ?? ""}
+                                  onChange={(e) => updateSetWeight(exIdx, setNum, e.target.value ? parseFloat(e.target.value) : null)}
+                                  placeholder="kg"
+                                  className="flex-1 h-8 px-3 text-sm rounded-lg border border-border bg-bg focus:ring-2 focus:ring-primary outline-none tabular-nums"
+                                  disabled={setData.completed}
+                                />
+                                <label className="text-xs text-muted-foreground font-medium w-10 text-right">Reps</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={setData.reps ?? ""}
+                                  onChange={(e) => updateSetReps(exIdx, setNum, e.target.value ? parseInt(e.target.value) : null)}
+                                  placeholder="reps"
+                                  className="flex-1 h-8 px-3 text-sm rounded-lg border border-border bg-bg focus:ring-2 focus:ring-primary outline-none tabular-nums"
+                                  disabled={setData.completed}
+                                />
+                              </div>
+                              
+                              {setData.completed && setData.weight !== null && (
+                                <span className="text-xs font-bold text-success bg-success-bg px-2 py-1 rounded-full">
+                                  {setData.weight}kg × {setData.reps ?? ex.reps}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })}
@@ -821,6 +987,7 @@ export default function SportsPage() {
                   loading={workoutSaving}
                   onClick={() => void finishWorkout()}
                   className="w-full h-14 bg-primary text-white rounded-xl text-lg font-black"
+                  disabled={totalSets === 0}
                 >
                   <Check size={20} className="mr-2" /> Finish workout
                 </Button>
@@ -962,6 +1129,79 @@ export default function SportsPage() {
                 <ul className="session-list">
                   {detailSport.sessions.slice(0, 8).map((s) => (<li key={s.id}><span>{new Date(s.startedAt).toLocaleDateString()}</span><strong>{formatDuration(s.durationSeconds)}</strong></li>))}
                 </ul>
+              </div>
+            )}
+            {/* Weight Progression & Upgrade Suggestions */}
+            {detailSport.workoutDays && detailSport.workoutDays.length > 0 && (
+              <div className="details-section">
+                <h4><TrendingUp size={15} /> Weight progression</h4>
+                {(() => {
+                  const exercises = detailSport.workoutDays!.flatMap(d => d.exercises);
+                  const exerciseNames = [...new Set(exercises.map(e => e.name))];
+                  return exerciseNames.map((exName) => {
+                    const progression = weightProgression[exName] || [];
+                    const suggestion = upgradeSuggestions[exName];
+                    const isLoading = progressionLoading.has(exName);
+                    
+                    return (
+                      <div key={exName} className="weight-progression-card">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="font-bold text-sm">{exName}</h5>
+                          {suggestion && (
+                            <div className="upgrade-badge bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                              <TrendingUp size={12} /> Upgrade suggested
+                            </div>
+                          )}
+                        </div>
+                        
+                        {isLoading ? (
+                          <div className="flex items-center justify-center py-4 text-muted-foreground">
+                            <Loader2 size={20} className="animate-spin mr-2" /> Loading progression...
+                          </div>
+                        ) : progression.length === 0 ? (
+                          <p className="text-sm text-muted-foreground italic">No weight data recorded yet. Start tracking weights in your workouts!</p>
+                        ) : (
+                          <>
+                            <div className="space-y-2 mb-3">
+                              {progression.slice().reverse().slice(0, 10).map((p, i) => (
+                                <div key={i} className="flex items-center justify-between text-sm px-3 py-2 bg-bg-card rounded-lg border border-border">
+                                  <span className="font-medium">{p.date}</span>
+                                  <div className="flex items-center gap-4 text-muted-foreground">
+                                    {p.avgWeight !== null && <span className="font-bold tabular-nums">Avg: {p.avgWeight}kg</span>}
+                                    {p.maxWeight !== null && <span className="font-medium tabular-nums">Max: {p.maxWeight}kg</span>}
+                                    {p.avgReps !== null && <span className="font-medium tabular-nums">Reps: {p.avgReps}</span>}
+                                    <span className="font-medium tabular-nums">Sets: {p.totalSets}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {suggestion && (
+                              <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-bold text-primary">Upgrade Recommendation</span>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-muted-foreground">Current:</span>
+                                    <span className="font-bold tabular-nums">{suggestion.currentWeight}kg</span>
+                                  </div>
+                                  <TrendingUp size={16} className="text-primary" />
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-muted-foreground">Suggested:</span>
+                                    <span className="font-bold text-success tabular-nums">{suggestion.suggestedWeight}kg</span>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground px-2 py-1 bg-primary/20 rounded-full">+{suggestion.increment}kg</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-2">{suggestion.reason}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>

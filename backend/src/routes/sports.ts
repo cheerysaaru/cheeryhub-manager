@@ -74,6 +74,19 @@ interface SessionRow {
   createdAt: string;
 }
 
+interface SessionSetRow {
+  id: string;
+  sessionId: string;
+  exerciseName: string;
+  setNumber: number;
+  weight: number | null;
+  reps: number | null;
+  completed: number;
+  completedAt: string | null;
+  createdAt: string;
+  startedAt?: string;
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
@@ -144,6 +157,15 @@ async function getSessions(db: Database, sportId: string): Promise<SessionRow[]>
   return db.all<SessionRow>('SELECT * FROM "SportSession" WHERE sportId = ?1 ORDER BY startedAt DESC', [sportId]);
 }
 
+async function getSessionSets(db: Database, sessionIds: string[]): Promise<SessionSetRow[]> {
+  if (sessionIds.length === 0) return [];
+  const placeholders = sessionIds.map(() => '?').join(',');
+  return db.all<SessionSetRow>(
+    `SELECT * FROM "SportSessionSet" WHERE sessionId IN (${placeholders}) ORDER BY exerciseName, setNumber`,
+    sessionIds,
+  );
+}
+
 function analysisFor(sport: SportRow, sessions: SessionRow[], photos: PhotoRow[]) {
   const totalWorkouts = sessions.length;
   const totalSeconds = sessions.reduce((sum, s) => sum + Math.max(0, s.durationSeconds || 0), 0);
@@ -181,6 +203,20 @@ async function buildSport(db: Database, sport: SportRow) {
   const exercises = await getExercises(db, sport.id);
   const photos = await getPhotos(db, sport.id);
   const sessions = await getSessions(db, sport.id);
+  const sessionIds = sessions.map(s => s.id);
+  const sessionSets = await getSessionSets(db, sessionIds);
+  // Group sets by sessionId
+  const setsBySession = new Map<string, SessionSetRow[]>();
+  for (const set of sessionSets) {
+    const arr = setsBySession.get(set.sessionId) || [];
+    arr.push(set);
+    setsBySession.set(set.sessionId, arr);
+  }
+  // Attach sets to sessions
+  const sessionsWithSets = sessions.map(s => ({
+    ...s,
+    sets: setsBySession.get(s.id) || [],
+  }));
   const analysis = analysisFor(sport, sessions, photos);
   const latest = photos[photos.length - 1];
   const photoDue = Boolean(sport.active) && (!latest || Date.now() - new Date(latest.createdAt).getTime() >= 7 * DAY_MS);
@@ -201,7 +237,7 @@ async function buildSport(db: Database, sport: SportRow) {
     workoutDays,
     exercises,
     photos,
-    sessions,
+    sessions: sessionsWithSets,
     analysis,
     photoDue,
   };
@@ -484,7 +520,8 @@ export async function getSportAnalysis(req: AppRequest): Promise<Response> {
   }
 }
 
-export async function saveSportSession(req: AppRequest): Promise<Response> {  if (!req.user) return unauthorized();
+export async function saveSportSession(req: AppRequest): Promise<Response> {
+  if (!req.user) return unauthorized();
   const { id } = req.params;
   const db = new Database(req.env.DB);
   const sport = await getSport(db, id, req.user.id);
@@ -504,6 +541,28 @@ export async function saveSportSession(req: AppRequest): Promise<Response> {  if
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
     [sessionId, id, req.user.id, startedAt.toISOString(), endedAt.toISOString(), durationSeconds, JSON.stringify(completedExercises), now],
   );
+
+  // Handle per-set data if provided
+  const sets = Array.isArray(body.sets) ? body.sets : [];
+  if (sets.length > 0) {
+    const batch = sets.map((s: any, i: number) => ({
+      sql: `INSERT INTO "SportSessionSet" (id, sessionId, exerciseName, setNumber, weight, reps, completed, completedAt, createdAt)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+      params: [
+        crypto.randomUUID(),
+        sessionId,
+        String(s.exerciseName ?? "").trim(),
+        Math.max(1, Number(s.setNumber) || i + 1),
+        typeof s.weight === "number" ? s.weight : null,
+        typeof s.reps === "number" ? s.reps : null,
+        s.completed ? 1 : 0,
+        s.completed ? new Date().toISOString() : null,
+        now,
+      ],
+    }));
+    if (batch.length > 0) await db.batch(batch);
+  }
+
   const dayKey = dayKeyInPointsZone(endedAt);
   await db.run(
     `INSERT OR IGNORE INTO "PointEvent" (id, userId, type, amount, reason, sourceId, dayKey, createdAt)
@@ -574,4 +633,158 @@ export async function deleteSport(req: AppRequest): Promise<Response> {
     { sql: 'DELETE FROM "Sport" WHERE id = ?1', params: [id] },
   ]);
   return json({ data: { deleted: true } });
+}
+
+/**
+ * Get weight progression for a specific exercise in a sport.
+ * Returns the weight history across sessions for the exercise.
+ */
+export async function getExerciseWeightProgression(req: AppRequest): Promise<Response> {
+  if (!req.user) return unauthorized();
+  const { id, exerciseName } = req.params;
+  const db = new Database(req.env.DB);
+  const sport = await getSport(db, id, req.user.id);
+  if (!sport) return json({ error: "Sport not found", code: "NOT_FOUND" }, 404);
+
+  // Get all sessions for this sport with their sets for the specific exercise
+  const sessions = await db.all<SessionRow>(
+    'SELECT * FROM "SportSession" WHERE sportId = ?1 ORDER BY startedAt ASC',
+    [id],
+  );
+  const sessionIds = sessions.map(s => s.id);
+  if (sessionIds.length === 0) {
+    return json({ data: { exerciseName, progression: [] } });
+  }
+
+  const placeholders = sessionIds.map(() => '?').join(',');
+  const sets = await db.all<SessionSetRow>(
+    `SELECT sss.*, ss.startedAt FROM "SportSessionSet" sss
+     JOIN "SportSession" ss ON sss.sessionId = ss.id
+     WHERE sss.sessionId IN (${placeholders}) AND sss.exerciseName = ?${sessionIds.length + 1}
+     ORDER BY ss.startedAt ASC, sss.setNumber ASC`,
+    [...sessionIds, decodeURIComponent(exerciseName)],
+  );
+
+  // Group by session date and calculate average weight per session
+  const progressionMap = new Map<string, { date: string; weights: number[]; reps: number[]; sets: number }>();
+  for (const set of sets) {
+    if (set.weight === null || set.weight === undefined) continue;
+    const dateKey = (set.startedAt || '').split('T')[0];
+    const existing = progressionMap.get(dateKey) || { date: dateKey, weights: [] as number[], reps: [] as number[], sets: 0 };
+    existing.weights.push(set.weight);
+    if (set.reps !== null && set.reps !== undefined) existing.reps.push(set.reps);
+    existing.sets += 1;
+    progressionMap.set(dateKey, existing);
+  }
+
+  const progression = Array.from(progressionMap.values()).map(p => ({
+    date: p.date,
+    avgWeight: p.weights.length > 0 ? Math.round((p.weights.reduce((a, b) => a + b, 0) / p.weights.length) * 10) / 10 : null,
+    maxWeight: p.weights.length > 0 ? Math.max(...p.weights) : null,
+    avgReps: p.reps.length > 0 ? Math.round((p.reps.reduce((a, b) => a + b, 0) / p.reps.length) * 10) / 10 : null,
+    totalSets: p.sets,
+  }));
+
+  return json({ data: { exerciseName: decodeURIComponent(exerciseName), progression } });
+}
+
+/**
+ * Get weight upgrade suggestion for an exercise based on recent performance.
+ * Suggests increasing weight if user has completed all sets with target reps for several sessions.
+ */
+export async function getWeightUpgradeSuggestion(req: AppRequest): Promise<Response> {
+  if (!req.user) return unauthorized();
+  const { id, exerciseName } = req.params;
+  const db = new Database(req.env.DB);
+  const sport = await getSport(db, id, req.user.id);
+  if (!sport) return json({ error: "Sport not found", code: "NOT_FOUND" }, 404);
+
+  const workoutDays = parseWorkoutDays(sport.workoutDays);
+  const dayPlan = workoutDays.flatMap(d => d.exercises).find(e => e.name.toLowerCase() === decodeURIComponent(exerciseName).toLowerCase());
+  const targetReps = dayPlan ? parseInt(dayPlan.reps) : 10;
+  const targetSets = dayPlan ? dayPlan.sets : 3;
+
+  // Get recent sessions (last 5) with sets for this exercise
+  const sessions = await db.all<SessionRow>(
+    'SELECT * FROM "SportSession" WHERE sportId = ?1 ORDER BY startedAt DESC LIMIT 5',
+    [id],
+  );
+  const sessionIds = sessions.map(s => s.id);
+  if (sessionIds.length === 0) {
+    return json({ data: { exerciseName: decodeURIComponent(exerciseName), suggestion: null, reason: "No workout data yet" } });
+  }
+
+  const placeholders = sessionIds.map(() => '?').join(',');
+  const sets = await db.all<SessionSetRow>(
+    `SELECT sss.*, ss.startedAt FROM "SportSessionSet" sss
+     JOIN "SportSession" ss ON sss.sessionId = ss.id
+     WHERE sss.sessionId IN (${placeholders}) AND sss.exerciseName = ?${sessionIds.length + 1}
+     ORDER BY ss.startedAt DESC, sss.setNumber ASC`,
+    [...sessionIds, decodeURIComponent(exerciseName)],
+  );
+
+  if (sets.length === 0) {
+    return json({ data: { exerciseName: decodeURIComponent(exerciseName), suggestion: null, reason: "No set data for this exercise" } });
+  }
+
+  // Group by session
+  const sessionsWithSets = new Map<string, SessionSetRow[]>();
+  for (const set of sets) {
+    const dateKey = (set.startedAt || '').split('T')[0];
+    const arr = sessionsWithSets.get(dateKey) || [];
+    arr.push(set);
+    sessionsWithSets.set(dateKey, arr);
+  }
+
+  // Check last 3 sessions: if all sets completed with target reps at same weight, suggest upgrade
+  const recentSessions = Array.from(sessionsWithSets.entries()).slice(0, 3);
+  let consistentWeight: number | null = null;
+  let allCompleted = true;
+
+  for (const [, sessionSets] of recentSessions) {
+    const completedSets = sessionSets.filter(s => s.completed && s.weight !== null && s.reps !== null);
+    if (completedSets.length < targetSets) {
+      allCompleted = false;
+      break;
+    }
+    const weights = completedSets.map(s => s.weight!).filter(w => w !== null) as number[];
+    const reps = completedSets.map(s => s.reps!).filter(r => r !== null) as number[];
+    const avgWeight = weights.reduce((a, b) => a + b, 0) / weights.length;
+    const avgReps = reps.reduce((a, b) => a + b, 0) / reps.length;
+
+    if (consistentWeight === null) {
+      consistentWeight = avgWeight;
+    } else if (Math.abs(consistentWeight - avgWeight) > 1) {
+      // Weight changed between sessions
+      allCompleted = false;
+      break;
+    }
+    if (avgReps < targetReps) {
+      allCompleted = false;
+      break;
+    }
+  }
+
+  if (allCompleted && consistentWeight !== null && recentSessions.length >= 3) {
+    const suggestedWeight = consistentWeight + 2.5; // Standard 2.5kg/5lb increment
+    return json({
+      data: {
+        exerciseName: decodeURIComponent(exerciseName),
+        suggestion: {
+          currentWeight: consistentWeight,
+          suggestedWeight: Math.round(suggestedWeight * 2) / 2, // Round to nearest 2.5
+          increment: 2.5,
+          reason: `You've hit ${targetReps} reps for ${targetSets} sets in your last 3 sessions. Time to progress!`,
+        },
+      },
+    });
+  }
+
+  return json({
+    data: {
+      exerciseName: decodeURIComponent(exerciseName),
+      suggestion: null,
+      reason: allCompleted ? "Need more consistent sessions" : "Keep working on current weight",
+    },
+  });
 }

@@ -23,12 +23,33 @@ export interface SportPhoto {
   createdAt: string;
 }
 
+export interface SportSessionSet {
+  id: string;
+  sessionId: string;
+  exerciseName: string;
+  setNumber: number;
+  weight: number | null;
+  reps: number | null;
+  completed: boolean;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface SportSessionSetInput {
+  exerciseName: string;
+  setNumber: number;
+  weight?: number | null;
+  reps?: number | null;
+  completed: boolean;
+}
+
 export interface SportSession {
   id: string;
   startedAt: string;
   endedAt: string;
   durationSeconds: number;
   completedExercises?: string | null;
+  sets?: SportSessionSet[];
 }
 
 export interface SportAnalysis {
@@ -122,10 +143,11 @@ export function useSports(userId: string | null) {
     startedAt: string,
     endedAt: string,
     completedExercises: string[],
+    sets?: SportSessionSetInput[],
   ) => {
     const result = await api(`/sports/${sportId}/sessions`, {
       method: "POST",
-      body: JSON.stringify({ startedAt, endedAt, completedExercises }),
+      body: JSON.stringify({ startedAt, endedAt, completedExercises, sets }),
     });
     await load();
     return result;
@@ -154,5 +176,17 @@ export function useSports(userId: string | null) {
     return result;
   }, [load]);
 
-  return { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, updateWorkoutDays, analyzePhoto };
+  const getWeightProgression = useCallback(async (sportId: string, exerciseName: string) => {
+    return api<{ exerciseName: string; progression: Array<{ date: string; avgWeight: number | null; maxWeight: number | null; avgReps: number | null; totalSets: number }> }>(
+      `/sports/${sportId}/exercises/${encodeURIComponent(exerciseName)}/progression`
+    );
+  }, []);
+
+  const getUpgradeSuggestion = useCallback(async (sportId: string, exerciseName: string) => {
+    return api<{ exerciseName: string; suggestion: { currentWeight: number; suggestedWeight: number; increment: number; reason: string } | null; reason: string }>(
+      `/sports/${sportId}/exercises/${encodeURIComponent(exerciseName)}/upgrade-suggestion`
+    );
+  }, []);
+
+  return { sports, loading, error, fetchSports, createSport, addPhoto, saveSession, stopSport, deleteSport, updateWorkoutDays, analyzePhoto, getWeightProgression, getUpgradeSuggestion };
 }
